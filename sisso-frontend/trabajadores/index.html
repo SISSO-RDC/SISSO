@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Trabajadores</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .filtros { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+    .filtros .sisso-input, .filtros .sisso-select { width: auto; min-width: 160px; padding: 8px 12px; }
+    .btn-acciones { display: flex; gap: 8px; margin-left: auto; }
+    .av {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+      background: var(--teal3); color: var(--teal2);
+    }
+    .nombre-celda { display: flex; align-items: center; gap: 10px; }
+    .td-acciones { display: flex; gap: 6px; }
+    .btn-mini {
+      padding: 5px 10px; border-radius: 7px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--bd); background: #fff;
+      color: var(--t2); font-family: inherit; transition: all .12s;
+    }
+    .btn-mini:hover { border-color: var(--teal); color: var(--teal); background: var(--teal3); }
+    .btn-mini.primario { background: var(--teal); color: #fff; border-color: var(--teal); }
+    .btn-mini.primario:hover { background: var(--teal2); }
+
+    /* Modal */
+    .sisso-modal-fondo {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; display: none;
+    }
+    .sisso-modal-fondo.abierto { display: flex; }
+    .sisso-modal {
+      background: #fff; border-radius: var(--r2); padding: 24px;
+      width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .sisso-modal-titulo { font-size: 16px; font-weight: 800; margin-bottom: 18px; }
+    .sisso-modal-pie { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* Paginacion */
+    .paginacion { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--t3); }
+    .paginacion button {
+      padding: 5px 12px; border-radius: 7px; border: 1px solid var(--bd);
+      background: #fff; cursor: pointer; font-size: 12px; font-family: inherit;
+    }
+    .paginacion button:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
+    .paginacion button:disabled { opacity: .4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <!-- === CONTENIDO DE LA PAGINA (SissoLayout.iniciar() lo envuelve en el layout) === -->
+
+  <div class="filtros">
+    <input id="buscar" class="sisso-input" placeholder="🔍 Buscar por nombre o DNI..." oninput="aplicarFiltros()" style="min-width:220px;">
+    <select id="filtro-area" class="sisso-select" onchange="aplicarFiltros()">
+      <option value="">Todas las áreas</option>
+    </select>
+    <select id="filtro-aptitud" class="sisso-select" onchange="aplicarFiltros()">
+      <option value="">Toda aptitud</option>
+      <option value="apto">Apto</option>
+      <option value="con_restricciones">Con restricciones</option>
+      <option value="no_apto">No apto</option>
+      <option value="pendiente">Pendiente</option>
+    </select>
+    <div class="btn-acciones">
+      <button class="btn-mini" onclick="abrirModalImportar()">📥 Importar Excel/CSV</button>
+      <button class="btn-mini primario" onclick="abrirModalNuevo()">+ Nuevo trabajador</button>
+    </div>
+  </div>
+
+  <!-- Mensajes -->
+  <div class="sisso-error" id="error-lista"></div>
+  <div class="sisso-exito" id="exito-lista"></div>
+
+  <!-- Tabla -->
+  <div class="sisso-tarjeta" style="padding:0;overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table class="sisso-tabla">
+        <thead>
+          <tr>
+            <th>Trabajador</th>
+            <th>DNI</th>
+            <th>Área</th>
+            <th>Puesto</th>
+            <th>Última EMO</th>
+            <th>Vence</th>
+            <th id="col-aptitud" style="display:none">Aptitud</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tabla-tbody">
+          <tr><td colspan="8" class="sisso-cargando">Cargando trabajadores…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="paginacion" id="paginacion" style="display:none;">
+    <button onclick="cambiarPagina(-1)" id="btn-anterior">← Anterior</button>
+    <span id="info-pagina"></span>
+    <button onclick="cambiarPagina(1)" id="btn-siguiente">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Nuevo trabajador
+     ============================================================ -->
+<div class="sisso-modal-fondo" id="modal-nuevo">
+  <div class="sisso-modal">
+    <div class="sisso-modal-titulo">Nuevo trabajador</div>
+    <div class="sisso-error" id="error-nuevo"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="sisso-campo" style="grid-column:1/-1;">
+        <label class="sisso-etiqueta" for="n-nombre">Nombres completos *</label>
+        <input id="n-nombre" class="sisso-input" placeholder="Ej: Ana García López">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-doc">DNI / Cédula *</label>
+        <input id="n-doc" class="sisso-input" placeholder="Ej: 1234567890">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-area">Área</label>
+        <input id="n-area" class="sisso-input" placeholder="Ej: Producción">
+      </div>
+      <div class="sisso-campo" style="grid-column:1/-1;">
+        <label class="sisso-etiqueta" for="n-puesto">Puesto de trabajo</label>
+        <input id="n-puesto" class="sisso-input" placeholder="Ej: Operario de empaque">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-emo">Fecha última EMO</label>
+        <input id="n-emo" type="date" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-vence">Vencimiento EMO</label>
+        <input id="n-vence" type="date" class="sisso-input">
+      </div>
+    </div>
+
+    <div class="sisso-modal-pie">
+      <button class="sisso-boton secundario" onclick="cerrarModal('modal-nuevo')">Cancelar</button>
+      <button class="sisso-boton" id="btn-guardar-nuevo" onclick="guardarNuevoTrabajador()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Importar Excel / CSV
+     ============================================================ -->
+<div class="sisso-modal-fondo" id="modal-importar">
+  <div class="sisso-modal">
+    <div class="sisso-modal-titulo">Importar trabajadores desde Excel / CSV</div>
+    <div class="sisso-error" id="error-importar"></div>
+    <div class="sisso-exito" id="exito-importar"></div>
+
+    <div style="background:var(--blue3);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--blue2);margin-bottom:16px;">
+      <strong>Columnas requeridas:</strong> <code>nombreCompleto</code>, <code>documento</code><br>
+      <strong>Columnas opcionales:</strong> <code>area</code>, <code>puesto</code>, <code>fechaEmo</code>, <code>fechaVencimiento</code><br>
+      Si un trabajador ya existe (mismo DNI en tu organización), sus datos se actualizarán.
+    </div>
+
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="archivo-excel">Seleccionar archivo (.xlsx, .xls, .csv)</label>
+      <input id="archivo-excel" type="file" accept=".xlsx,.xls,.csv" class="sisso-input" onchange="previsualizarArchivo(this)">
+    </div>
+
+    <div id="preview-importar" style="display:none;">
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;" id="info-preview"></div>
+      <div style="max-height:200px;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--r);">
+        <table class="sisso-tabla" id="tabla-preview">
+          <thead><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sisso-modal-pie">
+      <button class="sisso-boton secundario" onclick="cerrarModal('modal-importar')">Cancelar</button>
+      <button class="sisso-boton" id="btn-confirmar-importar" onclick="ejecutarImportacion()" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Scripts: SheetJS para Excel, luego compartidos, luego logica
+     ============================================================ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+// Estado local de la pagina
+let trabajadores = [];       // lista completa traida del backend
+let trabajadoresFiltrados = []; // despues de aplicar filtros
+let paginaActual = 1;
+const POR_PAGINA = 25;
+let filasParaImportar = [];  // filas parseadas del Excel, antes de confirmar
+const esMedico = SissoSesion.obtenerUsuario()?.rol === 'medico';
+
+// ------- INICIALIZACION -------
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('trabajadores', 'Registro de Trabajadores');
+
+  // Mostrar columna "Aptitud" solo si es medico
+  if (esMedico) {
+    document.getElementById('col-aptitud').style.display = '';
+    document.getElementById('filtro-aptitud').style.display = '';
+  } else {
+    document.getElementById('filtro-aptitud').style.display = 'none';
+  }
+
+  await cargarTrabajadores();
+});
+
+// ------- CARGA DE DATOS -------
+async function cargarTrabajadores() {
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    poblarFiltroAreas();
+    aplicarFiltros();
+  } catch (err) {
+    mostrarError('error-lista', 'No se pudieron cargar los trabajadores: ' + err.message);
+    document.getElementById('tabla-tbody').innerHTML =
+      `<tr><td colspan="8" class="sisso-vacio">Error al cargar. Intenta recargar la página.</td></tr>`;
+  }
+}
+
+function poblarFiltroAreas() {
+  const areas = [...new Set(trabajadores.map(t => t.area).filter(Boolean))].sort();
+  const sel = document.getElementById('filtro-area');
+  sel.innerHTML = '<option value="">Todas las áreas</option>' +
+    areas.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+
+// ------- FILTROS Y RENDERIZADO -------
+function aplicarFiltros() {
+  const buscar = document.getElementById('buscar').value.toLowerCase().trim();
+  const area = document.getElementById('filtro-area').value;
+  const aptitud = document.getElementById('filtro-aptitud').value;
+
+  trabajadoresFiltrados = trabajadores.filter(t => {
+    const matchBuscar = !buscar ||
+      (t.nombre_completo || '').toLowerCase().includes(buscar) ||
+      (t.documento || '').toLowerCase().includes(buscar);
+    const matchArea = !area || t.area === area;
+    const matchAptitud = !aptitud || t.aptitud === aptitud;
+    return matchBuscar && matchArea && matchAptitud;
+  });
+
+  paginaActual = 1;
+  renderizarTabla();
+}
+
+function renderizarTabla() {
+  const inicio = (paginaActual - 1) * POR_PAGINA;
+  const pagina = trabajadoresFiltrados.slice(inicio, inicio + POR_PAGINA);
+  const total = trabajadoresFiltrados.length;
+  const totalPaginas = Math.ceil(total / POR_PAGINA);
+
+  const tbody = document.getElementById('tabla-tbody');
+
+  if (pagina.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="sisso-vacio">
+      ${trabajadores.length === 0 ? 'Aún no hay trabajadores registrados.' : 'Ningún trabajador coincide con los filtros.'}
+    </td></tr>`;
+  } else {
+    tbody.innerHTML = pagina.map(t => {
+      const iniciales = (t.nombre_completo || '??').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+      const chipAptitud = esMedico ? `<td>${chipDeAptitud(t.aptitud)}</td>` : '';
+      return `
+        <tr>
+          <td><div class="nombre-celda">
+            <div class="av">${iniciales}</div>
+            <span style="font-weight:600;">${escHtml(t.nombre_completo)}</span>
+          </div></td>
+          <td style="color:var(--t3);font-family:monospace;">${escHtml(t.documento)}</td>
+          <td>${escHtml(t.area) || '<span style="color:var(--t3)">—</span>'}</td>
+          <td>${escHtml(t.puesto) || '<span style="color:var(--t3)">—</span>'}</td>
+          <td>${formatearFecha(t.fecha_emo)}</td>
+          <td>${chipVencimiento(t.fecha_vencimiento)}</td>
+          ${chipAptitud}
+          <td><div class="td-acciones">
+            <button class="btn-mini" onclick="verDetalle('${t.id}')">Ver</button>
+          </div></td>
+        </tr>`;
+    }).join('');
+  }
+
+  // Paginacion
+  const pag = document.getElementById('paginacion');
+  const info = document.getElementById('info-pagina');
+  if (totalPaginas > 1) {
+    pag.style.display = 'flex';
+    info.textContent = `Pág. ${paginaActual} de ${totalPaginas} · ${total} trabajadores`;
+    document.getElementById('btn-anterior').disabled = paginaActual === 1;
+    document.getElementById('btn-siguiente').disabled = paginaActual === totalPaginas;
+  } else {
+    pag.style.display = total > 0 ? 'flex' : 'none';
+    info.textContent = `${total} trabajador${total !== 1 ? 'es' : ''}`;
+    document.getElementById('btn-anterior').disabled = true;
+    document.getElementById('btn-siguiente').disabled = true;
+  }
+}
+
+function cambiarPagina(delta) {
+  paginaActual += delta;
+  renderizarTabla();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ------- HELPERS VISUALES -------
+function chipDeAptitud(aptitud) {
+  const mapa = {
+    apto: ['verde', 'Apto'],
+    con_restricciones: ['ambar', 'Con restricciones'],
+    no_apto: ['rojo', 'No apto'],
+    pendiente: ['gris', 'Pendiente'],
+  };
+  const [clase, label] = mapa[aptitud] || ['gris', 'Pendiente'];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+
+function chipVencimiento(fecha) {
+  if (!fecha) return '<span style="color:var(--t3)">—</span>';
+  const dias = Math.ceil((new Date(fecha) - new Date()) / 86400000);
+  if (dias < 0) return `<span class="sisso-chip rojo">Vencida</span>`;
+  if (dias <= 30) return `<span class="sisso-chip ambar">${dias}d</span>`;
+  return `<span style="color:var(--t2)">${formatearFecha(fecha)}</span>`;
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return '<span style="color:var(--t3)">—</span>';
+  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ------- MODAL NUEVO TRABAJADOR -------
+function abrirModalNuevo() {
+  ['n-nombre','n-doc','n-area','n-puesto'].forEach(id => document.getElementById(id).value = '');
+  ['n-emo','n-vence'].forEach(id => document.getElementById(id).value = '');
+  ocultarError('error-nuevo');
+  document.getElementById('modal-nuevo').classList.add('abierto');
+  document.getElementById('n-nombre').focus();
+}
+
+async function guardarNuevoTrabajador() {
+  ocultarError('error-nuevo');
+  const nombre = document.getElementById('n-nombre').value.trim();
+  const doc = document.getElementById('n-doc').value.trim();
+
+  if (!nombre || !doc) {
+    mostrarError('error-nuevo', 'El nombre y el DNI son obligatorios.');
+    return;
+  }
+
+  const boton = document.getElementById('btn-guardar-nuevo');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch('/trabajadores', {
+      method: 'POST',
+      body: {
+        nombreCompleto: nombre,
+        documento: doc,
+        area: document.getElementById('n-area').value.trim() || undefined,
+        puesto: document.getElementById('n-puesto').value.trim() || undefined,
+        fechaEmo: document.getElementById('n-emo').value || undefined,
+        fechaVencimiento: document.getElementById('n-vence').value || undefined,
+      }
+    });
+    cerrarModal('modal-nuevo');
+    mostrarExito('exito-lista', `Trabajador "${nombre}" creado correctamente.`);
+    await cargarTrabajadores();
+  } catch (err) {
+    mostrarError('error-nuevo', err.message || 'Error al crear el trabajador.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar';
+  }
+}
+
+// ------- MODAL IMPORTAR EXCEL -------
+function abrirModalImportar() {
+  document.getElementById('archivo-excel').value = '';
+  document.getElementById('preview-importar').style.display = 'none';
+  document.getElementById('btn-confirmar-importar').disabled = true;
+  filasParaImportar = [];
+  ocultarError('error-importar');
+  ocultarExito('exito-importar');
+  document.getElementById('modal-importar').classList.add('abierto');
+}
+
+function previsualizarArchivo(input) {
+  const archivo = input.files[0];
+  if (!archivo) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const filas = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      if (filas.length === 0) {
+        mostrarError('error-importar', 'El archivo no contiene filas de datos.');
+        return;
+      }
+
+      // Normalizar nombres de columnas (acepta variantes en español)
+      filasParaImportar = filas.map(f => ({
+        nombreCompleto: f.nombreCompleto || f.nombre_completo || f.nombre || f.Nombre || f.NOMBRE || '',
+        documento: String(f.documento || f.dni || f.cedula || f.DNI || f.Cedula || f.CEDULA || ''),
+        area: f.area || f.Area || f.AREA || '',
+        puesto: f.puesto || f.Puesto || f.PUESTO || f.cargo || f.Cargo || '',
+        fechaEmo: f.fechaEmo || f.fecha_emo || '',
+        fechaVencimiento: f.fechaVencimiento || f.fecha_vencimiento || f.vencimiento || '',
+      }));
+
+      // Mostrar preview de las primeras 5 filas
+      const preview = document.getElementById('preview-importar');
+      const infoEl = document.getElementById('info-preview');
+      const thead = document.querySelector('#tabla-preview thead tr');
+      const tbody = document.querySelector('#tabla-preview tbody');
+
+      infoEl.textContent = `${filasParaImportar.length} filas encontradas. Vista previa de las primeras 5:`;
+      thead.innerHTML = '<th>Nombre</th><th>DNI</th><th>Área</th><th>Puesto</th>';
+      tbody.innerHTML = filasParaImportar.slice(0, 5).map(f =>
+        `<tr><td>${escHtml(f.nombreCompleto)}</td><td>${escHtml(f.documento)}</td><td>${escHtml(f.area)}</td><td>${escHtml(f.puesto)}</td></tr>`
+      ).join('');
+
+      preview.style.display = 'block';
+      document.getElementById('btn-confirmar-importar').disabled = false;
+      ocultarError('error-importar');
+    } catch (err) {
+      mostrarError('error-importar', 'No se pudo leer el archivo. Asegúrate de que sea un Excel (.xlsx) o CSV válido.');
+    }
+  };
+  reader.readAsBinaryString(archivo);
+}
+
+async function ejecutarImportacion() {
+  if (filasParaImportar.length === 0) return;
+  ocultarError('error-importar');
+  ocultarExito('exito-importar');
+
+  const boton = document.getElementById('btn-confirmar-importar');
+  boton.disabled = true;
+  boton.textContent = 'Importando…';
+
+  try {
+    const resultado = await sissoFetch('/trabajadores/importar', {
+      method: 'POST',
+      body: { trabajadores: filasParaImportar }
+    });
+    const { resumen } = resultado;
+    const msg = `Importación completada: ${resumen.creados} creados, ${resumen.actualizados} actualizados${resumen.fallidos > 0 ? `, ${resumen.fallidos} con error` : ''}.`;
+    mostrarExito('exito-importar', msg);
+    await cargarTrabajadores();
+    setTimeout(() => cerrarModal('modal-importar'), 2500);
+  } catch (err) {
+    mostrarError('error-importar', err.message || 'Error durante la importación.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Importar';
+  }
+}
+
+// ------- VER DETALLE -------
+function verDetalle(id) {
+  // Por ahora navega a la pagina de aptitud filtrando por este trabajador.
+  // Cuando se construya una pagina de detalle de trabajador, apuntara ahi.
+  localStorage.setItem('sisso_trabajador_id', id);
+  const t = trabajadores.find(x => x.id === id);
+  if (t) localStorage.setItem('sisso_trabajador_nombre', t.nombre_completo);
+  window.location.href = '../aptitud/index.html';
+}
+
+// ------- HELPERS MODALES Y MENSAJES -------
+function cerrarModal(id) {
+  document.getElementById(id).classList.remove('abierto');
+}
+
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function ocultarError(idEl) {
+  const el = document.getElementById(idEl);
+  if (el) el.classList.remove('visible');
+}
+
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+
+function ocultarExito(idEl) {
+  const el = document.getElementById(idEl);
+  if (el) el.classList.remove('visible');
+}
+
+// Cerrar modal haciendo clic fuera
+document.querySelectorAll('.sisso-modal-fondo').forEach(fondo => {
+  fondo.addEventListener('click', e => {
+    if (e.target === fondo) fondo.classList.remove('abierto');
+  });
+});
+</script>
+</body>
+</html>

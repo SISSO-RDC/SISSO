@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Iniciar sesión</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    /* Estilos especificos del login, que no necesitan vivir en estilos.css */
+    .login-marca {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--t1);
+      letter-spacing: -0.5px;
+    }
+    .login-sub {
+      font-size: 12px;
+      color: var(--t3);
+      text-align: center;
+      margin: -10px 0 28px;
+    }
+    .campo-contrasena { position: relative; }
+    .campo-contrasena .sisso-input { padding-right: 42px; }
+    .ojo-contrasena {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--t3);
+      padding: 2px;
+    }
+    .ojo-contrasena:hover { color: var(--t2); }
+    .version {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,.35);
+      margin-top: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="sisso-login-pantalla">
+  <div style="display:flex;flex-direction:column;align-items:center;">
+
+    <div class="sisso-login-caja">
+      <!-- Logo e identidad -->
+      <div class="sisso-login-logo">
+        <div class="sisso-login-icono">S</div>
+        <div>
+          <div class="login-marca">SISSO</div>
+          <div style="font-size:11px;color:var(--t3);font-weight:600;">Salud Ocupacional</div>
+        </div>
+      </div>
+      <div class="login-sub">Sistema Integral de Seguridad y Salud Ocupacional</div>
+
+      <!-- Mensaje de error -->
+      <div class="sisso-error" id="error-login"></div>
+
+      <!-- Formulario -->
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="email">Correo electrónico</label>
+        <input
+          id="email"
+          type="email"
+          class="sisso-input"
+          placeholder="tu@correo.com"
+          autocomplete="email"
+          autofocus
+        >
+      </div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="contrasena">Contraseña</label>
+        <div class="campo-contrasena">
+          <input
+            id="contrasena"
+            type="password"
+            class="sisso-input"
+            placeholder="••••••••"
+            autocomplete="current-password"
+          >
+          <button class="ojo-contrasena" type="button" onclick="alternarContrasena()" title="Mostrar/ocultar contraseña">
+            👁
+          </button>
+        </div>
+      </div>
+
+      <button
+        class="sisso-boton ancho-completo"
+        id="btn-login"
+        onclick="iniciarSesion()"
+      >
+        Iniciar sesión
+      </button>
+    </div>
+
+    <div class="version">SISSO v2.0 · Plataforma médico-ocupacional</div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script>
+  // Si ya hay una sesion activa, ir directamente al dashboard
+  if (SissoSesion.haySesion()) {
+    window.location.href = '../dashboard/index.html';
+  }
+
+  // Permitir hacer login con Enter en cualquier campo del formulario
+  document.getElementById('email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('contrasena').focus();
+  });
+  document.getElementById('contrasena').addEventListener('keydown', e => {
+    if (e.key === 'Enter') iniciarSesion();
+  });
+
+  function alternarContrasena() {
+    const campo = document.getElementById('contrasena');
+    campo.type = campo.type === 'password' ? 'text' : 'password';
+  }
+
+  function mostrarError(mensaje) {
+    const el = document.getElementById('error-login');
+    el.textContent = mensaje;
+    el.classList.add('visible');
+  }
+
+  function ocultarError() {
+    document.getElementById('error-login').classList.remove('visible');
+  }
+
+  async function iniciarSesion() {
+    ocultarError();
+
+    const email = document.getElementById('email').value.trim();
+    const contrasena = document.getElementById('contrasena').value;
+    const boton = document.getElementById('btn-login');
+
+    if (!email || !contrasena) {
+      mostrarError('Por favor ingresa tu correo y contraseña.');
+      return;
+    }
+
+    boton.disabled = true;
+    boton.textContent = 'Iniciando sesión…';
+
+    try {
+      const datos = await fetch('https://sissso-backend.onrender.com/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: contrasena }),
+      }).then(async (r) => {
+        const cuerpo = await r.json();
+        if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error al iniciar sesión.'), { status: r.status });
+        return cuerpo;
+      });
+
+      // Guardar sesion completa en localStorage
+      SissoSesion.guardar(datos);
+
+      // Redirigir al dashboard
+      window.location.href = '../dashboard/index.html';
+
+    } catch (err) {
+      let mensaje = err.message || 'Error al conectar con el servidor.';
+      if (err.status === 401) mensaje = 'Correo o contraseña incorrectos.';
+      if (err.status === 423) mensaje = 'Cuenta bloqueada temporalmente por múltiples intentos fallidos. Intenta en unos minutos.';
+      mostrarError(mensaje);
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Iniciar sesión';
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+/* ============================================================
+   SISSO - Estilos compartidos.
+
+   Conserva la identidad visual del sistema original (paleta,
+   tipografia, sidebar oscuro de navegacion) en lugar de inventar
+   una nueva, porque es la que el equipo ya reconoce como "SISSO".
+   Se organiza en variables CSS reutilizables para que cada modulo
+   nuevo (reba, rula, aptitud, etc.) solo necesite enlazar este
+   archivo y usar las mismas clases, sin repetir definiciones.
+   ============================================================ */
+
+:root {
+  /* Fondos y texto */
+  --bg: #f0f2f5;
+  --bg2: #fff;
+  --bg3: #e8eaed;
+  --t1: #1a1d23;
+  --t2: #4a5568;
+  --t3: #718096;
+  --bd: #e2e8f0;
+  --bd2: #cbd5e0;
+
+  /* Paleta semantica: cada color tiene 3 tonos (base, oscuro para
+     hover/texto, claro para fondos de chips/alertas) */
+  --teal: #0d9488;  --teal2: #0f766e;  --teal3: #ccfbf1;
+  --blue: #1d4ed8;  --blue2: #1e40af;  --blue3: #dbeafe;
+  --amb:  #d97706;  --amb2:  #b45309;  --amb3:  #fef3c7;
+  --red:  #dc2626;  --red2:  #b91c1c;  --red3:  #fee2e2;
+  --grn:  #16a34a;  --grn2:  #15803d;  --grn3:  #dcfce7;
+  --pur:  #7c3aed;  --pur2:  #6d28d9;  --pur3:  #ede9fe;
+
+  --r: 8px;
+  --r2: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--t1);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+a { color: inherit; }
+
+/* ------------------------------------------------------------
+   Pantalla de login (fondo a pantalla completa, tarjeta centrada)
+   ------------------------------------------------------------ */
+.sisso-login-pantalla {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0f766e 0%, #1e40af 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sisso-login-caja {
+  background: #fff;
+  border-radius: 20px;
+  padding: 38px 34px;
+  width: 420px;
+  max-width: 92vw;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, .25);
+}
+
+.sisso-login-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+  justify-content: center;
+}
+
+.sisso-login-icono {
+  width: 46px;
+  height: 46px;
+  background: var(--teal);
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.sisso-login-titulo {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--t1);
+}
+
+.sisso-login-subtitulo {
+  font-size: 13px;
+  color: var(--t3);
+  text-align: center;
+  margin: -18px 0 22px;
+}
+
+/* ------------------------------------------------------------
+   Formularios (compartido por login y todos los modulos)
+   ------------------------------------------------------------ */
+.sisso-campo { margin-bottom: 16px; }
+
+.sisso-etiqueta {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--t2);
+  margin-bottom: 6px;
+}
+
+.sisso-input,
+.sisso-select,
+.sisso-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1.5px solid var(--bd);
+  border-radius: var(--r);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--t1);
+  background: #fff;
+  transition: border-color .15s;
+}
+
+.sisso-input:focus,
+.sisso-select:focus,
+.sisso-textarea:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
+.sisso-textarea { resize: vertical; min-height: 90px; }
+
+.sisso-boton {
+  padding: 11px 18px;
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+  font-family: inherit;
+}
+
+.sisso-boton:hover { background: var(--teal2); }
+.sisso-boton:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.sisso-boton.ancho-completo { width: 100%; }
+
+.sisso-boton.secundario {
+  background: #fff;
+  color: var(--t2);
+  border: 1.5px solid var(--bd);
+}
+.sisso-boton.secundario:hover { border-color: var(--bd2); background: var(--bg3); }
+
+.sisso-boton.peligro { background: var(--red); }
+.sisso-boton.peligro:hover { background: var(--red2); }
+
+.sisso-error {
+  background: var(--red3);
+  color: var(--red2);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: none;
+}
+.sisso-error.visible { display: block; }
+
+.sisso-exito {
+  background: var(--grn3);
+  color: var(--grn2);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: none;
+}
+.sisso-exito.visible { display: block; }
+
+/* ------------------------------------------------------------
+   Layout principal (sidebar + topbar + contenido), usado por
+   todas las paginas internas (no el login).
+   ------------------------------------------------------------ */
+.sisso-layout { display: flex; min-height: 100vh; }
+
+.sisso-sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: var(--t1);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.sisso-sidebar-logo {
+  padding: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sisso-sidebar-icono {
+  width: 33px;
+  height: 33px;
+  background: var(--teal);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.sisso-sidebar-nombre { color: #fff; font-weight: 700; font-size: 14px; }
+
+.sisso-nav-seccion {
+  padding: 11px 16px 3px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, .3);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.sisso-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, .5);
+  font-size: 13px;
+  border-left: 2px solid transparent;
+  transition: all .12s;
+  user-select: none;
+  text-decoration: none;
+}
+
+.sisso-nav-item:hover { background: rgba(255, 255, 255, .06); color: rgba(255, 255, 255, .85); }
+
+.sisso-nav-item.activo {
+  background: rgba(13, 148, 136, .2);
+  color: #5eead4;
+  border-left-color: var(--teal);
+}
+
+.sisso-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.sisso-topbar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--bd);
+  padding: 0 22px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.sisso-topbar-titulo { font-weight: 700; font-size: 15px; }
+
+.sisso-topbar-derecha { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+.sisso-pildora-usuario {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--bd);
+  transition: all .12s;
+  background: #fff;
+}
+
+.sisso-pildora-usuario:hover { border-color: var(--bd2); }
+
+.sisso-contenido { padding: 20px; flex: 1; overflow-y: auto; }
+
+/* ------------------------------------------------------------
+   Tarjetas y tablas (reutilizables en todos los modulos)
+   ------------------------------------------------------------ */
+.sisso-tarjeta {
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: var(--r2);
+  padding: 18px;
+}
+
+.sisso-tarjeta-titulo { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.sisso-tarjeta-subtitulo { font-size: 12px; color: var(--t3); margin-bottom: 14px; }
+
+.sisso-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sisso-tabla th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  border-bottom: 1.5px solid var(--bd);
+}
+.sisso-tabla td { padding: 10px 12px; border-bottom: 1px solid var(--bd); }
+.sisso-tabla tr:hover td { background: var(--bg); }
+.sisso-tabla tr:last-child td { border-bottom: none; }
+
+/* Chips de estado, reutilizados para aptitud, nivel de riesgo, etc. */
+.sisso-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.sisso-chip.verde  { background: var(--grn3); color: var(--grn2); }
+.sisso-chip.ambar  { background: var(--amb3); color: var(--amb2); }
+.sisso-chip.rojo   { background: var(--red3); color: var(--red2); }
+.sisso-chip.azul   { background: var(--blue3); color: var(--blue2); }
+.sisso-chip.teal   { background: var(--teal3); color: var(--teal2); }
+.sisso-chip.gris   { background: var(--bg3); color: var(--t2); }
+
+.sisso-cargando { color: var(--t3); font-size: 13px; padding: 30px; text-align: center; }
+
+.sisso-vacio {
+  color: var(--t3);
+  font-size: 13px;
+  padding: 40px 20px;
+  text-align: center;
+}

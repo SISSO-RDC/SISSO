@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Calculadora RULA</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .panel-2col { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 900px) { .panel-2col { grid-template-columns: 1fr; } }
+    .grupo-postura { border: 1px solid var(--bd); border-radius: var(--r); padding: 14px; margin-bottom: 12px; }
+    .grupo-postura-titulo { font-weight: 700; font-size: 12.5px; color: var(--pur2); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .02em; }
+    .fila-opciones { display: flex; flex-direction: column; gap: 6px; }
+    .opcion-radio { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border-radius: 7px; cursor: pointer; font-size: 13px; border: 1px solid transparent; transition: all .1s; }
+    .opcion-radio:hover { background: var(--bg); }
+    .opcion-radio:has(input:checked) { background: var(--pur3); border-color: var(--pur); }
+    .opcion-radio:has(input:checked) span { font-weight: 700; color: var(--pur2); }
+    .opcion-check { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 7px; cursor: pointer; font-size: 12.5px; margin-top: 4px; }
+    .opcion-check:hover { background: var(--bg); }
+    .lados-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .resultado-tarjeta { position: sticky; top: 66px; }
+    .score-circulo { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0 auto 14px; font-weight: 900; font-size: 30px; color: #fff; }
+    .score-detalle-fila { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--bd); font-size: 12.5px; }
+    .score-detalle-fila:last-child { border-bottom: none; }
+    .lista-posturas-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid var(--bd); border-radius: var(--r); margin-bottom: 8px; font-size: 13px; }
+    .sesion-previa-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid var(--bd); border-radius: var(--r); margin-bottom: 8px; font-size: 13px; cursor: pointer; transition: all .12s; }
+    .sesion-previa-item:hover { border-color: var(--pur); background: var(--pur3); }
+    .selector-trabajador-caja { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- PASO 1: elegir trabajador y crear sesion -->
+  <div class="sisso-tarjeta" id="caja-seleccion-sesion">
+    <div class="sisso-tarjeta-titulo">Sesión de evaluación RULA</div>
+    <div class="sisso-tarjeta-subtitulo">Selecciona el trabajador y el puesto evaluado para iniciar o continuar una sesión RULA.</div>
+    <div class="sisso-error" id="error-sesion"></div>
+    <div class="selector-trabajador-caja">
+      <div class="sisso-campo" style="flex:1;min-width:220px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select" onchange="cargarSesionesPrevias()"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <div class="sisso-campo" style="flex:1;min-width:200px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-puesto">Puesto evaluado</label>
+        <input id="sel-puesto" class="sisso-input" placeholder="Ej: Digitador / atención al cliente">
+      </div>
+      <div class="sisso-campo" style="flex:1;min-width:200px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-tarea">Tarea observada (opcional)</label>
+        <input id="sel-tarea" class="sisso-input" placeholder="Ej: Digitación prolongada en computador">
+      </div>
+      <button class="sisso-boton" id="btn-iniciar-sesion" onclick="iniciarSesion()" style="background:var(--pur);">Iniciar sesión nueva</button>
+    </div>
+
+    <div id="caja-sesiones-previas" style="display:none;margin-top:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;">Sesiones anteriores de este trabajador — haz clic para continuar:</div>
+      <div id="lista-sesiones-previas"></div>
+    </div>
+  </div>
+
+  <!-- PASO 2: sesion activa -->
+  <div id="caja-sesion-activa" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="sisso-tarjeta-titulo" id="titulo-sesion-activa">Sesión activa</div>
+          <div class="sisso-tarjeta-subtitulo" style="margin-bottom:0;" id="subtitulo-sesion-activa"></div>
+        </div>
+        <button class="btn-mini" onclick="cerrarSesionActiva()">← Cambiar de sesión</button>
+      </div>
+    </div>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Posturas evaluadas en esta sesión</div>
+      <div id="lista-posturas"><div class="sisso-vacio">Aún no se ha evaluado ninguna postura.</div></div>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Evaluar nueva postura</div>
+      <div class="sisso-tarjeta-subtitulo">El cálculo usa las tablas oficiales A, B y C del método RULA (McAtamney &amp; Corlett, 1993).</div>
+      <div class="sisso-error" id="error-postura"></div>
+
+      <div class="panel-2col">
+        <div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="p-nombre">Nombre de la postura *</label>
+            <input id="p-nombre" class="sisso-input" placeholder="Ej: Postura frente al computador">
+          </div>
+
+          <!-- GRUPO A: brazo, antebrazo, muneca, giro -->
+          <div class="grupo-postura">
+            <div class="grupo-postura-titulo">Grupo A — Brazo, antebrazo y muñeca</div>
+            <div class="lados-grid">
+              <div>
+                <strong style="font-size:12px;color:var(--t2);">Lado derecho</strong>
+                <label class="sisso-etiqueta" style="margin-top:8px;display:block;">Brazo</label>
+                <div class="fila-opciones" data-grupo="brazoDerecho">
+                  <label class="opcion-radio"><input type="radio" name="brazoDerecho" value="extension_20_a_flexion_20" checked><span>Ext. 20° a flex. 20°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="brazoDerecho" value="extension_mayor_20_o_flexion_20_45"><span>Ext. &gt;20° / flex. 20–45°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="brazoDerecho" value="flexion_45_90"><span>Flexión 45–90°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="brazoDerecho" value="flexion_mayor_90"><span>Flexión &gt; 90°</span></label>
+                </div>
+                <label class="opcion-check"><input type="checkbox" id="brazoDerecho-hombro"> Hombro elevado</label>
+                <label class="opcion-check"><input type="checkbox" id="brazoDerecho-abducido"> Brazo en abducción</label>
+                <label class="opcion-check"><input type="checkbox" id="brazoDerecho-apoyado"> Brazo apoyado / a favor de gravedad</label>
+
+                <label class="sisso-etiqueta" style="margin-top:10px;display:block;">Antebrazo</label>
+                <div class="fila-opciones" data-grupo="antebrazoDerecho">
+                  <label class="opcion-radio"><input type="radio" name="antebrazoDerecho" value="flexion_60_100" checked><span>Flexión 60–100°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="antebrazoDerecho" value="flexion_menor_60_o_mayor_100"><span>Flexión &lt;60° o &gt;100°</span></label>
+                </div>
+                <label class="opcion-check"><input type="checkbox" id="antebrazoDerecho-cruza"> Cruza línea media del cuerpo</label>
+
+                <label class="sisso-etiqueta" style="margin-top:10px;display:block;">Muñeca</label>
+                <div class="fila-opciones" data-grupo="munecaDerecha">
+                  <label class="opcion-radio"><input type="radio" name="munecaDerecha" value="posicion_neutra" checked><span>Posición neutra</span></label>
+                  <label class="opcion-radio"><input type="radio" name="munecaDerecha" value="flexion_o_extension_0_15"><span>Flex./ext. 0–15°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="munecaDerecha" value="flexion_o_extension_mayor_15"><span>Flex./ext. &gt; 15°</span></label>
+                </div>
+                <label class="opcion-check"><input type="checkbox" id="munecaDerecha-desviacion"> Desviación radial/cubital</label>
+
+                <label class="sisso-etiqueta" style="margin-top:10px;display:block;">Giro de muñeca</label>
+                <div class="fila-opciones" data-grupo="munecaDerechaRotacion">
+                  <label class="opcion-radio"><input type="radio" name="munecaDerechaRotacion" value="rango_medio" checked><span>Rango medio</span></label>
+                  <label class="opcion-radio"><input type="radio" name="munecaDerechaRotacion" value="rango_extremo"><span>Rango extremo</span></label>
+                </div>
+              </div>
+
+              <div>
+                <strong style="font-size:12px;color:var(--t2);">Lado izquierdo</strong>
+                <label class="sisso-etiqueta" style="margin-top:8px;display:block;">Brazo</label>
+                <div class="fila-opciones" data-grupo="brazoIzquierdo">
+                  <label class="opcion-radio"><input type="radio" name="brazoIzquierdo" value="extension_20_a_flexion_20" checked><span>Ext. 20° a flex. 20°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="brazoIzquierdo" value="extension_mayor_20_o_flexion_20_45"><span>Ext. &gt;20° / flex. 20–45°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="brazoIzquierdo" value="flexion_45_90"><span>Flexión 45–90°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="brazoIzquierdo" value="flexion_mayor_90"><span>Flexión &gt; 90°</span></label>
+                </div>
+                <label class="opcion-check"><input type="checkbox" id="brazoIzquierdo-hombro"> Hombro elevado</label>
+                <label class="opcion-check"><input type="checkbox" id="brazoIzquierdo-abducido"> Brazo en abducción</label>
+                <label class="opcion-check"><input type="checkbox" id="brazoIzquierdo-apoyado"> Brazo apoyado / a favor de gravedad</label>
+
+                <label class="sisso-etiqueta" style="margin-top:10px;display:block;">Antebrazo</label>
+                <div class="fila-opciones" data-grupo="antebrazoIzquierdo">
+                  <label class="opcion-radio"><input type="radio" name="antebrazoIzquierdo" value="flexion_60_100" checked><span>Flexión 60–100°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="antebrazoIzquierdo" value="flexion_menor_60_o_mayor_100"><span>Flexión &lt;60° o &gt;100°</span></label>
+                </div>
+                <label class="opcion-check"><input type="checkbox" id="antebrazoIzquierdo-cruza"> Cruza línea media del cuerpo</label>
+
+                <label class="sisso-etiqueta" style="margin-top:10px;display:block;">Muñeca</label>
+                <div class="fila-opciones" data-grupo="munecaIzquierda">
+                  <label class="opcion-radio"><input type="radio" name="munecaIzquierda" value="posicion_neutra" checked><span>Posición neutra</span></label>
+                  <label class="opcion-radio"><input type="radio" name="munecaIzquierda" value="flexion_o_extension_0_15"><span>Flex./ext. 0–15°</span></label>
+                  <label class="opcion-radio"><input type="radio" name="munecaIzquierda" value="flexion_o_extension_mayor_15"><span>Flex./ext. &gt; 15°</span></label>
+                </div>
+                <label class="opcion-check"><input type="checkbox" id="munecaIzquierda-desviacion"> Desviación radial/cubital</label>
+
+                <label class="sisso-etiqueta" style="margin-top:10px;display:block;">Giro de muñeca</label>
+                <div class="fila-opciones" data-grupo="munecaIzquierdaRotacion">
+                  <label class="opcion-radio"><input type="radio" name="munecaIzquierdaRotacion" value="rango_medio" checked><span>Rango medio</span></label>
+                  <label class="opcion-radio"><input type="radio" name="munecaIzquierdaRotacion" value="rango_extremo"><span>Rango extremo</span></label>
+                </div>
+              </div>
+            </div>
+
+            <label class="sisso-etiqueta" style="margin-top:12px;display:block;">Actividad muscular y fuerza (Grupo A)</label>
+            <label class="opcion-check"><input type="checkbox" id="grupoA-musculo"> Postura estática &gt; 1 min o repetida &gt; 4 veces/min</label>
+            <div class="fila-opciones" data-grupo="grupoAFuerzaCarga" style="margin-top:6px;">
+              <label class="opcion-radio"><input type="radio" name="grupoAFuerzaCarga" value="menor_2kg_intermitente" checked><span>Carga &lt; 2 kg, intermitente</span></label>
+              <label class="opcion-radio"><input type="radio" name="grupoAFuerzaCarga" value="entre_2_10kg_intermitente"><span>Carga 2–10 kg, intermitente</span></label>
+              <label class="opcion-radio"><input type="radio" name="grupoAFuerzaCarga" value="entre_2_10kg_estatico_o_repetido"><span>Carga 2–10 kg, estática o repetida</span></label>
+              <label class="opcion-radio"><input type="radio" name="grupoAFuerzaCarga" value="mayor_10kg_o_repetido_o_brusco"><span>Carga &gt; 10 kg, repetida o brusca</span></label>
+            </div>
+          </div>
+
+          <!-- GRUPO B: cuello, tronco, piernas -->
+          <div class="grupo-postura">
+            <div class="grupo-postura-titulo">Grupo B — Cuello, tronco y piernas</div>
+
+            <label class="sisso-etiqueta">Cuello</label>
+            <div class="fila-opciones" data-grupo="cuello">
+              <label class="opcion-radio"><input type="radio" name="cuello" value="flexion_0_10" checked><span>Flexión 0–10°</span></label>
+              <label class="opcion-radio"><input type="radio" name="cuello" value="flexion_10_20"><span>Flexión 10–20°</span></label>
+              <label class="opcion-radio"><input type="radio" name="cuello" value="flexion_mayor_20"><span>Flexión &gt; 20°</span></label>
+              <label class="opcion-radio"><input type="radio" name="cuello" value="extension"><span>En extensión</span></label>
+            </div>
+            <label class="opcion-check"><input type="checkbox" id="cuello-torsion"> Torsión del cuello</label>
+            <label class="opcion-check"><input type="checkbox" id="cuello-inclinacion"> Inclinación lateral del cuello</label>
+
+            <label class="sisso-etiqueta" style="margin-top:12px;display:block;">Tronco</label>
+            <div class="fila-opciones" data-grupo="tronco">
+              <label class="opcion-radio"><input type="radio" name="tronco" value="erguido_o_sentado_apoyado" checked><span>Erguido / sentado bien apoyado</span></label>
+              <label class="opcion-radio"><input type="radio" name="tronco" value="flexion_0_20"><span>Flexión 0–20°</span></label>
+              <label class="opcion-radio"><input type="radio" name="tronco" value="flexion_20_60"><span>Flexión 20–60°</span></label>
+              <label class="opcion-radio"><input type="radio" name="tronco" value="flexion_mayor_60"><span>Flexión &gt; 60°</span></label>
+            </div>
+            <label class="opcion-check"><input type="checkbox" id="tronco-sentado"> La tarea se realiza sentado (solo informativo)</label>
+            <label class="opcion-check"><input type="checkbox" id="tronco-torsion"> Torsión del tronco</label>
+            <label class="opcion-check"><input type="checkbox" id="tronco-inclinacion"> Inclinación lateral del tronco</label>
+
+            <label class="opcion-check" style="margin-top:10px;"><input type="checkbox" id="piernas-apoyadas" checked> Piernas y pies bien apoyados, postura equilibrada</label>
+
+            <label class="sisso-etiqueta" style="margin-top:12px;display:block;">Actividad muscular y fuerza (Grupo B)</label>
+            <label class="opcion-check"><input type="checkbox" id="grupoB-musculo"> Postura estática &gt; 1 min o repetida &gt; 4 veces/min</label>
+            <div class="fila-opciones" data-grupo="grupoBFuerzaCarga" style="margin-top:6px;">
+              <label class="opcion-radio"><input type="radio" name="grupoBFuerzaCarga" value="menor_2kg_intermitente" checked><span>Carga &lt; 2 kg, intermitente</span></label>
+              <label class="opcion-radio"><input type="radio" name="grupoBFuerzaCarga" value="entre_2_10kg_intermitente"><span>Carga 2–10 kg, intermitente</span></label>
+              <label class="opcion-radio"><input type="radio" name="grupoBFuerzaCarga" value="entre_2_10kg_estatico_o_repetido"><span>Carga 2–10 kg, estática o repetida</span></label>
+              <label class="opcion-radio"><input type="radio" name="grupoBFuerzaCarga" value="mayor_10kg_o_repetido_o_brusco"><span>Carga &gt; 10 kg, repetida o brusca</span></label>
+            </div>
+          </div>
+
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="p-evidencia">Evidencia fotográfica (opcional)</label>
+            <input id="p-evidencia" type="file" accept="image/*,video/*" class="sisso-input">
+          </div>
+
+          <button class="sisso-boton ancho-completo" id="btn-calcular" onclick="calcularYGuardarPostura()" style="background:var(--pur);">Calcular y guardar postura</button>
+        </div>
+
+        <div class="resultado-tarjeta">
+          <div class="sisso-tarjeta" id="caja-resultado">
+            <div class="sisso-tarjeta-titulo">Resultado RULA</div>
+            <div id="resultado-vacio" class="sisso-vacio" style="padding:20px 10px;">Completa el formulario y presiona<br>"Calcular y guardar postura".</div>
+            <div id="resultado-contenido" style="display:none;">
+              <div class="score-circulo" id="score-circulo">--</div>
+              <div style="text-align:center;font-weight:700;margin-bottom:14px;" id="score-nivel">—</div>
+              <div class="score-detalle-fila"><span>Grupo A (derecho)</span><strong id="d-a-der">—</strong></div>
+              <div class="score-detalle-fila"><span>Grupo A (izquierdo)</span><strong id="d-a-izq">—</strong></div>
+              <div class="score-detalle-fila"><span>Grupo B</span><strong id="d-b">—</strong></div>
+              <div class="score-detalle-fila"><span>Lado más desfavorable</span><strong id="d-lado">—</strong></div>
+              <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--t2);" id="d-accion"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let sesionActualId = null;
+let trabajadores = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('rula', 'Calculadora RULA');
+  await cargarTrabajadores();
+  const trabajadorPreseleccionado = localStorage.getItem('sisso_trabajador_id');
+  if (trabajadorPreseleccionado) {
+    document.getElementById('sel-trabajador').value = trabajadorPreseleccionado;
+    cargarSesionesPrevias();
+  }
+});
+
+async function cargarTrabajadores() {
+  const sel = document.getElementById('sel-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar trabajadores</option>';
+    mostrarError('error-sesion', 'No se pudo cargar la lista de trabajadores: ' + err.message);
+  }
+}
+
+// ------- Sesiones previas: permite CONTINUAR una sesion existente. -------
+async function cargarSesionesPrevias() {
+  const trabajadorId = document.getElementById('sel-trabajador').value;
+  const caja = document.getElementById('caja-sesiones-previas');
+  const lista = document.getElementById('lista-sesiones-previas');
+
+  if (!trabajadorId) { caja.style.display = 'none'; return; }
+
+  try {
+    const datos = await sissoFetch(`/ergonomia/rula/sesiones/trabajador/${trabajadorId}`);
+    const sesiones = datos.sesiones || [];
+
+    if (sesiones.length === 0) { caja.style.display = 'none'; return; }
+
+    lista.innerHTML = sesiones.map(s => `
+      <div class="sesion-previa-item" onclick="continuarSesion('${s.id}')">
+        <div>
+          <strong>${escHtml(s.puesto_evaluado)}</strong>
+          ${s.tarea_observada ? ` — ${escHtml(s.tarea_observada)}` : ''}
+          <div style="font-size:11px;color:var(--t3);">Por ${escHtml(s.evaluador_nombre)} · ${formatearFecha(s.fecha_evaluacion)}</div>
+        </div>
+        ${s.puntuacion_final_maxima !== null
+          ? `<span class="sisso-chip" style="background:${colorNivelRiesgoRula(nivelDesdeScoreRula(s.puntuacion_final_maxima))}22;color:${colorNivelRiesgoRula(nivelDesdeScoreRula(s.puntuacion_final_maxima))};">Score máx. ${s.puntuacion_final_maxima}</span>`
+          : '<span class="sisso-chip gris">Sin posturas aún</span>'
+        }
+      </div>`).join('');
+
+    caja.style.display = 'block';
+  } catch (err) {
+    caja.style.display = 'none';
+  }
+}
+
+function nivelDesdeScoreRula(score) {
+  if (score <= 2) return 'aceptable';
+  if (score <= 4) return 'puede_requerir_cambios';
+  if (score <= 6) return 'requiere_cambios_pronto';
+  return 'requiere_cambios_ya';
+}
+
+async function continuarSesion(sesionId) {
+  ocultarError('error-sesion');
+  try {
+    const datos = await sissoFetch(`/ergonomia/rula/sesiones/${sesionId}`);
+    sesionActualId = datos.sesion.id;
+
+    document.getElementById('titulo-sesion-activa').textContent = `${datos.sesion.trabajador_nombre} — ${datos.sesion.puesto_evaluado}`;
+    document.getElementById('subtitulo-sesion-activa').textContent = `Sesión iniciada el ${formatearFecha(datos.sesion.fecha_evaluacion)} por ${datos.sesion.evaluador_nombre}`;
+
+    document.getElementById('caja-seleccion-sesion').style.display = 'none';
+    document.getElementById('caja-sesion-activa').style.display = 'block';
+
+    const lista = document.getElementById('lista-posturas');
+    if (datos.evaluaciones.length === 0) {
+      lista.innerHTML = '<div class="sisso-vacio">Aún no se ha evaluado ninguna postura.</div>';
+    } else {
+      lista.innerHTML = '';
+      datos.evaluaciones.forEach(ev => agregarPosturaALista(ev));
+    }
+  } catch (err) {
+    mostrarError('error-sesion', 'No se pudo abrir la sesión: ' + err.message);
+  }
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return '';
+  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+async function iniciarSesion() {
+  ocultarError('error-sesion');
+  const trabajadorId = document.getElementById('sel-trabajador').value;
+  const puesto = document.getElementById('sel-puesto').value.trim();
+  const tarea = document.getElementById('sel-tarea').value.trim();
+
+  if (!trabajadorId) { mostrarError('error-sesion', 'Selecciona un trabajador.'); return; }
+  if (!puesto) { mostrarError('error-sesion', 'Indica el puesto evaluado.'); return; }
+
+  const boton = document.getElementById('btn-iniciar-sesion');
+  boton.disabled = true;
+  boton.textContent = 'Creando sesión…';
+
+  try {
+    const datos = await sissoFetch('/ergonomia/rula/sesiones', {
+      method: 'POST',
+      body: { trabajadorId, puestoEvaluado: puesto, tareaObservada: tarea || undefined }
+    });
+
+    sesionActualId = datos.sesion.id;
+    const trabajador = trabajadores.find(t => t.id === trabajadorId);
+
+    document.getElementById('titulo-sesion-activa').textContent = `${trabajador ? trabajador.nombre_completo : 'Trabajador'} — ${puesto}`;
+    document.getElementById('subtitulo-sesion-activa').textContent = tarea ? `Tarea observada: ${tarea}` : 'Sesión iniciada correctamente.';
+
+    document.getElementById('caja-seleccion-sesion').style.display = 'none';
+    document.getElementById('caja-sesion-activa').style.display = 'block';
+    document.getElementById('lista-posturas').innerHTML = '<div class="sisso-vacio">Aún no se ha evaluado ninguna postura.</div>';
+
+  } catch (err) {
+    mostrarError('error-sesion', err.message || 'Error al crear la sesión.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Iniciar sesión de evaluación';
+  }
+}
+
+function cerrarSesionActiva() {
+  sesionActualId = null;
+  document.getElementById('caja-seleccion-sesion').style.display = 'block';
+  document.getElementById('caja-sesion-activa').style.display = 'none';
+  cargarSesionesPrevias();
+}
+
+function valorRadio(nombre) {
+  const el = document.querySelector(`input[name="${nombre}"]:checked`);
+  return el ? el.value : null;
+}
+function valorCheck(id) {
+  const el = document.getElementById(id);
+  return el ? el.checked : false;
+}
+function leerArchivoComoBase64(input) {
+  return new Promise((resolve, reject) => {
+    const archivo = input.files[0];
+    if (!archivo) { resolve(null); return; }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(archivo);
+  });
+}
+
+async function calcularYGuardarPostura() {
+  ocultarError('error-postura');
+  const nombrePostura = document.getElementById('p-nombre').value.trim();
+  if (!nombrePostura) { mostrarError('error-postura', 'Indica un nombre para esta postura.'); return; }
+  if (!sesionActualId) { mostrarError('error-postura', 'No hay una sesión activa.'); return; }
+
+  const boton = document.getElementById('btn-calcular');
+  boton.disabled = true;
+  boton.textContent = 'Calculando…';
+
+  try {
+    const evidenciaBase64 = await leerArchivoComoBase64(document.getElementById('p-evidencia'));
+
+    const cuerpo = {
+      nombrePostura,
+
+      brazoDerecho: valorRadio('brazoDerecho'),
+      brazoDerechoHombroElevado: valorCheck('brazoDerecho-hombro'),
+      brazoDerechoAbducido: valorCheck('brazoDerecho-abducido'),
+      brazoDerechoApoyado: valorCheck('brazoDerecho-apoyado'),
+      antebrazoDerecho: valorRadio('antebrazoDerecho'),
+      antebrazoDerechoCruzaLineaMedia: valorCheck('antebrazoDerecho-cruza'),
+      munecaDerecha: valorRadio('munecaDerecha'),
+      munecaDerechaDesviacionRadialCubital: valorCheck('munecaDerecha-desviacion'),
+      munecaDerechaRotacion: valorRadio('munecaDerechaRotacion'),
+
+      brazoIzquierdo: valorRadio('brazoIzquierdo'),
+      brazoIzquierdoHombroElevado: valorCheck('brazoIzquierdo-hombro'),
+      brazoIzquierdoAbducido: valorCheck('brazoIzquierdo-abducido'),
+      brazoIzquierdoApoyado: valorCheck('brazoIzquierdo-apoyado'),
+      antebrazoIzquierdo: valorRadio('antebrazoIzquierdo'),
+      antebrazoIzquierdoCruzaLineaMedia: valorCheck('antebrazoIzquierdo-cruza'),
+      munecaIzquierda: valorRadio('munecaIzquierda'),
+      munecaIzquierdaDesviacionRadialCubital: valorCheck('munecaIzquierda-desviacion'),
+      munecaIzquierdaRotacion: valorRadio('munecaIzquierdaRotacion'),
+
+      grupoAMusculoEstaticoORepetido: valorCheck('grupoA-musculo'),
+      grupoAFuerzaCarga: valorRadio('grupoAFuerzaCarga'),
+
+      cuello: valorRadio('cuello'),
+      cuelloTorsion: valorCheck('cuello-torsion'),
+      cuelloInclinacionLateral: valorCheck('cuello-inclinacion'),
+      tronco: valorRadio('tronco'),
+      troncoSentado: valorCheck('tronco-sentado'),
+      troncoTorsion: valorCheck('tronco-torsion'),
+      troncoInclinacionLateral: valorCheck('tronco-inclinacion'),
+      piernasBienApoyadas: valorCheck('piernas-apoyadas'),
+
+      grupoBMusculoEstaticoORepetido: valorCheck('grupoB-musculo'),
+      grupoBFuerzaCarga: valorRadio('grupoBFuerzaCarga'),
+
+      evidenciaBase64: evidenciaBase64 || undefined,
+    };
+
+    const datos = await sissoFetch(`/ergonomia/rula/sesiones/${sesionActualId}/evaluaciones`, {
+      method: 'POST',
+      body: cuerpo
+    });
+
+    mostrarResultado(datos.evaluacion);
+    await agregarPosturaALista(datos.evaluacion);
+
+    document.getElementById('p-nombre').value = '';
+    document.getElementById('p-evidencia').value = '';
+
+  } catch (err) {
+    mostrarError('error-postura', err.message || 'Error al calcular la postura.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Calcular y guardar postura';
+  }
+}
+
+function colorNivelRiesgoRula(nivel) {
+  const mapa = {
+    aceptable: '#16a34a',
+    puede_requerir_cambios: '#d97706',
+    requiere_cambios_pronto: '#ea580c',
+    requiere_cambios_ya: '#dc2626',
+  };
+  return mapa[nivel] || '#718096';
+}
+function etiquetaNivelRiesgoRula(nivel) {
+  const mapa = {
+    aceptable: 'Riesgo aceptable',
+    puede_requerir_cambios: 'Puede requerir cambios',
+    requiere_cambios_pronto: 'Requiere cambios pronto',
+    requiere_cambios_ya: 'Requiere cambios urgentes',
+  };
+  return mapa[nivel] || nivel;
+}
+
+function mostrarResultado(evaluacion) {
+  document.getElementById('resultado-vacio').style.display = 'none';
+  document.getElementById('resultado-contenido').style.display = 'block';
+
+  const circulo = document.getElementById('score-circulo');
+  circulo.textContent = evaluacion.puntuacion_c;
+  circulo.style.background = colorNivelRiesgoRula(evaluacion.nivel_riesgo);
+
+  document.getElementById('score-nivel').textContent = etiquetaNivelRiesgoRula(evaluacion.nivel_riesgo);
+  document.getElementById('score-nivel').style.color = colorNivelRiesgoRula(evaluacion.nivel_riesgo);
+
+  document.getElementById('d-a-der').textContent = evaluacion.puntuacion_a_derecha;
+  document.getElementById('d-a-izq').textContent = evaluacion.puntuacion_a_izquierda;
+  document.getElementById('d-b').textContent = evaluacion.puntuacion_b;
+  document.getElementById('d-lado').textContent =
+    evaluacion.lado_evaluado === 'ambos_iguales' ? 'Ambos iguales' :
+    evaluacion.lado_evaluado === 'derecho' ? 'Derecho' : 'Izquierdo';
+  document.getElementById('d-accion').textContent = evaluacion.accion_requerida;
+}
+
+async function agregarPosturaALista(evaluacion) {
+  const lista = document.getElementById('lista-posturas');
+  if (lista.querySelector('.sisso-vacio')) lista.innerHTML = '';
+
+  const item = document.createElement('div');
+  item.className = 'lista-posturas-item';
+  item.innerHTML = `
+    <div>
+      <strong>${escHtml(evaluacion.nombre_postura)}</strong>
+      ${evaluacion.evidencia_url ? `<a href="${evaluacion.evidencia_url}" target="_blank" style="margin-left:8px;font-size:11px;color:var(--blue);">📎 ver evidencia</a>` : ''}
+    </div>
+    <span class="sisso-chip" style="background:${colorNivelRiesgoRula(evaluacion.nivel_riesgo)}22;color:${colorNivelRiesgoRula(evaluacion.nivel_riesgo)};">
+      Score ${evaluacion.puntuacion_c} · ${etiquetaNivelRiesgoRula(evaluacion.nivel_riesgo)}
+    </span>`;
+  lista.appendChild(item);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function ocultarError(idEl) {
+  document.getElementById(idEl).classList.remove('visible');
+}
+</script>
+</body>
+</html>
