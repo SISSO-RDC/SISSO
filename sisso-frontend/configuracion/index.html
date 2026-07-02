@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Configuración</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .rol-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .rol-badge.admin { background: var(--pur3); color: var(--pur2); }
+    .rol-badge.medico { background: var(--teal3); color: var(--teal2); }
+    .rol-badge.sso { background: var(--blue3); color: var(--blue2); }
+    .rol-badge.th { background: var(--amb3); color: var(--amb2); }
+
+    .rol-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .rol-opcion { border: 2px solid var(--bd); border-radius: var(--r); padding: 11px; text-align: center; cursor: pointer; font-size: 12.5px; font-weight: 700; transition: all .12s; }
+    .rol-opcion.activa { border-color: var(--teal); background: var(--teal3); color: var(--teal2); }
+
+    .estado-punto { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .estado-punto.activo { background: var(--grn); }
+    .estado-punto.inactivo { background: var(--t3); }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="sisso-tarjeta" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="sisso-tarjeta-titulo">Usuarios de la organización</div>
+        <div class="sisso-tarjeta-subtitulo" style="margin-bottom:0;">Gestiona quién tiene acceso a SISSO y con qué rol.</div>
+      </div>
+      <button class="sisso-boton" onclick="abrirModalNuevoUsuario()">+ Nuevo usuario</button>
+    </div>
+  </div>
+
+  <div class="sisso-error" id="error-lista"></div>
+  <div class="sisso-exito" id="exito-lista"></div>
+
+  <div class="sisso-tarjeta" style="padding:0;overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table class="sisso-tabla">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Último acceso</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-tbody">
+          <tr><td colspan="5" class="sisso-cargando">Cargando usuarios…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Explicación de roles, para que el admin sepa qué puede hacer cada uno -->
+  <div class="sisso-tarjeta" style="margin-top:16px;">
+    <div class="sisso-tarjeta-titulo">¿Qué puede hacer cada rol?</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;font-size:12.5px;color:var(--t2);margin-top:10px;">
+      <div><span class="rol-badge admin">Admin</span><p style="margin:8px 0 0;">Gestiona usuarios y configuración del sistema. No accede a datos clínicos individuales de los trabajadores (diagnósticos, aptitud, evaluaciones ergonómicas), por política de confidencialidad.</p></div>
+      <div><span class="rol-badge medico">Médico</span><p style="margin:8px 0 0;">Acceso completo a historia clínica, aptitud médica, REBA/RULA y consentimientos informados de los trabajadores.</p></div>
+      <div><span class="rol-badge sso">SSO</span><p style="margin:8px 0 0;">Seguridad y Salud Ocupacional: realiza evaluaciones ergonómicas (REBA/RULA) y acompaña procedimientos de consentimiento.</p></div>
+      <div><span class="rol-badge th">TH</span><p style="margin:8px 0 0;">Talento Humano: puede ver resultados de evaluaciones y acompañar la firma de consentimientos, sin crear evaluaciones técnicas.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuevo usuario -->
+<div class="sisso-modal-fondo" id="modal-nuevo" style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100;">
+  <div style="background:#fff;border-radius:var(--r2);padding:24px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <div style="font-size:16px;font-weight:800;margin-bottom:18px;">Nuevo usuario</div>
+    <div class="sisso-error" id="error-nuevo"></div>
+
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="n-nombre">Nombre completo *</label>
+      <input id="n-nombre" class="sisso-input" placeholder="Ej: Dra. María Pérez">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="n-email">Correo electrónico *</label>
+      <input id="n-email" type="email" class="sisso-input" placeholder="medico@empresa.com">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="n-password">Contraseña temporal *</label>
+      <input id="n-password" type="text" class="sisso-input" placeholder="Mínimo 8 caracteres">
+      <div style="font-size:11px;color:var(--t3);margin-top:5px;">Compártela de forma segura; el usuario podrá cambiarla después de su primer ingreso.</div>
+    </div>
+
+    <label class="sisso-etiqueta">Rol *</label>
+    <div class="rol-opciones" style="margin-bottom:18px;">
+      <div class="rol-opcion" data-rol="admin" onclick="elegirRol('admin')">Admin</div>
+      <div class="rol-opcion" data-rol="medico" onclick="elegirRol('medico')">Médico</div>
+      <div class="rol-opcion" data-rol="sso" onclick="elegirRol('sso')">SSO</div>
+      <div class="rol-opcion" data-rol="th" onclick="elegirRol('th')">Talento Humano</div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="sisso-boton secundario" onclick="cerrarModal()">Cancelar</button>
+      <button class="sisso-boton" id="btn-guardar" onclick="guardarUsuario()">Crear usuario</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let rolElegido = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('configuracion', 'Configuración');
+  await cargarUsuarios();
+});
+
+async function cargarUsuarios() {
+  try {
+    const datos = await sissoFetch('/auth/usuarios');
+    renderizarTabla(datos.usuarios || []);
+  } catch (err) {
+    mostrarError('error-lista', 'No se pudieron cargar los usuarios: ' + err.message);
+    document.getElementById('tabla-tbody').innerHTML = `<tr><td colspan="5" class="sisso-vacio">Error al cargar.</td></tr>`;
+  }
+}
+
+function renderizarTabla(usuarios) {
+  const tbody = document.getElementById('tabla-tbody');
+  if (usuarios.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="sisso-vacio">Aún no hay usuarios registrados.</td></tr>`;
+    return;
+  }
+
+  const etiquetasRol = { admin: 'Admin', medico: 'Médico', sso: 'SSO', th: 'Talento Humano' };
+
+  tbody.innerHTML = usuarios.map(u => `
+    <tr>
+      <td style="font-weight:600;">${escHtml(u.nombre_completo)}</td>
+      <td style="color:var(--t3);">${escHtml(u.email)}</td>
+      <td><span class="rol-badge ${u.rol}">${etiquetasRol[u.rol] || u.rol}</span></td>
+      <td><span class="estado-punto ${u.activo ? 'activo' : 'inactivo'}"></span>${u.activo ? 'Activo' : 'Inactivo'}</td>
+      <td style="color:var(--t3);font-size:12px;">${u.ultimo_login ? formatearFechaHora(u.ultimo_login) : 'Nunca ha ingresado'}</td>
+    </tr>`).join('');
+}
+
+// ------- Modal nuevo usuario -------
+function abrirModalNuevoUsuario() {
+  document.getElementById('n-nombre').value = '';
+  document.getElementById('n-email').value = '';
+  document.getElementById('n-password').value = '';
+  rolElegido = null;
+  document.querySelectorAll('.rol-opcion').forEach(el => el.classList.remove('activa'));
+  ocultarError('error-nuevo');
+  document.getElementById('modal-nuevo').style.display = 'flex';
+  document.getElementById('n-nombre').focus();
+}
+
+function cerrarModal() {
+  document.getElementById('modal-nuevo').style.display = 'none';
+}
+
+function elegirRol(rol) {
+  rolElegido = rol;
+  document.querySelectorAll('.rol-opcion').forEach(el => el.classList.toggle('activa', el.dataset.rol === rol));
+}
+
+async function guardarUsuario() {
+  ocultarError('error-nuevo');
+
+  const nombreCompleto = document.getElementById('n-nombre').value.trim();
+  const email = document.getElementById('n-email').value.trim();
+  const password = document.getElementById('n-password').value;
+
+  if (!nombreCompleto || !email || !password) { mostrarError('error-nuevo', 'Completa todos los campos obligatorios.'); return; }
+  if (password.length < 8) { mostrarError('error-nuevo', 'La contraseña debe tener al menos 8 caracteres.'); return; }
+  if (!rolElegido) { mostrarError('error-nuevo', 'Selecciona un rol para el usuario.'); return; }
+
+  const boton = document.getElementById('btn-guardar');
+  boton.disabled = true;
+  boton.textContent = 'Creando…';
+
+  try {
+    await sissoFetch('/auth/registrar-usuario-interno', {
+      method: 'POST',
+      body: { nombreCompleto, email, password, rol: rolElegido }
+    });
+
+    cerrarModal();
+    mostrarExito('exito-lista', `Usuario "${nombreCompleto}" creado correctamente.`);
+    await cargarUsuarios();
+
+  } catch (err) {
+    mostrarError('error-nuevo', err.message || 'Error al crear el usuario.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Crear usuario';
+  }
+}
+
+document.getElementById('modal-nuevo').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-nuevo') cerrarModal();
+});
+
+// ------- Helpers -------
+function formatearFechaHora(fecha) {
+  return new Date(fecha).toLocaleString('es-EC', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function mostrarError(idEl, msg) { const el = document.getElementById(idEl); el.textContent = msg; el.classList.add('visible'); }
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+</script>
+</body>
+</html>

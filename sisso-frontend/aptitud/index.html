@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Aptitud Médica</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .selector-trabajador-caja { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .panel-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .panel-2col { grid-template-columns: 1fr; } }
+
+    .buscador-cie10 { position: relative; }
+    .resultados-cie10 {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+      background: #fff; border: 1px solid var(--bd); border-radius: var(--r);
+      max-height: 220px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.1);
+      display: none;
+    }
+    .resultados-cie10.visible { display: block; }
+    .resultado-cie10-item { padding: 9px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--bd); }
+    .resultado-cie10-item:hover { background: var(--teal3); }
+    .resultado-cie10-item:last-child { border-bottom: none; }
+    .resultado-cie10-codigo { font-family: monospace; font-weight: 700; color: var(--teal2); margin-right: 6px; }
+
+    .chip-removible {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--teal3); color: var(--teal2); padding: 5px 6px 5px 10px;
+      border-radius: 20px; font-size: 12px; font-weight: 600; margin: 3px 4px 3px 0;
+    }
+    .chip-removible button { background: none; border: none; cursor: pointer; color: var(--teal2); font-weight: 900; padding: 0 4px; }
+
+    .lista-exposiciones { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; padding: 4px; }
+    .exposicion-item { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+    .exposicion-item:hover { background: var(--bg); }
+    .exposicion-categoria { font-size: 10px; color: var(--t3); text-transform: uppercase; font-weight: 700; margin: 10px 0 4px 4px; }
+
+    .alerta-tarjeta { border-radius: var(--r); padding: 14px; margin-bottom: 10px; border-left: 4px solid; }
+    .alerta-tarjeta.absoluta { background: var(--red3); border-color: var(--red); }
+    .alerta-tarjeta.relativa { background: var(--amb3); border-color: var(--amb); }
+    .alerta-titulo { font-weight: 800; font-size: 13.5px; margin-bottom: 4px; }
+    .alerta-tarjeta.absoluta .alerta-titulo { color: var(--red2); }
+    .alerta-tarjeta.relativa .alerta-titulo { color: var(--amb2); }
+    .alerta-texto { font-size: 12.5px; color: var(--t2); margin-bottom: 6px; line-height: 1.5; }
+    .alerta-sugerencia { font-size: 12px; font-style: italic; color: var(--t2); }
+    .alerta-fuente { font-size: 10.5px; color: var(--t3); margin-top: 6px; }
+
+    .aptitud-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .aptitud-opcion {
+      border: 2px solid var(--bd); border-radius: var(--r); padding: 11px; text-align: center;
+      cursor: pointer; font-size: 12.5px; font-weight: 700; transition: all .12s;
+    }
+    .aptitud-opcion.sel-apto.activa { border-color: var(--grn); background: var(--grn3); color: var(--grn2); }
+    .aptitud-opcion.sel-con_restricciones.activa { border-color: var(--amb); background: var(--amb3); color: var(--amb2); }
+    .aptitud-opcion.sel-no_apto.activa { border-color: var(--red); background: var(--red3); color: var(--red2); }
+    .aptitud-opcion.sel-pendiente.activa { border-color: var(--t3); background: var(--bg3); color: var(--t2); }
+
+    .historial-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; }
+    .historial-cabecera { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- Selector de trabajador -->
+  <div class="sisso-tarjeta" id="caja-seleccion-trabajador">
+    <div class="sisso-tarjeta-titulo">Evaluación de aptitud médica</div>
+    <div class="sisso-tarjeta-subtitulo">Selecciona el trabajador para registrar una nueva evaluación de aptitud o ver su historial.</div>
+    <div class="sisso-error" id="error-trabajador"></div>
+    <div class="selector-trabajador-caja">
+      <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+    </div>
+  </div>
+
+  <!-- Panel principal (oculto hasta elegir trabajador) -->
+  <div id="caja-principal" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;">Trabajador</div>
+        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+      </div>
+    </div>
+
+    <div class="panel-2col">
+      <!-- Columna izquierda: diagnosticos y exposiciones -->
+      <div>
+        <div class="sisso-tarjeta" style="margin-bottom:16px;">
+          <div class="sisso-tarjeta-titulo">Diagnósticos (CIE-10)</div>
+          <div class="sisso-tarjeta-subtitulo">Busca y agrega los diagnósticos relevantes del trabajador.</div>
+
+          <div class="buscador-cie10">
+            <input id="buscar-cie10" class="sisso-input" placeholder="Buscar por código o descripción (ej: epilepsia, G40)…" oninput="buscarCie10Debounced()" autocomplete="off">
+            <div class="resultados-cie10" id="resultados-cie10"></div>
+          </div>
+
+          <div id="chips-diagnosticos" style="margin-top:12px;min-height:30px;">
+            <span style="color:var(--t3);font-size:12px;">Ningún diagnóstico agregado aún.</span>
+          </div>
+        </div>
+
+        <div class="sisso-tarjeta">
+          <div class="sisso-tarjeta-titulo">Exposiciones del puesto</div>
+          <div class="sisso-tarjeta-subtitulo">Marca las exposiciones presentes en el puesto evaluado.</div>
+          <div class="lista-exposiciones" id="lista-exposiciones">
+            <div class="sisso-cargando">Cargando catálogo…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha: alertas + registro -->
+      <div>
+        <div class="sisso-tarjeta" style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="sisso-tarjeta-titulo" style="margin-bottom:0;">Alertas de contraindicación</div>
+            <button class="btn-mini primario" onclick="evaluarContraindicaciones()">🔍 Evaluar</button>
+          </div>
+          <div id="caja-alertas" style="margin-top:12px;">
+            <div class="sisso-vacio">Agrega diagnósticos y exposiciones, luego presiona "Evaluar".</div>
+          </div>
+        </div>
+
+        <div class="sisso-tarjeta">
+          <div class="sisso-tarjeta-titulo">Registrar aptitud</div>
+          <div class="sisso-error" id="error-registro"></div>
+          <div class="sisso-exito" id="exito-registro"></div>
+
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="r-puesto">Puesto evaluado *</label>
+            <input id="r-puesto" class="sisso-input" placeholder="Ej: Operario de empaque">
+          </div>
+
+          <label class="sisso-etiqueta">Aptitud</label>
+          <div class="aptitud-opciones" style="margin-bottom:16px;">
+            <div class="aptitud-opcion sel-apto" data-aptitud="apto" onclick="elegirAptitud('apto')">✓ Apto</div>
+            <div class="aptitud-opcion sel-con_restricciones" data-aptitud="con_restricciones" onclick="elegirAptitud('con_restricciones')">⚠ Con restricciones</div>
+            <div class="aptitud-opcion sel-no_apto" data-aptitud="no_apto" onclick="elegirAptitud('no_apto')">✕ No apto</div>
+            <div class="aptitud-opcion sel-pendiente" data-aptitud="pendiente" onclick="elegirAptitud('pendiente')">… Pendiente</div>
+          </div>
+
+          <div class="sisso-campo" id="campo-restricciones" style="display:none;">
+            <label class="sisso-etiqueta" for="r-restricciones">Restricciones específicas</label>
+            <textarea id="r-restricciones" class="sisso-textarea" placeholder="Ej: No levantar cargas mayores a 10 kg. Evitar exposición a alturas."></textarea>
+          </div>
+
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="r-justificacion">Justificación clínica * <span style="color:var(--t3);font-weight:400;">(mínimo 20 caracteres)</span></label>
+            <textarea id="r-justificacion" class="sisso-textarea" placeholder="Describe el razonamiento clínico de tu decisión, considerando las alertas mostradas arriba (si las hay)."></textarea>
+          </div>
+
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="r-vigencia">Vigencia hasta (próximo examen)</label>
+            <input id="r-vigencia" type="date" class="sisso-input">
+          </div>
+
+          <button class="sisso-boton ancho-completo" id="btn-registrar" onclick="registrarAptitud()">Registrar aptitud</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="sisso-tarjeta" style="margin-top:16px;">
+      <div class="sisso-tarjeta-titulo">Historial de aptitud</div>
+      <div id="lista-historial"><div class="sisso-cargando">Cargando historial…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let trabajadores = [];
+let trabajadorActualId = null;
+let diagnosticosSeleccionados = []; // [{codigo, descripcion}]
+let exposicionesCatalogo = [];
+let exposicionesSeleccionadas = new Set();
+let aptitudElegida = null;
+let timeoutBusqueda = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('emos', 'Aptitud Médica');
+  await cargarTrabajadores();
+  await cargarExposiciones();
+
+  const trabajadorPreseleccionado = localStorage.getItem('sisso_trabajador_id');
+  if (trabajadorPreseleccionado) {
+    document.getElementById('sel-trabajador').value = trabajadorPreseleccionado;
+  }
+
+  // Cerrar el desplegable de resultados CIE-10 al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.buscador-cie10')) {
+      document.getElementById('resultados-cie10').classList.remove('visible');
+    }
+  });
+});
+
+async function cargarTrabajadores() {
+  const sel = document.getElementById('sel-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar trabajadores</option>';
+    mostrarError('error-trabajador', err.message);
+  }
+}
+
+async function cargarExposiciones() {
+  try {
+    const datos = await sissoFetch('/aptitud/exposiciones');
+    exposicionesCatalogo = datos.exposiciones || [];
+    renderizarExposiciones();
+  } catch (err) {
+    document.getElementById('lista-exposiciones').innerHTML =
+      `<div class="sisso-vacio">Error al cargar el catálogo de exposiciones.</div>`;
+  }
+}
+
+function renderizarExposiciones() {
+  const categorias = [...new Set(exposicionesCatalogo.map(e => e.categoria))];
+  const cont = document.getElementById('lista-exposiciones');
+  cont.innerHTML = categorias.map(cat => `
+    <div class="exposicion-categoria">${cat}</div>
+    ${exposicionesCatalogo.filter(e => e.categoria === cat).map(e => `
+      <label class="exposicion-item">
+        <input type="checkbox" value="${e.codigo}" onchange="alternarExposicion('${e.codigo}', this.checked)">
+        <span>${escHtml(e.nombre)}</span>
+      </label>
+    `).join('')}
+  `).join('');
+}
+
+function alternarExposicion(codigo, marcado) {
+  if (marcado) exposicionesSeleccionadas.add(codigo);
+  else exposicionesSeleccionadas.delete(codigo);
+}
+
+// ------- Elegir trabajador -------
+function elegirTrabajador() {
+  ocultarError('error-trabajador');
+  const id = document.getElementById('sel-trabajador').value;
+  if (!id) { mostrarError('error-trabajador', 'Selecciona un trabajador.'); return; }
+
+  trabajadorActualId = id;
+  const t = trabajadores.find(x => x.id === id);
+  document.getElementById('titulo-trabajador').textContent = t ? `${t.nombre_completo} — ${t.documento}` : 'Trabajador';
+  document.getElementById('r-puesto').value = (t && t.puesto) || '';
+
+  document.getElementById('caja-seleccion-trabajador').style.display = 'none';
+  document.getElementById('caja-principal').style.display = 'block';
+
+  cargarHistorial();
+}
+
+function cambiarTrabajador() {
+  trabajadorActualId = null;
+  diagnosticosSeleccionados = [];
+  exposicionesSeleccionadas = new Set();
+  aptitudElegida = null;
+  renderizarChipsDiagnosticos();
+  document.querySelectorAll('.lista-exposiciones input[type=checkbox]').forEach(c => c.checked = false);
+  document.querySelectorAll('.aptitud-opcion').forEach(el => el.classList.remove('activa'));
+  document.getElementById('caja-alertas').innerHTML = '<div class="sisso-vacio">Agrega diagnósticos y exposiciones, luego presiona "Evaluar".</div>';
+  document.getElementById('caja-seleccion-trabajador').style.display = 'block';
+  document.getElementById('caja-principal').style.display = 'none';
+}
+
+// ------- Busqueda CIE-10 -------
+function buscarCie10Debounced() {
+  clearTimeout(timeoutBusqueda);
+  timeoutBusqueda = setTimeout(ejecutarBusquedaCie10, 300);
+}
+
+async function ejecutarBusquedaCie10() {
+  const q = document.getElementById('buscar-cie10').value.trim();
+  const cont = document.getElementById('resultados-cie10');
+
+  if (q.length < 2) { cont.classList.remove('visible'); return; }
+
+  try {
+    const datos = await sissoFetch(`/aptitud/cie10/buscar?q=${encodeURIComponent(q)}`);
+    const resultados = datos.resultados || [];
+
+    if (resultados.length === 0) {
+      cont.innerHTML = '<div class="resultado-cie10-item" style="color:var(--t3);">Sin resultados.</div>';
+    } else {
+      cont.innerHTML = resultados.map(r => `
+        <div class="resultado-cie10-item" onclick='agregarDiagnostico(${JSON.stringify(r.codigo)}, ${JSON.stringify(r.descripcion)})'>
+          <span class="resultado-cie10-codigo">${escHtml(r.codigo)}</span>${escHtml(r.descripcion)}
+        </div>`).join('');
+    }
+    cont.classList.add('visible');
+  } catch (err) {
+    cont.innerHTML = `<div class="resultado-cie10-item" style="color:var(--red2);">Error al buscar: ${escHtml(err.message)}</div>`;
+    cont.classList.add('visible');
+  }
+}
+
+function agregarDiagnostico(codigo, descripcion) {
+  if (!diagnosticosSeleccionados.find(d => d.codigo === codigo)) {
+    diagnosticosSeleccionados.push({ codigo, descripcion });
+    renderizarChipsDiagnosticos();
+  }
+  document.getElementById('buscar-cie10').value = '';
+  document.getElementById('resultados-cie10').classList.remove('visible');
+}
+
+function quitarDiagnostico(codigo) {
+  diagnosticosSeleccionados = diagnosticosSeleccionados.filter(d => d.codigo !== codigo);
+  renderizarChipsDiagnosticos();
+}
+
+function renderizarChipsDiagnosticos() {
+  const cont = document.getElementById('chips-diagnosticos');
+  if (diagnosticosSeleccionados.length === 0) {
+    cont.innerHTML = '<span style="color:var(--t3);font-size:12px;">Ningún diagnóstico agregado aún.</span>';
+    return;
+  }
+  cont.innerHTML = diagnosticosSeleccionados.map(d => `
+    <span class="chip-removible">
+      <strong>${escHtml(d.codigo)}</strong> ${escHtml(d.descripcion)}
+      <button onclick="quitarDiagnostico('${d.codigo}')" title="Quitar">×</button>
+    </span>`).join('');
+}
+
+// ------- Evaluar contraindicaciones -------
+async function evaluarContraindicaciones() {
+  if (!trabajadorActualId) return;
+
+  const caja = document.getElementById('caja-alertas');
+  caja.innerHTML = '<div class="sisso-cargando">Evaluando…</div>';
+
+  try {
+    const datos = await sissoFetch(`/aptitud/trabajadores/${trabajadorActualId}/evaluar`, {
+      method: 'POST',
+      body: {
+        diagnosticosCie10: diagnosticosSeleccionados.map(d => d.codigo),
+        exposicionesPuesto: [...exposicionesSeleccionadas],
+      }
+    });
+
+    const alertas = datos.alertas || [];
+    if (alertas.length === 0) {
+      caja.innerHTML = '<div style="background:var(--grn3);color:var(--grn2);padding:12px;border-radius:var(--r);font-size:13px;font-weight:600;">✓ No se detectaron contraindicaciones conocidas con los diagnósticos y exposiciones indicados.</div>';
+    } else {
+      caja.innerHTML = alertas.map(a => `
+        <div class="alerta-tarjeta ${a.severidad}">
+          <div class="alerta-titulo">${a.severidad === 'absoluta' ? '🔴' : '🟠'} ${escHtml(a.nombre)}</div>
+          <div class="alerta-texto">${escHtml(a.descripcionRiesgo)}</div>
+          ${a.sugerenciaAccion ? `<div class="alerta-sugerencia">Sugerencia: ${escHtml(a.sugerenciaAccion)}</div>` : ''}
+          ${a.fuenteReferencia ? `<div class="alerta-fuente">Fuente: ${escHtml(a.fuenteReferencia)}</div>` : ''}
+        </div>`).join('');
+    }
+  } catch (err) {
+    caja.innerHTML = `<div class="sisso-error visible">Error al evaluar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ------- Elegir aptitud -------
+function elegirAptitud(valor) {
+  aptitudElegida = valor;
+  document.querySelectorAll('.aptitud-opcion').forEach(el => {
+    el.classList.toggle('activa', el.dataset.aptitud === valor);
+  });
+  document.getElementById('campo-restricciones').style.display = valor === 'con_restricciones' ? 'block' : 'none';
+}
+
+// ------- Registrar aptitud -------
+async function registrarAptitud() {
+  ocultarError('error-registro');
+  ocultarExito('exito-registro');
+
+  const puesto = document.getElementById('r-puesto').value.trim();
+  const justificacion = document.getElementById('r-justificacion').value.trim();
+  const restricciones = document.getElementById('r-restricciones').value.trim();
+  const vigencia = document.getElementById('r-vigencia').value;
+
+  if (!aptitudElegida) { mostrarError('error-registro', 'Selecciona una aptitud.'); return; }
+  if (!puesto) { mostrarError('error-registro', 'Indica el puesto evaluado.'); return; }
+  if (justificacion.length < 20) { mostrarError('error-registro', 'La justificación clínica debe tener al menos 20 caracteres.'); return; }
+
+  const boton = document.getElementById('btn-registrar');
+  boton.disabled = true;
+  boton.textContent = 'Registrando…';
+
+  try {
+    await sissoFetch(`/aptitud/trabajadores/${trabajadorActualId}/registrar`, {
+      method: 'POST',
+      body: {
+        aptitud: aptitudElegida,
+        puestoEvaluado: puesto,
+        diagnosticosCie10: diagnosticosSeleccionados.map(d => d.codigo),
+        exposicionesPuesto: [...exposicionesSeleccionadas],
+        justificacionClinica: justificacion,
+        restricciones: restricciones || undefined,
+        vigenciaHasta: vigencia || undefined,
+      }
+    });
+
+    mostrarExito('exito-registro', 'Aptitud registrada correctamente.');
+    document.getElementById('r-justificacion').value = '';
+    document.getElementById('r-restricciones').value = '';
+    await cargarHistorial();
+
+  } catch (err) {
+    mostrarError('error-registro', err.message || 'Error al registrar la aptitud.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Registrar aptitud';
+  }
+}
+
+// ------- Historial -------
+async function cargarHistorial() {
+  const cont = document.getElementById('lista-historial');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando historial…</div>';
+
+  try {
+    const datos = await sissoFetch(`/aptitud/trabajadores/${trabajadorActualId}/historial`);
+    const historial = datos.historial || [];
+
+    if (historial.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Este trabajador aún no tiene registros de aptitud.</div>';
+      return;
+    }
+
+    cont.innerHTML = historial.map(h => `
+      <div class="historial-item">
+        <div class="historial-cabecera">
+          <div>${chipDeAptitud(h.aptitud)} <strong style="margin-left:6px;">${escHtml(h.puesto_evaluado)}</strong></div>
+          <span style="font-size:11px;color:var(--t3);">${formatearFechaHora(h.creado_en)} · Dr(a). ${escHtml(h.medico_nombre)}</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);margin-bottom:4px;"><strong>Justificación:</strong> ${escHtml(h.justificacion_clinica)}</div>
+        ${h.restricciones ? `<div style="font-size:12.5px;color:var(--t2);"><strong>Restricciones:</strong> ${escHtml(h.restricciones)}</div>` : ''}
+        ${(h.alertas_detectadas && h.alertas_detectadas.length > 0) ? `<div style="font-size:11.5px;color:var(--amb2);margin-top:4px;">⚠ ${h.alertas_detectadas.length} alerta(s) detectada(s) al momento del registro.</div>` : ''}
+      </div>`).join('');
+
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar el historial: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function chipDeAptitud(aptitud) {
+  const mapa = {
+    apto: ['verde', 'Apto'], con_restricciones: ['ambar', 'Con restricciones'],
+    no_apto: ['rojo', 'No apto'], pendiente: ['gris', 'Pendiente'],
+  };
+  const [clase, label] = mapa[aptitud] || ['gris', aptitud];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+
+function formatearFechaHora(fecha) {
+  return new Date(fecha).toLocaleString('es-EC', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>

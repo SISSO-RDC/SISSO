@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Consentimientos Informados</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .selector-trabajador-caja { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .tipos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .tipo-tarjeta {
+      border: 1.5px solid var(--bd); border-radius: var(--r); padding: 14px;
+      cursor: pointer; transition: all .12s;
+    }
+    .tipo-tarjeta:hover { border-color: var(--teal); background: var(--teal3); }
+    .tipo-tarjeta-titulo { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .tipo-tarjeta-version { font-size: 11px; color: var(--t3); }
+
+    .texto-legal-caja {
+      background: var(--bg); border-radius: var(--r); padding: 16px;
+      font-size: 12.5px; line-height: 1.7; color: var(--t2);
+      max-height: 280px; overflow-y: auto; white-space: pre-line;
+      border: 1px solid var(--bd); margin-bottom: 16px;
+    }
+
+    canvas#lienzo-firma {
+      border: 2px dashed var(--bd2); border-radius: var(--r);
+      width: 100%; height: 180px; touch-action: none; cursor: crosshair;
+      background: #fff;
+    }
+    .firma-acciones { display: flex; gap: 8px; margin-top: 8px; }
+
+    .consent-item {
+      display: flex; justify-content: space-between; align-items: center;
+      border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 8px;
+    }
+    .consent-item.revocado { opacity: .6; }
+    .consent-info { font-size: 13px; }
+    .consent-meta { font-size: 11px; color: var(--t3); margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- Selector de trabajador -->
+  <div class="sisso-tarjeta" id="caja-seleccion-trabajador">
+    <div class="sisso-tarjeta-titulo">Consentimientos informados</div>
+    <div class="sisso-tarjeta-subtitulo">Selecciona el trabajador para registrar un consentimiento firmado o ver su historial.</div>
+    <div class="sisso-error" id="error-trabajador"></div>
+    <div class="selector-trabajador-caja">
+      <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+    </div>
+  </div>
+
+  <!-- Panel principal -->
+  <div id="caja-principal" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;">Trabajador</div>
+        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+      </div>
+    </div>
+
+    <!-- Paso 1: elegir tipo de consentimiento -->
+    <div class="sisso-tarjeta" style="margin-bottom:16px;" id="caja-tipos">
+      <div class="sisso-tarjeta-titulo">1. Selecciona el tipo de consentimiento a firmar</div>
+      <div class="tipos-grid" id="tipos-grid">
+        <div class="sisso-cargando">Cargando tipos de consentimiento…</div>
+      </div>
+    </div>
+
+    <!-- Paso 2: leer texto y firmar (oculto hasta elegir tipo) -->
+    <div class="sisso-tarjeta" style="margin-bottom:16px;display:none;" id="caja-firma">
+      <div class="sisso-tarjeta-titulo" id="titulo-tipo-elegido">2. Leer y firmar</div>
+      <div class="sisso-error" id="error-firma"></div>
+      <div class="sisso-exito" id="exito-firma"></div>
+
+      <div class="texto-legal-caja" id="texto-legal"></div>
+
+      <label class="sisso-etiqueta">Firma del trabajador (dibuja con el dedo o el mouse)</label>
+      <canvas id="lienzo-firma"></canvas>
+      <div class="firma-acciones">
+        <button class="sisso-boton secundario" onclick="limpiarFirma()">🗑 Limpiar firma</button>
+        <button class="sisso-boton" id="btn-firmar" onclick="confirmarFirma()" style="margin-left:auto;">Confirmar consentimiento firmado</button>
+      </div>
+    </div>
+
+    <!-- Historial de consentimientos -->
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Consentimientos registrados</div>
+      <div id="lista-consentimientos"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let trabajadores = [];
+let trabajadorActualId = null;
+let tiposConsentimiento = [];
+let tipoElegido = null;
+
+// --- Estado del canvas de firma ---
+let ctx, dibujando = false, hayTrazo = false;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('consentimientos', 'Consentimientos Informados');
+  await cargarTrabajadores();
+  await cargarTipos();
+  inicializarCanvas();
+
+  const trabajadorPreseleccionado = localStorage.getItem('sisso_trabajador_id');
+  if (trabajadorPreseleccionado) document.getElementById('sel-trabajador').value = trabajadorPreseleccionado;
+});
+
+async function cargarTrabajadores() {
+  const sel = document.getElementById('sel-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar trabajadores</option>';
+    mostrarError('error-trabajador', err.message);
+  }
+}
+
+async function cargarTipos() {
+  try {
+    const datos = await sissoFetch('/consentimientos/tipos');
+    tiposConsentimiento = datos.tipos || [];
+    document.getElementById('tipos-grid').innerHTML = tiposConsentimiento.map(t => `
+      <div class="tipo-tarjeta" onclick='elegirTipo(${JSON.stringify(t.codigo)})'>
+        <div class="tipo-tarjeta-titulo">${escHtml(t.nombre)}</div>
+        <div class="tipo-tarjeta-version">Versión ${t.version}</div>
+      </div>`).join('');
+  } catch (err) {
+    document.getElementById('tipos-grid').innerHTML = `<div class="sisso-vacio">Error al cargar tipos: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ------- Elegir trabajador -------
+function elegirTrabajador() {
+  ocultarError('error-trabajador');
+  const id = document.getElementById('sel-trabajador').value;
+  if (!id) { mostrarError('error-trabajador', 'Selecciona un trabajador.'); return; }
+
+  trabajadorActualId = id;
+  const t = trabajadores.find(x => x.id === id);
+  document.getElementById('titulo-trabajador').textContent = t ? `${t.nombre_completo} — ${t.documento}` : 'Trabajador';
+
+  document.getElementById('caja-seleccion-trabajador').style.display = 'none';
+  document.getElementById('caja-principal').style.display = 'block';
+  document.getElementById('caja-firma').style.display = 'none';
+
+  cargarConsentimientos();
+}
+
+function cambiarTrabajador() {
+  trabajadorActualId = null;
+  tipoElegido = null;
+  document.getElementById('caja-seleccion-trabajador').style.display = 'block';
+  document.getElementById('caja-principal').style.display = 'none';
+}
+
+// ------- Elegir tipo de consentimiento -------
+function elegirTipo(codigo) {
+  tipoElegido = tiposConsentimiento.find(t => t.codigo === codigo);
+  if (!tipoElegido) return;
+
+  document.getElementById('titulo-tipo-elegido').textContent = `2. Leer y firmar — ${tipoElegido.nombre}`;
+  document.getElementById('texto-legal').textContent = tipoElegido.texto_legal;
+  document.getElementById('caja-firma').style.display = 'block';
+  limpiarFirma();
+  ocultarError('error-firma');
+  ocultarExito('exito-firma');
+  document.getElementById('caja-firma').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ------- Canvas de firma -------
+function inicializarCanvas() {
+  const canvas = document.getElementById('lienzo-firma');
+
+  function ajustarTamano() {
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * ratio;
+    canvas.height = rect.height * ratio;
+    ctx = canvas.getContext('2d');
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#1a1d23';
+  }
+  ajustarTamano();
+  window.addEventListener('resize', ajustarTamano);
+
+  function posicion(e) {
+    const rect = canvas.getBoundingClientRect();
+    const punto = e.touches ? e.touches[0] : e;
+    return { x: punto.clientX - rect.left, y: punto.clientY - rect.top };
+  }
+
+  function iniciar(e) {
+    dibujando = true;
+    hayTrazo = true;
+    const p = posicion(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    e.preventDefault();
+  }
+  function mover(e) {
+    if (!dibujando) return;
+    const p = posicion(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    e.preventDefault();
+  }
+  function terminar() { dibujando = false; }
+
+  canvas.addEventListener('mousedown', iniciar);
+  canvas.addEventListener('mousemove', mover);
+  window.addEventListener('mouseup', terminar);
+  canvas.addEventListener('touchstart', iniciar, { passive: false });
+  canvas.addEventListener('touchmove', mover, { passive: false });
+  canvas.addEventListener('touchend', terminar);
+}
+
+function limpiarFirma() {
+  const canvas = document.getElementById('lienzo-firma');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  hayTrazo = false;
+}
+
+// ------- Confirmar firma (subir al backend) -------
+async function confirmarFirma() {
+  ocultarError('error-firma');
+  ocultarExito('exito-firma');
+
+  if (!hayTrazo) { mostrarError('error-firma', 'El trabajador debe dibujar su firma antes de confirmar.'); return; }
+  if (!tipoElegido) { mostrarError('error-firma', 'Selecciona un tipo de consentimiento.'); return; }
+
+  const boton = document.getElementById('btn-firmar');
+  boton.disabled = true;
+  boton.textContent = 'Guardando firma…';
+
+  try {
+    const canvas = document.getElementById('lienzo-firma');
+    const firmaBase64 = canvas.toDataURL('image/png');
+
+    await sissoFetch(`/consentimientos/trabajadores/${trabajadorActualId}/firmar`, {
+      method: 'POST',
+      body: { tipoConsentimientoCodigo: tipoElegido.codigo, firmaBase64 }
+    });
+
+    mostrarExito('exito-firma', 'Consentimiento firmado y registrado correctamente.');
+    document.getElementById('caja-firma').style.display = 'none';
+    tipoElegido = null;
+    await cargarConsentimientos();
+
+  } catch (err) {
+    mostrarError('error-firma', err.message || 'Error al registrar la firma.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Confirmar consentimiento firmado';
+  }
+}
+
+// ------- Listar consentimientos del trabajador -------
+async function cargarConsentimientos() {
+  const cont = document.getElementById('lista-consentimientos');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+
+  try {
+    const datos = await sissoFetch(`/consentimientos/trabajadores/${trabajadorActualId}`);
+    const lista = datos.consentimientos || [];
+
+    if (lista.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Este trabajador aún no tiene consentimientos firmados.</div>';
+      return;
+    }
+
+    cont.innerHTML = lista.map(c => `
+      <div class="consent-item ${c.revocado ? 'revocado' : ''}">
+        <div class="consent-info">
+          <strong>${escHtml(c.tipo_consentimiento_nombre)}</strong>
+          <div class="consent-meta">
+            Firmado el ${formatearFechaHora(c.creado_en)} por ${escHtml(c.registrado_por_nombre)}
+            ${c.revocado ? ` · Revocado el ${formatearFechaHora(c.revocado_en)}` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <a href="${c.firma_imagen_url}" target="_blank" class="btn-mini">✍ Ver firma</a>
+          ${c.revocado
+            ? '<span class="sisso-chip rojo">Revocado</span>'
+            : `<button class="btn-mini" onclick="revocar('${c.id}')">Revocar</button>`
+          }
+        </div>
+      </div>`).join('');
+
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function revocar(id) {
+  const motivo = prompt('Motivo de la revocación (mínimo 5 caracteres):');
+  if (!motivo || motivo.trim().length < 5) {
+    if (motivo !== null) alert('El motivo debe tener al menos 5 caracteres.');
+    return;
+  }
+
+  try {
+    await sissoFetch(`/consentimientos/${id}/revocar`, {
+      method: 'POST',
+      body: { motivoRevocacion: motivo.trim() }
+    });
+    await cargarConsentimientos();
+  } catch (err) {
+    alert('Error al revocar: ' + err.message);
+  }
+}
+
+// ------- Helpers -------
+function formatearFechaHora(fecha) {
+  return new Date(fecha).toLocaleString('es-EC', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>

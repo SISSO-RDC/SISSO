@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Dashboard</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .kpi { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--r2); padding: 18px; }
+    .kpi-valor { font-size: 32px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+    .kpi-etiqueta { font-size: 12px; color: var(--t3); font-weight: 600; }
+    .kpi-sub { font-size: 11px; color: var(--t3); margin-top: 4px; }
+
+    .graficos-grid { display: grid; grid-template-columns: 340px 1fr; gap: 14px; margin-bottom: 14px; }
+    .graficos-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 1000px) {
+      .graficos-grid { grid-template-columns: 1fr; }
+      .graficos-grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .grafico-caja { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--r2); padding: 16px; }
+    .grafico-titulo { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .grafico-sub { font-size: 11px; color: var(--t3); margin-bottom: 14px; }
+
+    .actividad-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--bd); font-size: 12.5px; }
+    .actividad-item:last-child { border-bottom: none; }
+    .actividad-icono { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .actividad-icono.reba { background: var(--teal3); }
+    .actividad-icono.rula { background: var(--pur3); }
+    .actividad-icono.aptitud { background: var(--blue3); }
+
+    .emo-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--bd); font-size: 12.5px; }
+    .emo-item:last-child { border-bottom: none; }
+
+    .sin-datos { text-align: center; padding: 30px 10px; color: var(--t3); font-size: 12.5px; }
+    .sin-datos-icono { font-size: 28px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- KPIs principales -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi"><div class="kpi-valor" id="kpi-total">—</div><div class="kpi-etiqueta">Trabajadores activos</div></div>
+    <div class="kpi"><div class="kpi-valor" style="color:var(--grn);" id="kpi-aptos">—</div><div class="kpi-etiqueta">Aptos</div></div>
+    <div class="kpi"><div class="kpi-valor" style="color:var(--amb);" id="kpi-restricciones">—</div><div class="kpi-etiqueta">Con restricciones</div></div>
+    <div class="kpi"><div class="kpi-valor" style="color:var(--red);" id="kpi-no-aptos">—</div><div class="kpi-etiqueta">No aptos</div></div>
+    <div class="kpi"><div class="kpi-valor" style="color:var(--t3);" id="kpi-pendientes">—</div><div class="kpi-etiqueta">Pendientes de EMO</div></div>
+  </div>
+
+  <!-- Fila 1: Aptitud (dona) + REBA por área (barras) -->
+  <div class="graficos-grid">
+    <div class="grafico-caja">
+      <div class="grafico-titulo">Distribución de aptitud</div>
+      <div class="grafico-sub">Estado actual de todos los trabajadores</div>
+      <div id="sin-datos-aptitud" class="sin-datos" style="display:none;">
+        <div class="sin-datos-icono">📊</div>
+        Aún no hay evaluaciones de aptitud registradas.
+      </div>
+      <canvas id="c-apt" height="220"></canvas>
+    </div>
+
+    <div class="grafico-caja">
+      <div class="grafico-titulo">Riesgo REBA por área</div>
+      <div class="grafico-sub">Score máximo detectado por área de trabajo</div>
+      <div id="sin-datos-reba" class="sin-datos" style="display:none;">
+        <div class="sin-datos-icono">📐</div>
+        Aún no hay evaluaciones REBA con área definida.
+      </div>
+      <canvas id="c-reba-d" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Fila 2: RULA (dona) + EMOs próximas a vencer + Actividad reciente -->
+  <div class="graficos-grid-3">
+    <div class="grafico-caja">
+      <div class="grafico-titulo">Niveles de riesgo RULA</div>
+      <div class="grafico-sub">Distribución de posturas evaluadas</div>
+      <div id="sin-datos-rula" class="sin-datos" style="display:none;">
+        <div class="sin-datos-icono">📏</div>
+        Aún no hay evaluaciones RULA registradas.
+      </div>
+      <canvas id="c-rula" height="180"></canvas>
+    </div>
+
+    <div class="grafico-caja">
+      <div class="grafico-titulo">⚠ EMOs próximas a vencer</div>
+      <div class="grafico-sub">Trabajadores con examen médico vencido o por vencer en 30 días</div>
+      <div id="lista-emos"></div>
+    </div>
+
+    <div class="grafico-caja">
+      <div class="grafico-titulo">Actividad reciente</div>
+      <div class="grafico-sub">Últimas evaluaciones registradas</div>
+      <div id="lista-actividad"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('dashboard', 'Dashboard');
+  await cargarDashboard();
+});
+
+async function cargarDashboard() {
+  try {
+    const datos = await sissoFetch('/dashboard/resumen');
+    renderizarKPIs(datos);
+    renderizarGraficoAptitud(datos.distribucionAptitud);
+    renderizarGraficoReba(datos.rebaPorArea);
+    renderizarGraficoRula(datos.rulaResumen);
+    renderizarEmosProximas(datos.emosProximas);
+    renderizarActividadReciente(datos.actividadReciente);
+  } catch (err) {
+    console.error('Error al cargar el dashboard:', err);
+  }
+}
+
+// ------- KPIs -------
+function renderizarKPIs(datos) {
+  document.getElementById('kpi-total').textContent = datos.totalTrabajadores;
+
+  const aptitud = datos.distribucionAptitud;
+  const contar = (val) => {
+    const f = aptitud.find(a => a.aptitud === val);
+    return f ? f.cantidad : 0;
+  };
+  document.getElementById('kpi-aptos').textContent = contar('apto');
+  document.getElementById('kpi-restricciones').textContent = contar('con_restricciones');
+  document.getElementById('kpi-no-aptos').textContent = contar('no_apto');
+  document.getElementById('kpi-pendientes').textContent = contar('pendiente');
+}
+
+// ------- Gráfico: distribución de aptitud (dona) -------
+function renderizarGraficoAptitud(datos) {
+  if (!datos || datos.length === 0) {
+    document.getElementById('c-apt').style.display = 'none';
+    document.getElementById('sin-datos-aptitud').style.display = 'block';
+    return;
+  }
+
+  const etiquetas = { apto: 'Apto', con_restricciones: 'Con restricciones', no_apto: 'No apto', pendiente: 'Pendiente' };
+  const colores = { apto: '#16a34a', con_restricciones: '#d97706', no_apto: '#dc2626', pendiente: '#94a3b8' };
+
+  new Chart(document.getElementById('c-apt'), {
+    type: 'doughnut',
+    data: {
+      labels: datos.map(d => etiquetas[d.aptitud] || d.aptitud),
+      datasets: [{
+        data: datos.map(d => parseInt(d.cantidad, 10)),
+        backgroundColor: datos.map(d => colores[d.aptitud] || '#94a3b8'),
+        borderWidth: 2, borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} trabajadores` } }
+      },
+      cutout: '65%',
+    }
+  });
+}
+
+// ------- Gráfico: REBA por área (barras horizontales) -------
+function renderizarGraficoReba(datos) {
+  if (!datos || datos.length === 0) {
+    document.getElementById('c-reba-d').style.display = 'none';
+    document.getElementById('sin-datos-reba').style.display = 'block';
+    return;
+  }
+
+  const coloresPorScore = (score) => {
+    if (score <= 3) return '#16a34a';
+    if (score <= 7) return '#d97706';
+    if (score <= 10) return '#ea580c';
+    return '#dc2626';
+  };
+
+  new Chart(document.getElementById('c-reba-d'), {
+    type: 'bar',
+    data: {
+      labels: datos.map(d => d.area || 'Sin área'),
+      datasets: [
+        {
+          label: 'Score máximo',
+          data: datos.map(d => parseFloat(d.maximo)),
+          backgroundColor: datos.map(d => coloresPorScore(parseFloat(d.maximo))),
+          borderRadius: 6,
+        },
+        {
+          label: 'Promedio',
+          data: datos.map(d => parseFloat(d.promedio)),
+          backgroundColor: datos.map(d => coloresPorScore(parseFloat(d.promedio)) + '80'),
+          borderRadius: 6,
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      scales: {
+        x: { min: 0, max: 15, grid: { color: '#e2e8f0' }, ticks: { font: { size: 11 } } },
+        y: { ticks: { font: { size: 11 } } }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+        tooltip: { callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.raw} (escala 1-15)`
+        }}
+      }
+    }
+  });
+}
+
+// ------- Gráfico: RULA niveles (dona) -------
+function renderizarGraficoRula(datos) {
+  if (!datos || datos.length === 0) {
+    document.getElementById('c-rula').style.display = 'none';
+    document.getElementById('sin-datos-rula').style.display = 'block';
+    return;
+  }
+
+  const etiquetas = {
+    aceptable: 'Aceptable',
+    puede_requerir_cambios: 'Puede requerir cambios',
+    requiere_cambios_pronto: 'Requiere cambios pronto',
+    requiere_cambios_ya: 'Requiere cambios ya',
+  };
+  const colores = {
+    aceptable: '#16a34a',
+    puede_requerir_cambios: '#d97706',
+    requiere_cambios_pronto: '#ea580c',
+    requiere_cambios_ya: '#dc2626',
+  };
+
+  new Chart(document.getElementById('c-rula'), {
+    type: 'doughnut',
+    data: {
+      labels: datos.map(d => etiquetas[d.nivel_riesgo] || d.nivel_riesgo),
+      datasets: [{
+        data: datos.map(d => parseInt(d.cantidad, 10)),
+        backgroundColor: datos.map(d => colores[d.nivel_riesgo] || '#94a3b8'),
+        borderWidth: 2, borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 8 } },
+      },
+      cutout: '60%',
+    }
+  });
+}
+
+// ------- Lista: EMOs próximas a vencer -------
+function renderizarEmosProximas(datos) {
+  const cont = document.getElementById('lista-emos');
+  if (!datos || datos.length === 0) {
+    cont.innerHTML = '<div class="sin-datos"><div class="sin-datos-icono">✅</div>No hay exámenes vencidos ni por vencer en los próximos 30 días.</div>';
+    return;
+  }
+
+  cont.innerHTML = datos.map(d => {
+    const vencida = d.dias_vencida > 0;
+    const chip = vencida
+      ? `<span class="sisso-chip rojo">Vencida hace ${d.dias_vencida}d</span>`
+      : `<span class="sisso-chip ambar">Vence ${formatearFecha(d.fecha_vencimiento)}</span>`;
+    return `<div class="emo-item"><span>${escHtml(d.nombre_completo)}</span>${chip}</div>`;
+  }).join('');
+}
+
+// ------- Lista: Actividad reciente -------
+function renderizarActividadReciente(datos) {
+  const cont = document.getElementById('lista-actividad');
+  if (!datos || datos.length === 0) {
+    cont.innerHTML = '<div class="sin-datos"><div class="sin-datos-icono">📝</div>Aún no hay actividad registrada.</div>';
+    return;
+  }
+
+  const iconos = { reba: '📐', rula: '📏', aptitud: '🩺' };
+  const etiquetasTipo = { reba: 'REBA', rula: 'RULA', aptitud: 'Aptitud' };
+  const etiquetasAptitud = { apto: 'Apto', con_restricciones: 'Con restricciones', no_apto: 'No apto', pendiente: 'Pendiente' };
+
+  cont.innerHTML = datos.map(d => `
+    <div class="actividad-item">
+      <div class="actividad-icono ${d.tipo}">${iconos[d.tipo] || '📌'}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(d.trabajador)}</div>
+        <div style="color:var(--t3);">
+          ${etiquetasTipo[d.tipo]}
+          ${d.tipo === 'aptitud'
+            ? ` · ${etiquetasAptitud[d.descripcion] || d.descripcion}`
+            : d.valor !== null ? ` · Score ${d.valor}` : ''
+          }
+        </div>
+      </div>
+      <span style="font-size:10.5px;color:var(--t3);white-space:nowrap;margin-left:8px;">${formatearHora(d.creado_en)}</span>
+    </div>`).join('');
+}
+
+// ------- Helpers -------
+function formatearFecha(fecha) {
+  if (!fecha) return '';
+  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day:'2-digit', month:'short' });
+}
+function formatearHora(fecha) {
+  if (!fecha) return '';
+  return new Date(fecha).toLocaleString('es-EC', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
