@@ -28,7 +28,7 @@ const SissoLayout = (() => {
     { id: 'emos',         label: 'EMOs / Aptitud',     icono: '🩺', href: '../aptitud/index.html',        roles: ['medico'] },
     { id: 'historia',     label: 'Historia clínica',   icono: '📋', href: '../aptitud/index.html',        roles: ['medico'] },
     { id: 'consentimientos', label: 'Consentimientos', icono: '✍️', href: '../consentimientos/index.html', roles: ['medico', 'sso', 'th'] },
-    { id: 'audiometria',  label: 'Audiometría',        icono: '🔊', href: '#',                          roles: ['medico'] },
+    { id: 'audiometria',  label: 'Audiometría',        icono: '🔊', href: '../audiometria/index.html', roles: ['medico'] },
     { id: 'espirometria', label: 'Espirometría',       icono: '💨', href: '#',                          roles: ['medico'] },
     { id: 'visiometria',  label: 'Visiometría',        icono: '👁️', href: '#',                          roles: ['medico'] },
 

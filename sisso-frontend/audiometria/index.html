@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Audiometría</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .selector-caja { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .panel-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .panel-2col { grid-template-columns: 1fr; } }
+
+    /* Tabla de ingreso de umbrales por frecuencia */
+    .tabla-umbrales { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .tabla-umbrales th { text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 700; color: var(--t3); border-bottom: 2px solid var(--bd); }
+    .tabla-umbrales td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--bd); }
+    .tabla-umbrales tr:last-child td { border-bottom: none; }
+    .tabla-umbrales td:first-child { text-align: left; font-weight: 600; color: var(--t2); padding-left: 8px; }
+    .input-db { width: 60px; text-align: center; padding: 6px 4px; border: 1.5px solid var(--bd); border-radius: 6px; font-size: 13px; font-family: inherit; }
+    .input-db:focus { outline: none; border-color: var(--teal); }
+    .input-db.od { border-color: #e53e3e44; }
+    .input-db.oi { border-color: #3182ce44; }
+
+    /* Audiograma */
+    .audiograma-caja { position: relative; }
+    .leyenda-audiograma { display: flex; gap: 16px; margin-bottom: 8px; font-size: 11px; }
+    .leyenda-item { display: flex; align-items: center; gap: 5px; }
+    .leyenda-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* Resultado / alertas */
+    .resultado-seccion { margin-top: 16px; }
+    .alerta-sts { background: var(--red3); border-left: 4px solid var(--red); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; }
+    .alerta-sts-titulo { font-weight: 800; color: var(--red2); margin-bottom: 4px; }
+    .patron-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin: 3px; }
+
+    .historial-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 8px; }
+    .historial-cabecera { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- Selector de trabajador -->
+  <div class="sisso-tarjeta" id="caja-selector">
+    <div class="sisso-tarjeta-titulo">Audiometría ocupacional</div>
+    <div class="sisso-tarjeta-subtitulo">Con detección automática de STS (OSHA) y clasificación de patrón audiométrico.</div>
+    <div class="sisso-error" id="error-selector"></div>
+    <div class="selector-caja">
+      <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+    </div>
+  </div>
+
+  <!-- Panel principal -->
+  <div id="caja-principal" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;"></div>
+        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+      </div>
+    </div>
+
+    <!-- Formulario de nuevo examen -->
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Registrar nuevo examen audiométrico</div>
+      <div class="sisso-error" id="error-examen"></div>
+      <div class="sisso-exito" id="exito-examen"></div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+        <div class="sisso-campo" style="margin-bottom:0;">
+          <label class="sisso-etiqueta" for="fecha-examen">Fecha del examen</label>
+          <input id="fecha-examen" type="date" class="sisso-input" style="width:160px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:18px;">
+          <input type="checkbox" id="es-basal" style="width:16px;height:16px;">
+          <label for="es-basal" style="font-size:13px;font-weight:600;cursor:pointer;">Esta es la audiometría basal (de referencia)</label>
+        </div>
+      </div>
+
+      <div class="panel-2col">
+        <!-- Columna izquierda: ingreso de umbrales -->
+        <div>
+          <div style="overflow-x:auto;">
+            <table class="tabla-umbrales">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding-left:8px;">Vía / Oído</th>
+                  <th>500 Hz</th>
+                  <th>1k Hz</th>
+                  <th>2k Hz</th>
+                  <th>3k Hz</th>
+                  <th>4k Hz</th>
+                  <th>6k Hz</th>
+                  <th>8k Hz</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="8" style="background:var(--red3);color:var(--red2);font-size:11px;font-weight:700;padding:4px 8px;">
+                    CONDUCCIÓN AÉREA
+                  </td>
+                </tr>
+                <tr>
+                  <td>🔴 OD (derecho)</td>
+                  <td><input type="number" class="input-db od" id="ca_od_500" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db od" id="ca_od_1000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db od" id="ca_od_2000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db od" id="ca_od_3000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db od" id="ca_od_4000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db od" id="ca_od_6000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db od" id="ca_od_8000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                </tr>
+                <tr>
+                  <td>🔵 OI (izquierdo)</td>
+                  <td><input type="number" class="input-db oi" id="ca_oi_500" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db oi" id="ca_oi_1000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db oi" id="ca_oi_2000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db oi" id="ca_oi_3000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db oi" id="ca_oi_4000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db oi" id="ca_oi_6000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db oi" id="ca_oi_8000" min="-10" max="120" oninput="actualizarAudiograma()"></td>
+                </tr>
+                <tr>
+                  <td colspan="8" style="background:var(--blue3);color:var(--blue2);font-size:11px;font-weight:700;padding:4px 8px;">
+                    CONDUCCIÓN ÓSEA (opcional — hasta 4k Hz)
+                  </td>
+                </tr>
+                <tr>
+                  <td>◻ OD ósea</td>
+                  <td><input type="number" class="input-db" id="co_od_500" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_od_1000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_od_2000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_od_3000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_od_4000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td colspan="2" style="color:var(--t3);font-size:11px;">No aplica</td>
+                </tr>
+                <tr>
+                  <td>◻ OI ósea</td>
+                  <td><input type="number" class="input-db" id="co_oi_500" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_oi_1000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_oi_2000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_oi_3000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td><input type="number" class="input-db" id="co_oi_4000" min="-10" max="80" oninput="actualizarAudiograma()"></td>
+                  <td colspan="2" style="color:var(--t3);font-size:11px;">No aplica</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="sisso-campo" style="margin-top:12px;">
+            <label class="sisso-etiqueta" for="observaciones">Observaciones</label>
+            <textarea id="observaciones" class="sisso-textarea" placeholder="Condiciones del examen, observaciones clínicas…" style="min-height:60px;"></textarea>
+          </div>
+
+          <button class="sisso-boton ancho-completo" id="btn-guardar" onclick="guardarExamen()">Guardar examen audiométrico</button>
+        </div>
+
+        <!-- Columna derecha: audiograma en vivo -->
+        <div>
+          <div class="sisso-tarjeta" style="padding:14px;">
+            <div class="sisso-tarjeta-titulo" style="margin-bottom:8px;">Audiograma</div>
+            <div class="leyenda-audiograma">
+              <div class="leyenda-item"><div class="leyenda-dot" style="background:#e53e3e;"></div><span>OD aérea</span></div>
+              <div class="leyenda-item"><div class="leyenda-dot" style="background:#3182ce;"></div><span>OI aérea</span></div>
+              <div class="leyenda-item"><div style="width:10px;height:2px;background:#e53e3e;border-top:2px dashed #e53e3e;"></div><span>OD ósea</span></div>
+              <div class="leyenda-item"><div style="width:10px;height:2px;background:#3182ce;border-top:2px dashed #3182ce;"></div><span>OI ósea</span></div>
+            </div>
+            <canvas id="c-audiograma" style="width:100%;max-height:300px;"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial de examenes -->
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Historial de audiometrías</div>
+      <div id="lista-examenes"><div class="sisso-cargando">Cargando historial…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let trabajadores = [];
+let trabajadorActualId = null;
+let graficoAudiograma = null;
+
+const FRECUENCIAS = [500, 1000, 2000, 3000, 4000, 6000, 8000];
+const FREC_LABELS = ['500', '1k', '2k', '3k', '4k', '6k', '8k'];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('audiometria', 'Audiometría Ocupacional');
+  inicializarAudiograma();
+
+  // Fecha de hoy por defecto
+  document.getElementById('fecha-examen').value = new Date().toISOString().split('T')[0];
+
+  await cargarTrabajadores();
+
+  const presel = localStorage.getItem('sisso_trabajador_id');
+  if (presel) document.getElementById('sel-trabajador').value = presel;
+});
+
+async function cargarTrabajadores() {
+  const sel = document.getElementById('sel-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar</option>';
+    mostrarError('error-selector', err.message);
+  }
+}
+
+function elegirTrabajador() {
+  ocultarError('error-selector');
+  const id = document.getElementById('sel-trabajador').value;
+  if (!id) { mostrarError('error-selector', 'Selecciona un trabajador.'); return; }
+  trabajadorActualId = id;
+  const t = trabajadores.find(x => x.id === id);
+  document.getElementById('titulo-trabajador').textContent = t ? `${t.nombre_completo} — ${t.documento}` : 'Trabajador';
+  document.getElementById('caja-selector').style.display = 'none';
+  document.getElementById('caja-principal').style.display = 'block';
+  cargarHistorial();
+}
+
+function cambiarTrabajador() {
+  trabajadorActualId = null;
+  document.getElementById('caja-selector').style.display = 'block';
+  document.getElementById('caja-principal').style.display = 'none';
+}
+
+// ------- Audiograma en vivo -------
+function inicializarAudiograma() {
+  const ctx = document.getElementById('c-audiograma').getContext('2d');
+  graficoAudiograma = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: FREC_LABELS,
+      datasets: [
+        { label: 'OD aérea', data: Array(7).fill(null), borderColor: '#e53e3e', backgroundColor: '#e53e3e', pointStyle: 'circle', pointRadius: 5, tension: 0, borderWidth: 2 },
+        { label: 'OI aérea', data: Array(7).fill(null), borderColor: '#3182ce', backgroundColor: '#3182ce', pointStyle: 'cross', pointRadius: 5, tension: 0, borderWidth: 2 },
+        { label: 'OD ósea', data: Array(5).fill(null).concat([null, null]), borderColor: '#e53e3e', backgroundColor: '#e53e3e', pointStyle: 'rectRot', pointRadius: 5, tension: 0, borderWidth: 2, borderDash: [5, 5] },
+        { label: 'OI ósea', data: Array(5).fill(null).concat([null, null]), borderColor: '#3182ce', backgroundColor: '#3182ce', pointStyle: 'triangle', pointRadius: 5, tension: 0, borderWidth: 2, borderDash: [5, 5] },
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          reverse: true, // en audiogramas, los valores bajos (mejor audición) van arriba
+          min: -10, max: 120,
+          title: { display: true, text: 'Umbral (dB HL)', font: { size: 11 } },
+          ticks: { font: { size: 11 } },
+          grid: { color: '#e2e8f0' },
+        },
+        x: {
+          title: { display: true, text: 'Frecuencia (Hz)', font: { size: 11 } },
+          ticks: { font: { size: 11 } },
+          grid: { color: '#e2e8f0' },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        // Línea horizontal de referencia en 25 dB (límite de normalidad)
+        annotation: undefined,
+      },
+    },
+    plugins: [{
+      id: 'linea-normalidad',
+      afterDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        const y25 = scales.y.getPixelForValue(25);
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, y25);
+        ctx.lineTo(chartArea.right, y25);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px sans-serif';
+        ctx.fillText('25 dB — límite normal', chartArea.left + 4, y25 - 4);
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+function leerValor(id) {
+  const val = document.getElementById(id).value;
+  return val === '' ? null : parseFloat(val);
+}
+
+function actualizarAudiograma() {
+  if (!graficoAudiograma) return;
+
+  const odAerea = FRECUENCIAS.map(f => leerValor(`ca_od_${f}`));
+  const oiAerea = FRECUENCIAS.map(f => leerValor(`ca_oi_${f}`));
+  const odOsea = [500,1000,2000,3000,4000].map(f => leerValor(`co_od_${f}`)).concat([null, null]);
+  const oiOsea = [500,1000,2000,3000,4000].map(f => leerValor(`co_oi_${f}`)).concat([null, null]);
+
+  graficoAudiograma.data.datasets[0].data = odAerea;
+  graficoAudiograma.data.datasets[1].data = oiAerea;
+  graficoAudiograma.data.datasets[2].data = odOsea;
+  graficoAudiograma.data.datasets[3].data = oiOsea;
+  graficoAudiograma.update('none');
+}
+
+// ------- Guardar examen -------
+async function guardarExamen() {
+  ocultarError('error-examen');
+  ocultarExito('exito-examen');
+
+  const cuerpo = {
+    fechaExamen: document.getElementById('fecha-examen').value || undefined,
+    esBasal: document.getElementById('es-basal').checked,
+    observaciones: document.getElementById('observaciones').value.trim() || undefined,
+  };
+
+  // Recoger todos los umbrales
+  ['ca_od','ca_oi'].forEach(prefijo => {
+    [500,1000,2000,3000,4000,6000,8000].forEach(f => {
+      const v = leerValor(`${prefijo}_${f}`);
+      if (v !== null) cuerpo[`${prefijo}_${f}`] = v;
+    });
+  });
+  ['co_od','co_oi'].forEach(prefijo => {
+    [500,1000,2000,3000,4000].forEach(f => {
+      const v = leerValor(`${prefijo}_${f}`);
+      if (v !== null) cuerpo[`${prefijo}_${f}`] = v;
+    });
+  });
+
+  const boton = document.getElementById('btn-guardar');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    const datos = await sissoFetch(`/audiometria/trabajadores/${trabajadorActualId}`, {
+      method: 'POST',
+      body: cuerpo
+    });
+
+    let msg = 'Examen audiométrico registrado correctamente.';
+    if (datos.alertaSTS) {
+      msg += ' ⚠ ALERTA: STS positivo detectado (cambio ≥10 dB en 2k-3k-4k Hz).';
+    }
+    mostrarExito('exito-examen', msg);
+
+    // Limpiar formulario
+    document.querySelectorAll('.input-db').forEach(el => el.value = '');
+    document.getElementById('es-basal').checked = false;
+    document.getElementById('observaciones').value = '';
+    actualizarAudiograma();
+    await cargarHistorial();
+
+  } catch (err) {
+    mostrarError('error-examen', err.message || 'Error al guardar el examen.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar examen audiométrico';
+  }
+}
+
+// ------- Historial -------
+async function cargarHistorial() {
+  const cont = document.getElementById('lista-examenes');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando historial…</div>';
+  try {
+    const datos = await sissoFetch(`/audiometria/trabajadores/${trabajadorActualId}`);
+    const examenes = datos.examenes || [];
+
+    if (examenes.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Aún no hay audiometrías registradas para este trabajador.</div>';
+      return;
+    }
+
+    cont.innerHTML = examenes.map(e => {
+      const stsAlerta = e.sts_od_positivo || e.sts_oi_positivo;
+      return `
+        <div class="historial-item">
+          <div class="historial-cabecera">
+            <div>
+              <strong>${formatearFecha(e.fecha_examen)}</strong>
+              ${e.es_basal ? '<span class="sisso-chip teal" style="margin-left:8px;">Basal</span>' : ''}
+              ${stsAlerta ? '<span class="sisso-chip rojo" style="margin-left:4px;">⚠ STS OSHA</span>' : ''}
+            </div>
+            <span style="font-size:11px;color:var(--t3);">Dr(a). ${escHtml(e.medico_nombre)}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;margin-bottom:8px;">
+            <div>OD: PTA ${e.pta_od ?? '—'} dB ${e.sts_od !== null ? `| STS ${e.sts_od > 0 ? '+' : ''}${e.sts_od} dB` : ''}</div>
+            <div>OI: PTA ${e.pta_oi ?? '—'} dB ${e.sts_oi !== null ? `| STS ${e.sts_oi > 0 ? '+' : ''}${e.sts_oi} dB` : ''}</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${chipPatron('OD', e.patron_od)}
+            ${chipPatron('OI', e.patron_oi)}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function chipPatron(lado, patron) {
+  if (!patron) return '';
+  const colores = {
+    normal: 'verde', notch_ocupacional: 'rojo', neurosensorial: 'ambar',
+    conductiva: 'azul', mixta: 'pur', presbiacusia: 'gris', no_clasificable: 'gris'
+  };
+  const etiquetas = {
+    normal: 'Normal', notch_ocupacional: 'Notch ocupacional', neurosensorial: 'Neurosensorial',
+    conductiva: 'Conductiva', mixta: 'Mixta', presbiacusia: 'Presbiacusia', no_clasificable: 'No clasificable'
+  };
+  const col = colores[patron] || 'gris';
+  const colMap = { verde:'var(--grn3)', rojo:'var(--red3)', ambar:'var(--amb3)', azul:'var(--blue3)', gris:'var(--bg3)', pur:'var(--pur3)' };
+  const txtMap = { verde:'var(--grn2)', rojo:'var(--red2)', ambar:'var(--amb2)', azul:'var(--blue2)', gris:'var(--t2)', pur:'var(--pur2)' };
+  return `<span class="patron-chip" style="background:${colMap[col]};color:${txtMap[col]};">${lado}: ${etiquetas[patron] || patron}</span>`;
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return '';
+  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' });
+}
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function mostrarError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); }
+function ocultarError(id) { document.getElementById(id).classList.remove('visible'); }
+function mostrarExito(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); }
+function ocultarExito(id) { document.getElementById(id).classList.remove('visible'); }
+</script>
+</body>
+</html>
