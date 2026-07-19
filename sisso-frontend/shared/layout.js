@@ -94,6 +94,9 @@ const SissoLayout = (() => {
             ${usuario.nombreCompleto}
             <span style="display:block;font-size:10px;margin-top:1px;">${usuario.rol?.toUpperCase()}</span>
           </div>
+          <button onclick="sissoAbrirCambioPassword()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+            Cambiar mi contraseña
+          </button>
           <button onclick="sissoCerrarSesionConConfirmacion()" style="width:100%;padding:7px;background:rgba(220,38,38,.15);color:#fca5a5;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
             Cerrar sesión
           </button>
@@ -143,6 +146,14 @@ const SissoLayout = (() => {
             </div>
           </div>
         </div>`;
+
+      // Si el admin le reseteo la contrasena a este usuario, se le
+      // exige elegir una propia ANTES de poder usar el resto del
+      // sistema, en cualquier pagina (por eso vive aqui, en el
+      // layout compartido, y no en una sola pagina).
+      if (usuario.requiereCambioPassword) {
+        sissoMostrarModalCambioPassword(true);
+      }
     },
 
     /**
@@ -165,5 +176,107 @@ const SissoLayout = (() => {
 async function sissoCerrarSesionConConfirmacion() {
   if (confirm('¿Deseas cerrar tu sesión?')) {
     await sissoCerrarSesion();
+  }
+}
+
+/**
+ * Boton "Cambiar mi contraseña" del sidebar: abre el mismo modal
+ * que el flujo forzado, pero sin bloquear el resto de la pantalla
+ * (el usuario puede cancelar si cambio de opinion).
+ */
+function sissoAbrirCambioPassword() {
+  sissoMostrarModalCambioPassword(false);
+}
+
+/**
+ * Inyecta y muestra el modal de cambio de contrasena.
+ *
+ * @param {boolean} forzado - si es true, no se puede cancelar ni
+ *   cerrar sin completar el cambio (caso: admin reseteo la
+ *   contrasena y el sistema exige que el usuario elija una propia
+ *   antes de continuar).
+ */
+function sissoMostrarModalCambioPassword(forzado) {
+  // Evita duplicar el modal si ya esta abierto.
+  if (document.getElementById('sisso-modal-cambiar-password')) return;
+
+  const html = `
+    <div id="sisso-modal-cambiar-password" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;">
+      <div style="background:#fff;border-radius:14px;padding:26px;width:420px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">${forzado ? 'Debes cambiar tu contraseña' : 'Cambiar mi contraseña'}</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:18px;">
+          ${forzado
+            ? 'Un administrador reseteó tu contraseña. Elige una nueva antes de continuar.'
+            : 'Ingresa tu contraseña actual y la nueva contraseña.'}
+        </div>
+        <div id="sisso-cp-error" style="display:none;background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
+
+        <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Contraseña actual (o la temporal que te dieron)</label>
+        <input id="sisso-cp-actual" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:14px;box-sizing:border-box;font-family:inherit;">
+
+        <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Nueva contraseña (mínimo 8 caracteres)</label>
+        <input id="sisso-cp-nueva" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:20px;box-sizing:border-box;font-family:inherit;">
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          ${forzado ? '' : '<button onclick="sissoCerrarModalCambioPassword()" style="padding:11px 18px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cancelar</button>'}
+          <button id="sisso-cp-boton" onclick="sissoConfirmarCambioPassword(${forzado})" style="padding:11px 18px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Guardar nueva contraseña</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('sisso-cp-actual').focus();
+}
+
+function sissoCerrarModalCambioPassword() {
+  const el = document.getElementById('sisso-modal-cambiar-password');
+  if (el) el.remove();
+}
+
+async function sissoConfirmarCambioPassword(forzado) {
+  const errorEl = document.getElementById('sisso-cp-error');
+  errorEl.style.display = 'none';
+
+  const passwordActual = document.getElementById('sisso-cp-actual').value;
+  const passwordNueva = document.getElementById('sisso-cp-nueva').value;
+
+  if (!passwordActual || !passwordNueva) {
+    errorEl.textContent = 'Completa ambos campos.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (passwordNueva.length < 8) {
+    errorEl.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (passwordNueva === passwordActual) {
+    errorEl.textContent = 'La nueva contraseña debe ser diferente de la actual.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const boton = document.getElementById('sisso-cp-boton');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch('/auth/cambiar-password', {
+      method: 'PUT',
+      body: { passwordActual, passwordNueva }
+    });
+
+    // Actualizamos la sesion local para que ya no vuelva a pedirse.
+    const usuario = SissoSesion.obtenerUsuario();
+    if (usuario) {
+      usuario.requiereCambioPassword = false;
+      localStorage.setItem('sisso_usuario', JSON.stringify(usuario));
+    }
+
+    sissoCerrarModalCambioPassword();
+  } catch (err) {
+    errorEl.textContent = err.message || 'Error al cambiar la contraseña.';
+    errorEl.style.display = 'block';
+    boton.disabled = false;
+    boton.textContent = 'Guardar nueva contraseña';
   }
 }
