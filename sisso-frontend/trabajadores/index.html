@@ -141,6 +141,30 @@
         <label class="sisso-etiqueta" for="n-vence">Vencimiento EMO</label>
         <input id="n-vence" type="date" class="sisso-input">
       </div>
+      <div class="sisso-campo" style="grid-column:1/-1;">
+        <hr style="border:none;border-top:1px solid var(--bd);margin:2px 0 8px;">
+        <span style="font-size:12px;color:var(--t3);font-weight:600;">Datos antropométricos (opcionales aquí — necesarios para registrar audiometrías y espirometrías)</span>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-sexo">Sexo</label>
+        <select id="n-sexo" class="sisso-select">
+          <option value="">—</option>
+          <option value="M">Masculino</option>
+          <option value="F">Femenino</option>
+        </select>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-nacimiento">Fecha de nacimiento</label>
+        <input id="n-nacimiento" type="date" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-talla">Talla (cm)</label>
+        <input id="n-talla" type="number" min="100" max="250" class="sisso-input" placeholder="Ej: 170">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="n-peso">Peso (kg)</label>
+        <input id="n-peso" type="number" min="20" max="300" step="0.1" class="sisso-input" placeholder="Ej: 72.5">
+      </div>
     </div>
 
     <div class="sisso-modal-pie">
@@ -349,6 +373,7 @@ function escHtml(str) {
 function abrirModalNuevo() {
   ['n-nombre','n-doc','n-area','n-puesto'].forEach(id => document.getElementById(id).value = '');
   ['n-emo','n-vence'].forEach(id => document.getElementById(id).value = '');
+  ['n-sexo','n-nacimiento','n-talla','n-peso'].forEach(id => document.getElementById(id).value = '');
   ocultarError('error-nuevo');
   document.getElementById('modal-nuevo').classList.add('abierto');
   document.getElementById('n-nombre').focus();
@@ -378,6 +403,10 @@ async function guardarNuevoTrabajador() {
         puesto: document.getElementById('n-puesto').value.trim() || undefined,
         fechaEmo: document.getElementById('n-emo').value || undefined,
         fechaVencimiento: document.getElementById('n-vence').value || undefined,
+        sexo: document.getElementById('n-sexo').value || undefined,
+        fechaNacimiento: document.getElementById('n-nacimiento').value || undefined,
+        tallaCm: document.getElementById('n-talla').value ? parseInt(document.getElementById('n-talla').value, 10) : undefined,
+        pesoKg: document.getElementById('n-peso').value ? parseFloat(document.getElementById('n-peso').value) : undefined,
       }
     });
     cerrarModal('modal-nuevo');

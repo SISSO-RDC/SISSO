@@ -155,6 +155,25 @@ a { color: inherit; }
 
 .sisso-boton.ancho-completo { width: 100%; }
 
+/* Boton pequeno de texto, usado para acciones secundarias como
+   "Cambiar trabajador". Ya se usaba en audiometria/index.html sin
+   estar definido (quedaba sin estilo); se agrega aqui para que
+   tanto audiometria como espirometria se vean correctamente. */
+.btn-mini {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--teal);
+  border: 1.5px solid var(--bd);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, border-color .15s;
+}
+.btn-mini:hover { background: var(--bg3); border-color: var(--teal); }
+
+
 .sisso-boton.secundario {
   background: #fff;
   color: var(--t2);
