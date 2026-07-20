@@ -162,6 +162,57 @@ async function sissoFetch(ruta, opciones = {}) {
 }
 
 /**
+ * Descarga un archivo binario (ej: un PDF) del backend, con el
+ * mismo manejo de autenticacion/refresh que sissoFetch(), pero
+ * devolviendo un Blob en vez de intentar parsear JSON (la
+ * respuesta de un PDF no es JSON, sissoFetch() rompería aqui).
+ *
+ * @param {string} ruta - ej: '/consentimientos/abc-123/pdf'
+ * @returns {Promise<Blob>}
+ */
+async function sissoDescargarArchivo(ruta) {
+  const construirHeaders = () => {
+    const headers = {};
+    const token = SissoSesion.obtenerAccessToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  };
+
+  let respuesta = await fetch(`${SISSO_API_BASE}${ruta}`, { headers: construirHeaders() });
+
+  if (respuesta.status === 401) {
+    const renovado = await intentarRefrescarToken();
+    if (renovado) {
+      respuesta = await fetch(`${SISSO_API_BASE}${ruta}`, { headers: construirHeaders() });
+    } else {
+      SissoSesion.limpiar();
+      window.location.href = '../login/index.html';
+      throw new Error('Sesion expirada. Por favor inicie sesion de nuevo.');
+    }
+  }
+
+  if (!respuesta.ok) {
+    let mensaje = `Error al descargar el archivo (HTTP ${respuesta.status}).`;
+    try { const datos = await respuesta.json(); if (datos && datos.error) mensaje = datos.error; } catch (e) { /* sin cuerpo JSON */ }
+    throw new Error(mensaje);
+  }
+
+  return respuesta.blob();
+}
+
+/**
+ * Abre un Blob (ej: el PDF que devuelve sissoDescargarArchivo) en
+ * una nueva pestaña del navegador.
+ */
+function sissoAbrirBlobEnNuevaPestana(blob) {
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  // Liberamos el object URL despues de un momento; el navegador ya
+  // tuvo tiempo de cargarlo en la nueva pestaña.
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+/**
  * Cierra la sesion: avisa al backend para revocar el refresh token
  * y limpia todo lo guardado localmente, luego redirige al login.
  */
