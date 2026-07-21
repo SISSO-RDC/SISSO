@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — Historia Clínica Ocupacional</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  details.bloque { border: 1px solid var(--bd); border-radius: var(--r); margin-bottom: 10px; background: #fff; }
+  details.bloque > summary { padding: 12px 16px; font-weight: 700; font-size: 13.5px; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; color: var(--t1); }
+  details.bloque > summary::-webkit-details-marker { display: none; }
+  details.bloque > summary::before { content: '▸'; color: var(--teal); transition: transform .15s; }
+  details.bloque[open] > summary::before { transform: rotate(90deg); }
+  details.bloque > summary .bloque-letra { background: var(--teal3); color: var(--teal2); border-radius: 5px; padding: 1px 7px; font-size: 11px; }
+  .bloque-cuerpo { padding: 4px 16px 18px; }
+
+  .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .fila-campos .sisso-campo { margin-bottom: 0; }
+
+  .matriz-riesgo { margin-bottom: 14px; }
+  .matriz-riesgo-titulo { font-size: 12.5px; font-weight: 700; color: var(--t2); margin-bottom: 6px; }
+  .chips-checkbox { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-checkbox { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--bd); border-radius: 16px; padding: 5px 11px; font-size: 12px; cursor: pointer; user-select: none; }
+  .chip-checkbox input { margin: 0; }
+  .chip-checkbox:has(input:checked) { background: var(--teal3); border-color: var(--teal); color: var(--teal2); font-weight: 600; }
+
+  .sistema-item, .region-subitem { border: 1px solid var(--bd); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .sistema-item-cabecera, .region-subitem-cabecera { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .sistema-item textarea, .region-subitem textarea { margin-top: 8px; }
+  .region-bloque { margin-bottom: 16px; }
+  .region-bloque-titulo { font-size: 12.5px; font-weight: 800; color: var(--teal2); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
+
+  .fila-dinamica { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px; margin-bottom: 10px; position: relative; }
+  .fila-dinamica .btn-quitar { position: absolute; top: 8px; right: 8px; }
+
+  .vitales-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .imc-resultado { margin-top: 10px; padding: 10px 12px; background: var(--teal3); border-radius: var(--r); font-size: 13px; font-weight: 700; color: var(--teal2); display: none; }
+
+  .buscador-cie10 { position: relative; }
+  .resultados-cie10 { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--bd); border-radius: var(--r); box-shadow: 0 8px 24px rgba(0,0,0,.1); max-height: 240px; overflow-y: auto; z-index: 20; margin-top: 4px; }
+  .resultados-cie10.visible { display: block; }
+  .resultado-cie10-item { padding: 9px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--bd); }
+  .resultado-cie10-item:hover { background: var(--teal3); }
+  .resultado-cie10-codigo { font-family: monospace; font-weight: 700; color: var(--teal2); margin-right: 6px; }
+  .diagnostico-chip { display: flex; justify-content: space-between; align-items: center; background: var(--bg3); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 13px; }
+
+  #lienzo-firma { width: 100%; height: 160px; border: 1.5px dashed var(--bd2); border-radius: var(--r); touch-action: none; cursor: crosshair; background: #fff; }
+  .firma-acciones { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+
+  .historial-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="sisso-tarjeta" id="caja-selector">
+    <div class="sisso-tarjeta-titulo">Historia Clínica Ocupacional</div>
+    <div class="sisso-tarjeta-subtitulo">Formulario preocupacional — inicio (HCU 077, Acuerdo Ministerial MSP 0341-2019)</div>
+    <div class="sisso-error" id="error-selector"></div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+    </div>
+  </div>
+
+  <div id="caja-principal" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;"></div>
+        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+      </div>
+    </div>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Historial de evaluaciones</div>
+      <div id="lista-evaluaciones"><div class="sisso-cargando">Cargando historial…</div></div>
+    </div>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Nueva evaluación preocupacional — inicio</div>
+      <div class="sisso-error" id="error-form"></div>
+      <div class="sisso-exito" id="exito-form"></div>
+
+      <!-- ============ BLOQUE A ============ -->
+      <details class="bloque" open>
+        <summary><span class="bloque-letra">A</span> Datos generales del trabajador</summary>
+        <div class="bloque-cuerpo">
+          <div class="fila-campos" style="margin-bottom:12px;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">N° de archivo (opcional)</label><input id="a-numero-archivo" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Religión</label><select id="a-religion" class="sisso-select"></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Grupo sanguíneo</label><input id="a-grupo-sanguineo" class="sisso-input" placeholder="Ej: O+"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Lateralidad</label><select id="a-lateralidad" class="sisso-select"></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Orientación sexual</label><select id="a-orientacion-sexual" class="sisso-select"></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Identidad de género</label><select id="a-identidad-genero" class="sisso-select"></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de ingreso al trabajo</label><input id="a-fecha-ingreso" type="date" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Código CIUO del puesto (opcional)</label><input id="a-ciuo" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Área de trabajo</label><input id="a-area-trabajo" class="sisso-input"></div>
+          </div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Actividades relevantes del puesto</label><textarea id="a-actividades-relevantes" class="sisso-textarea"></textarea></div>
+
+          <div style="margin:12px 0;">
+            <label class="chip-checkbox" style="border-radius:8px;">
+              <input type="checkbox" id="a-discapacidad-tiene" onchange="document.getElementById('caja-discapacidad-detalle').style.display=this.checked?'grid':'none'">
+              ¿Tiene alguna discapacidad?
+            </label>
+          </div>
+          <div class="fila-campos" id="caja-discapacidad-detalle" style="display:none;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Tipo de discapacidad</label><input id="a-discapacidad-tipo" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Porcentaje (%)</label><input id="a-discapacidad-porcentaje" type="number" min="0" max="100" step="0.1" class="sisso-input"></div>
+          </div>
+
+          <div id="caja-ginecobstetricos" style="display:none;margin-top:14px;">
+            <div class="matriz-riesgo-titulo">Antecedentes gineco-obstétricos</div>
+            <div class="fila-campos">
+              <div class="sisso-campo"><label class="sisso-etiqueta">Edad de la menarquia</label><input id="a-menarquia" type="number" min="8" max="20" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Duración de ciclos (días)</label><input id="a-ciclos" type="number" min="1" max="60" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de última menstruación</label><input id="a-fum" type="date" class="sisso-input"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE B ============ -->
+      <details class="bloque" open>
+        <summary><span class="bloque-letra">B</span> Motivo de consulta</summary>
+        <div class="bloque-cuerpo">
+          <div class="sisso-campo">
+            <textarea id="b-motivo-consulta" class="sisso-textarea">Evaluación médica ocupacional para el ingreso al puesto de trabajo.</textarea>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE C ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">C</span> Antecedentes personales</summary>
+        <div class="bloque-cuerpo">
+          <div class="sisso-campo"><label class="sisso-etiqueta">Antecedentes clínico-quirúrgicos</label><textarea id="c-clinicos-quirurgicos" class="sisso-textarea" placeholder="Cirugías, enfermedades diagnosticadas, hospitalizaciones previas…"></textarea></div>
+
+          <div id="caja-c-femenino" style="display:none;">
+            <div class="matriz-riesgo-titulo">Antecedentes gineco-obstétricos</div>
+            <div class="fila-campos" style="margin-bottom:10px;">
+              <div class="sisso-campo"><label class="sisso-etiqueta">Gestas</label><input id="c-gestas" type="number" min="0" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Partos</label><input id="c-partos" type="number" min="0" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Cesáreas</label><input id="c-cesareas" type="number" min="0" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Abortos</label><input id="c-abortos" type="number" min="0" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos vivos</label><input id="c-hijos-vivos" type="number" min="0" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos fallecidos</label><input id="c-hijos-muertos" type="number" min="0" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Método de planificación</label><input id="c-metodo-planificacion-f" class="sisso-input" placeholder="Ninguno / cuál…"></div>
+            </div>
+            <div class="matriz-riesgo-titulo">Exámenes ginecológicos</div>
+            <div class="fila-campos">
+              <div class="sisso-campo"><label class="sisso-etiqueta">Papanicolau — fecha</label><input id="c-papanicolau-fecha" type="date" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Papanicolau — resultado</label><input id="c-papanicolau-resultado" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Eco mamario — fecha</label><input id="c-eco-mamario-fecha" type="date" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Eco mamario — resultado</label><input id="c-eco-mamario-resultado" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Mamografía — fecha</label><input id="c-mamografia-fecha" type="date" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Mamografía — resultado</label><input id="c-mamografia-resultado" class="sisso-input"></div>
+            </div>
+          </div>
+
+          <div id="caja-c-masculino" style="display:none;">
+            <div class="matriz-riesgo-titulo">Antecedentes reproductivos</div>
+            <div class="fila-campos">
+              <div class="sisso-campo"><label class="sisso-etiqueta">Antígeno prostático — fecha</label><input id="c-antigeno-fecha" type="date" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Antígeno prostático — resultado</label><input id="c-antigeno-resultado" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Eco prostático — fecha</label><input id="c-eco-prostatico-fecha" type="date" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Eco prostático — resultado</label><input id="c-eco-prostatico-resultado" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Método de planificación</label><input id="c-metodo-planificacion-m" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos vivos</label><input id="c-m-hijos-vivos" type="number" min="0" class="sisso-input"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos fallecidos</label><input id="c-m-hijos-muertos" type="number" min="0" class="sisso-input"></div>
+            </div>
+          </div>
+
+          <div class="matriz-riesgo-titulo" style="margin-top:14px;">Hábitos tóxicos</div>
+          <div class="fila-campos" style="margin-bottom:10px;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Tabaco — ¿consume?</label><select id="c-tabaco-consume" class="sisso-select"><option value="no">No</option><option value="si">Sí</option><option value="ex">Ex-consumidor</option></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Tabaco — detalle</label><input id="c-tabaco-detalle" class="sisso-input" placeholder="Cantidad y tiempo"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Alcohol — ¿consume?</label><select id="c-alcohol-consume" class="sisso-select"><option value="no">No</option><option value="si">Sí</option><option value="ex">Ex-consumidor</option></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Alcohol — detalle</label><input id="c-alcohol-detalle" class="sisso-input" placeholder="Cantidad y tiempo"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Otras drogas — ¿consume?</label><select id="c-drogas-consume" class="sisso-select"><option value="no">No</option><option value="si">Sí</option><option value="ex">Ex-consumidor</option></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Otras drogas — cuál/detalle</label><input id="c-drogas-detalle" class="sisso-input"></div>
+          </div>
+
+          <div class="matriz-riesgo-titulo">Estilo de vida</div>
+          <div class="fila-campos">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Actividad física</label><input id="c-actividad-fisica" class="sisso-input" placeholder="Cuál y con qué frecuencia"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Medicación habitual</label><input id="c-medicacion-habitual" class="sisso-input" placeholder="Cuál y desde cuándo"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE D ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">D</span> Antecedentes de trabajo (empleos anteriores)</summary>
+        <div class="bloque-cuerpo">
+          <div id="lista-antecedentes-laborales"></div>
+          <button type="button" class="sisso-boton secundario" onclick="agregarAntecedenteLaboral()">+ Agregar empleo anterior</button>
+
+          <div class="matriz-riesgo-titulo" style="margin-top:16px;">Accidentes de trabajo previos</div>
+          <div class="fila-campos" style="margin-bottom:10px;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">¿Tuvo accidentes calificados?</label><select id="d-accidente-calificado" class="sisso-select"><option value="no">No</option><option value="si">Sí</option></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Entidad que calificó</label><input id="d-accidente-entidad" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Fecha</label><input id="d-accidente-fecha" type="date" class="sisso-input"></div>
+          </div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Observaciones</label><textarea id="d-accidente-observaciones" class="sisso-textarea"></textarea></div>
+
+          <div class="matriz-riesgo-titulo" style="margin-top:10px;">Enfermedades profesionales previas</div>
+          <div class="fila-campos" style="margin-bottom:10px;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">¿Tuvo enfermedades profesionales calificadas?</label><select id="d-enfermedad-calificada" class="sisso-select"><option value="no">No</option><option value="si">Sí</option></select></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Entidad que calificó</label><input id="d-enfermedad-entidad" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Fecha</label><input id="d-enfermedad-fecha" type="date" class="sisso-input"></div>
+          </div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Observaciones</label><textarea id="d-enfermedad-observaciones" class="sisso-textarea"></textarea></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE E ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">E</span> Antecedentes familiares</summary>
+        <div class="bloque-cuerpo">
+          <div class="fila-campos">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Cardiovascular</label><input id="e-cardiovascular" class="sisso-input" placeholder="Parentesco y patología"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Metabólica</label><input id="e-metabolica" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Neurológica</label><input id="e-neurologica" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Oncológica</label><input id="e-oncologica" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Infecciosa</label><input id="e-infecciosa" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Hereditaria/congénita</label><input id="e-hereditaria" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Discapacidades</label><input id="e-discapacidades" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Otros</label><input id="e-otros" class="sisso-input"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE F ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">F</span> Factores de riesgo del puesto de trabajo actual</summary>
+        <div class="bloque-cuerpo">
+          <div class="fila-campos" style="margin-bottom:12px;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Puesto / área</label><input id="f-puesto-area" class="sisso-input"></div>
+          </div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Actividades del puesto</label><textarea id="f-actividades" class="sisso-textarea"></textarea></div>
+          <div id="matrices-riesgo"></div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Medidas preventivas existentes</label><textarea id="f-medidas-preventivas" class="sisso-textarea"></textarea></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE G ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">G</span> Actividades extra laborales</summary>
+        <div class="bloque-cuerpo">
+          <div class="sisso-campo"><textarea id="g-actividades-extra" class="sisso-textarea" placeholder="Otro trabajo, actividades agrícolas, artesanales, etc."></textarea></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE H ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">H</span> Enfermedad actual</summary>
+        <div class="bloque-cuerpo">
+          <div class="sisso-campo"><textarea id="h-enfermedad-actual" class="sisso-textarea"></textarea></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE I ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">I</span> Revisión actual de órganos y sistemas</summary>
+        <div class="bloque-cuerpo" id="caja-sistemas"></div>
+      </details>
+
+      <!-- ============ BLOQUE J ============ -->
+      <details class="bloque" open>
+        <summary><span class="bloque-letra">J</span> Constantes vitales y antropometría</summary>
+        <div class="bloque-cuerpo">
+          <div class="vitales-grid">
+            <div class="sisso-campo"><label class="sisso-etiqueta">P.A. sistólica (mmHg)</label><input id="j-pa-sistolica" type="number" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">P.A. diastólica (mmHg)</label><input id="j-pa-diastolica" type="number" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Temperatura (°C)</label><input id="j-temperatura" type="number" step="0.1" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Frec. cardíaca (lat/min)</label><input id="j-fc" type="number" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Saturación O₂ (%)</label><input id="j-satO2" type="number" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Frec. respiratoria (resp/min)</label><input id="j-fr" type="number" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Peso (kg)</label><input id="j-peso" type="number" step="0.1" class="sisso-input" oninput="calcularImcEnPantalla()"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Talla (cm)</label><input id="j-talla" type="number" class="sisso-input" oninput="calcularImcEnPantalla()"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Perímetro abdominal (cm)</label><input id="j-perimetro-abdominal" type="number" step="0.1" class="sisso-input"></div>
+          </div>
+          <div class="imc-resultado" id="imc-resultado"></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE K ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">K</span> Examen físico regional</summary>
+        <div class="bloque-cuerpo" id="caja-examen-regional"></div>
+      </details>
+
+      <!-- ============ BLOQUE L ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">L</span> Resultados de exámenes generales/específicos</summary>
+        <div class="bloque-cuerpo">
+          <div id="lista-resultados-examenes"></div>
+          <button type="button" class="sisso-boton secundario" onclick="agregarResultadoExamen()">+ Agregar resultado de examen</button>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE M ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">M</span> Diagnóstico</summary>
+        <div class="bloque-cuerpo">
+          <div class="buscador-cie10">
+            <input id="buscar-cie10" class="sisso-input" placeholder="Buscar por código o descripción (ej: epilepsia, G40)…" oninput="buscarCie10Debounced()" autocomplete="off">
+            <div class="resultados-cie10" id="resultados-cie10"></div>
+          </div>
+          <div id="lista-diagnosticos" style="margin-top:10px;"></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE N ============ -->
+      <details class="bloque" open>
+        <summary><span class="bloque-letra">N</span> Aptitud médica para el trabajo</summary>
+        <div class="bloque-cuerpo">
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta">Aptitud</label>
+            <select id="n-aptitud" class="sisso-select">
+              <option value="">Selecciona…</option>
+              <option value="apto">Apto</option>
+              <option value="apto_en_observacion">Apto en observación</option>
+              <option value="apto_con_limitaciones">Apto con limitaciones</option>
+              <option value="no_apto">No apto</option>
+            </select>
+          </div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Observación</label><textarea id="n-observacion" class="sisso-textarea"></textarea></div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Limitación (si aplica)</label><textarea id="n-limitacion" class="sisso-textarea"></textarea></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE O ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">O</span> Recomendaciones y/o tratamiento</summary>
+        <div class="bloque-cuerpo">
+          <div class="sisso-campo"><textarea id="o-recomendaciones" class="sisso-textarea"></textarea></div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE P ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">P</span> Datos del profesional y de la atención</summary>
+        <div class="bloque-cuerpo">
+          <div class="fila-campos">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de atención</label><input id="p-fecha-atencion" type="date" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Hora de atención</label><input id="p-hora-atencion" type="time" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Código profesional (MSP/ACESS)</label><input id="p-codigo-profesional" class="sisso-input"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ BLOQUE Q ============ -->
+      <details class="bloque">
+        <summary><span class="bloque-letra">Q</span> Firma del trabajador (opcional en este momento)</summary>
+        <div class="bloque-cuerpo">
+          <canvas id="lienzo-firma"></canvas>
+          <div class="firma-acciones">
+            <button type="button" class="sisso-boton secundario" onclick="limpiarFirma()">🗑 Limpiar firma</button>
+          </div>
+        </div>
+      </details>
+
+      <button class="sisso-boton ancho-completo" id="btn-guardar" onclick="guardarEvaluacion()" style="margin-top:16px;">Guardar evaluación preocupacional</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="historia-clinica.js"></script>
+</body>
+</html>
