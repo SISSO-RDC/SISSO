@@ -7,6 +7,7 @@ let trabajadores = [];
 let trabajadorActualId = null;
 let trabajadorActual = null;
 let catalogos = null;
+let tipoEvaluacionActual = 'preocupacional_inicio';
 
 // Filas dinamicas
 let antecedentesLaborales = [];
@@ -28,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderizarSistemas();
   renderizarExamenRegional();
   inicializarCanvasFirma();
+  cambiarTipoEvaluacion('preocupacional_inicio');
 
   agregarResultadoExamen(); // arranca con una fila vacia, es comun tener al menos un examen
 });
@@ -100,6 +102,34 @@ function cambiarTrabajador() {
   document.getElementById('caja-principal').style.display = 'none';
 }
 
+// ------- Alternar entre tipo de evaluacion (preocupacional / retiro) -------
+function cambiarTipoEvaluacion(tipo) {
+  tipoEvaluacionActual = tipo;
+  document.getElementById('btn-tipo-preocupacional').classList.toggle('activo', tipo === 'preocupacional_inicio');
+  document.getElementById('btn-tipo-retiro').classList.toggle('activo', tipo === 'retiro');
+
+  document.querySelectorAll('[data-solo]').forEach(el => {
+    el.style.display = (el.dataset.solo === tipo) ? '' : 'none';
+  });
+
+  document.getElementById('etiqueta-actividades-relevantes').textContent =
+    tipo === 'retiro' ? 'Actividades que desempeñó' : 'Actividades relevantes del puesto';
+
+  document.getElementById('btn-guardar').textContent =
+    tipo === 'retiro' ? 'Guardar evaluación de retiro' : 'Guardar evaluación preocupacional';
+
+  ocultarError('error-form');
+  ocultarExito('exito-form');
+}
+
+function calcularTiempoPermanencia() {
+  const inicio = document.getElementById('r-fecha-inicio-labores').value;
+  const salida = document.getElementById('r-fecha-salida').value;
+  if (!inicio || !salida) return;
+  const meses = Math.max(0, Math.round((new Date(salida) - new Date(inicio)) / (30.44 * 24 * 3600 * 1000)));
+  document.getElementById('r-tiempo-permanencia').value = meses;
+}
+
 // ------- Historial -------
 async function cargarHistorial() {
   const cont = document.getElementById('lista-evaluaciones');
@@ -113,14 +143,20 @@ async function cargarHistorial() {
       return;
     }
 
-    const etiquetasTipo = { preocupacional_inicio: 'Preocupacional — inicio' };
+    const etiquetasTipo = { preocupacional_inicio: 'Preocupacional — inicio', retiro: 'Retiro' };
     const etiquetasAptitud = {
       apto: ['Apto', 'verde'], apto_en_observacion: ['Apto en observación', 'ambar'],
       apto_con_limitaciones: ['Apto con limitaciones', 'ambar'], no_apto: ['No apto', 'rojo'],
     };
 
     cont.innerHTML = evaluaciones.map(e => {
-      const [etiquetaApt, colorApt] = etiquetasAptitud[e.aptitud_msp] || ['Sin definir', 'gris'];
+      let etiquetaChip, colorChip;
+      if (e.tipo_evaluacion === 'retiro') {
+        [etiquetaChip, colorChip] = e.retiro_se_realizo_evaluacion === true ? ['Evaluación realizada', 'verde']
+          : e.retiro_se_realizo_evaluacion === false ? ['No se realizó', 'rojo'] : ['Sin definir', 'gris'];
+      } else {
+        [etiquetaChip, colorChip] = etiquetasAptitud[e.aptitud_msp] || ['Sin definir', 'gris'];
+      }
       return `
         <div class="historial-item">
           <div>
@@ -129,12 +165,120 @@ async function cargarHistorial() {
               ${formatearFecha(e.fecha_atencion)} · Dr(a). ${escHtml(e.medico_nombre)} ${e.imc ? `· IMC: ${e.imc}` : ''}
             </div>
           </div>
-          <span class="sisso-chip ${colorApt}">${etiquetaApt}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="sisso-chip ${colorChip}">${etiquetaChip}</span>
+            <button class="btn-mini" onclick="verDetalle('${e.id}')">👁 Ver detalle</button>
+            <button class="btn-mini" onclick="descargarPdfEvaluacion('${e.id}')">📄 PDF</button>
+          </div>
         </div>`;
     }).join('');
   } catch (err) {
     cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
   }
+}
+
+// ------- Descargar PDF de una evaluacion -------
+async function descargarPdfEvaluacion(id) {
+  try {
+    const blob = await sissoDescargarArchivo(`/historia-clinica/${id}/pdf`);
+    sissoAbrirBlobEnNuevaPestana(blob);
+  } catch (err) {
+    alert('Error al descargar el PDF: ' + err.message);
+  }
+}
+
+// ------- Ver detalle de una evaluacion (modal de solo lectura) -------
+async function verDetalle(id) {
+  const fondo = document.createElement('div');
+  fondo.id = 'modal-detalle';
+  fondo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;';
+  fondo.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:24px;width:720px;max-width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:16px;font-weight:800;">Detalle de la evaluación</div>
+        <button class="btn-mini" onclick="document.getElementById('modal-detalle').remove()">✕ Cerrar</button>
+      </div>
+      <div id="contenido-detalle"><div class="sisso-cargando">Cargando…</div></div>
+    </div>`;
+  fondo.addEventListener('click', (e) => { if (e.target === fondo) fondo.remove(); });
+  document.body.appendChild(fondo);
+
+  try {
+    const datos = await sissoFetch(`/historia-clinica/${id}`);
+    document.getElementById('contenido-detalle').innerHTML = renderizarDetalle(datos.evaluacion);
+  } catch (err) {
+    document.getElementById('contenido-detalle').innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function renderizarDetalle(e) {
+  const seccion = (titulo, html) => html ? `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:800;color:var(--teal2);text-transform:uppercase;margin-bottom:6px;">${titulo}</div><div style="font-size:13px;color:var(--t2);">${html}</div></div>` : '';
+  const dato = (etq, val) => val ? `<div><strong>${etq}:</strong> ${escHtml(val)}</div>` : '';
+
+  const etiquetasAptitud = { apto: 'Apto', apto_en_observacion: 'Apto en observación', apto_con_limitaciones: 'Apto con limitaciones', no_apto: 'No apto' };
+
+  let html = '';
+  html += seccion('Datos generales', [
+    dato('Trabajador', e.trabajador_nombre), dato('Documento', e.trabajador_documento),
+    dato('Fecha de atención', formatearFecha(e.fecha_atencion)), dato('Profesional', e.medico_nombre),
+    dato('Área de trabajo', e.area_trabajo), dato('Grupo sanguíneo', e.grupo_sanguineo),
+    dato('Fecha de inicio de labores', formatearFecha(e.fecha_inicio_labores)),
+    dato('Fecha de salida', formatearFecha(e.fecha_salida)),
+    dato('Tiempo de permanencia', e.tiempo_permanencia_meses ? `${e.tiempo_permanencia_meses} meses` : null),
+  ].join(''));
+
+  if (e.factores_riesgo_texto_libre) html += seccion('Factores de riesgo a los que estuvo expuesto', escHtml(e.factores_riesgo_texto_libre));
+
+  html += seccion('Motivo de consulta', e.motivo_consulta ? escHtml(e.motivo_consulta) : '');
+
+  if (e.antecedentes_clinicos_quirurgicos) html += seccion('Antecedentes clínico-quirúrgicos', escHtml(e.antecedentes_clinicos_quirurgicos));
+
+  const laborales = e.antecedentes_laborales_previos || [];
+  if (laborales.length) {
+    html += seccion('Antecedentes laborales previos', laborales.map(l =>
+      `<div style="margin-bottom:6px;">• ${escHtml(l.empresa)} — ${escHtml(l.puestoTrabajo)} (${l.tiempoMeses || '?'} meses)${l.riesgos?.length ? ' · Riesgos: ' + l.riesgos.join(', ') : ''}</div>`
+    ).join(''));
+  }
+
+  if (e.enfermedad_actual) html += seccion('Enfermedad actual', escHtml(e.enfermedad_actual));
+
+  const vitales = [
+    e.presion_arterial_sistolica && e.presion_arterial_diastolica ? `P.A.: ${e.presion_arterial_sistolica}/${e.presion_arterial_diastolica} mmHg` : null,
+    e.frecuencia_cardiaca ? `F.C.: ${e.frecuencia_cardiaca} lat/min` : null,
+    e.peso_kg ? `Peso: ${e.peso_kg} kg` : null, e.talla_cm ? `Talla: ${e.talla_cm} cm` : null,
+    e.imc ? `IMC: ${e.imc} kg/m²` : null,
+  ].filter(Boolean).join(' · ');
+  if (vitales) html += seccion('Constantes vitales', vitales);
+
+  const diagnosticos = e.diagnosticos || [];
+  if (diagnosticos.length) {
+    html += seccion('Diagnósticos', diagnosticos.map(d =>
+      `<div>• <strong>${escHtml(d.codigoCie10)}</strong> ${escHtml(d.descripcion)} (${d.tipo?.replace(/_/g, ' ')}, ${d.condicion})</div>`
+    ).join(''));
+  }
+
+  if (e.aptitud_msp) {
+    html += seccion('Aptitud médica', `
+      <div style="font-weight:800;font-size:14px;color:var(--t1);margin-bottom:4px;">${etiquetasAptitud[e.aptitud_msp] || e.aptitud_msp}</div>
+      ${e.aptitud_observacion ? `<div>${escHtml(e.aptitud_observacion)}</div>` : ''}
+      ${e.aptitud_limitacion ? `<div style="color:var(--amb2);margin-top:4px;">Limitación: ${escHtml(e.aptitud_limitacion)}</div>` : ''}
+    `);
+  }
+
+  if (e.retiro_se_realizo_evaluacion !== null && e.retiro_se_realizo_evaluacion !== undefined) {
+    html += seccion('Evaluación médica de retiro', `
+      <div style="font-weight:800;">${e.retiro_se_realizo_evaluacion ? 'Sí se realizó' : 'No se realizó'}</div>
+      ${e.retiro_observaciones ? `<div style="margin-top:4px;">${escHtml(e.retiro_observaciones)}</div>` : ''}
+    `);
+  }
+
+  if (e.recomendaciones_tratamiento) html += seccion('Recomendaciones', escHtml(e.recomendaciones_tratamiento));
+
+  html += `<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;">
+    <button class="sisso-boton" onclick="descargarPdfEvaluacion('${e.id}')">📄 Descargar PDF completo</button>
+  </div>`;
+
+  return html;
 }
 
 // ------- Bloque D: antecedentes laborales previos (filas dinamicas) -------
@@ -426,6 +570,14 @@ function firmaTieneContenido() {
 
 // ------- Guardar evaluacion -------
 async function guardarEvaluacion() {
+  if (tipoEvaluacionActual === 'retiro') {
+    await guardarRetiro();
+  } else {
+    await guardarPreocupacional();
+  }
+}
+
+async function guardarPreocupacional() {
   ocultarError('error-form');
   ocultarExito('exito-form');
 
@@ -550,6 +702,75 @@ async function guardarEvaluacion() {
   } finally {
     boton.disabled = false;
     boton.textContent = 'Guardar evaluación preocupacional';
+  }
+}
+
+async function guardarRetiro() {
+  ocultarError('error-form');
+  ocultarExito('exito-form');
+
+  if (!trabajadorActualId) { mostrarError('error-form', 'Selecciona un trabajador.'); return; }
+
+  const val = (id) => document.getElementById(id).value.trim() || null;
+  const num = (id) => { const v = document.getElementById(id).value; return v === '' ? null : parseFloat(v); };
+
+  const cuerpo = {
+    fechaAtencion: val('p-fecha-atencion'),
+    horaAtencion: val('p-hora-atencion'),
+
+    fechaInicioLabores: val('r-fecha-inicio-labores'),
+    fechaSalida: val('r-fecha-salida'),
+    tiempoPermanenciaMeses: num('r-tiempo-permanencia'),
+    puestoTrabajoCiuo: val('a-ciuo'),
+    actividadesDesempenadas: val('a-actividades-relevantes'),
+    factoresRiesgoTextoLibre: val('r-factores-riesgo-texto'),
+
+    antecedentesClinicosQuirurgicos: val('c-clinicos-quirurgicos'),
+    accidentesTrabajoPrevios: {
+      fueCalificado: val('d-accidente-calificado') === 'si', especificarEntidad: val('d-accidente-entidad'),
+      fecha: val('d-accidente-fecha'), observaciones: val('d-accidente-observaciones'),
+    },
+    enfermedadesProfesionalesPrevias: {
+      fueCalificado: val('d-enfermedad-calificada') === 'si', especificarEntidad: val('d-enfermedad-entidad'),
+      fecha: val('d-enfermedad-fecha'), observaciones: val('d-enfermedad-observaciones'),
+    },
+
+    presionArterialSistolica: num('j-pa-sistolica'), presionArterialDiastolica: num('j-pa-diastolica'),
+    temperaturaC: num('j-temperatura'), frecuenciaCardiaca: num('j-fc'), saturacionOxigeno: num('j-satO2'),
+    frecuenciaRespiratoria: num('j-fr'), pesoKg: num('j-peso'), tallaCm: num('j-talla'),
+    perimetroAbdominalCm: num('j-perimetro-abdominal'),
+
+    examenFisicoRegional: leerExamenRegional(),
+    resultadosExamenes: resultadosExamenes.filter(r => r.examen).map(({ id, ...resto }) => resto),
+    diagnosticos: diagnosticosSeleccionados,
+
+    retiroSeRealizoEvaluacion: val('r-se-realizo-evaluacion') === 'si' ? true : val('r-se-realizo-evaluacion') === 'no' ? false : undefined,
+    retiroObservaciones: val('r-observaciones'),
+
+    recomendacionesTratamiento: val('o-recomendaciones'),
+    codigoProfesionalSalud: val('p-codigo-profesional'),
+
+    firmaBase64: firmaTieneContenido() ? document.getElementById('lienzo-firma').toDataURL('image/png') : undefined,
+  };
+
+  const boton = document.getElementById('btn-guardar');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch(`/historia-clinica/trabajadores/${trabajadorActualId}/retiro`, {
+      method: 'POST',
+      body: cuerpo,
+    });
+    mostrarExito('exito-form', 'Evaluación de retiro guardada correctamente.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await cargarHistorial();
+  } catch (err) {
+    mostrarError('error-form', err.message || 'Error al guardar la evaluación.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar evaluación de retiro';
   }
 }
 
