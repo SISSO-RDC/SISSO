@@ -93,6 +93,7 @@ function elegirTrabajador() {
 
   ajustarTamanoCanvasFirma();
   cargarHistorial();
+  cargarInmunizaciones();
 }
 
 function cambiarTrabajador() {
@@ -106,20 +107,36 @@ function cambiarTrabajador() {
 function cambiarTipoEvaluacion(tipo) {
   tipoEvaluacionActual = tipo;
   document.getElementById('btn-tipo-preocupacional').classList.toggle('activo', tipo === 'preocupacional_inicio');
+  document.getElementById('btn-tipo-periodica').classList.toggle('activo', tipo === 'periodica');
+  document.getElementById('btn-tipo-reintegro').classList.toggle('activo', tipo === 'reintegro');
   document.getElementById('btn-tipo-retiro').classList.toggle('activo', tipo === 'retiro');
 
   document.querySelectorAll('[data-solo]').forEach(el => {
-    el.style.display = (el.dataset.solo === tipo) ? '' : 'none';
+    const tiposPermitidos = el.dataset.solo.split(' ');
+    el.style.display = tiposPermitidos.includes(tipo) ? '' : 'none';
   });
 
   document.getElementById('etiqueta-actividades-relevantes').textContent =
     tipo === 'retiro' ? 'Actividades que desempeñó' : 'Actividades relevantes del puesto';
 
-  document.getElementById('btn-guardar').textContent =
-    tipo === 'retiro' ? 'Guardar evaluación de retiro' : 'Guardar evaluación preocupacional';
+  const textosBoton = {
+    preocupacional_inicio: 'Guardar evaluación preocupacional',
+    periodica: 'Guardar evaluación periódica',
+    reintegro: 'Guardar evaluación de reintegro',
+    retiro: 'Guardar evaluación de retiro',
+  };
+  document.getElementById('btn-guardar').textContent = textosBoton[tipo];
 
   ocultarError('error-form');
   ocultarExito('exito-form');
+}
+
+function calcularDiasAusencia() {
+  const ultimo = document.getElementById('ri-fecha-ultimo-dia').value;
+  const reingreso = document.getElementById('ri-fecha-reingreso').value;
+  if (!ultimo || !reingreso) return;
+  const dias = Math.max(0, Math.round((new Date(reingreso) - new Date(ultimo)) / (24 * 3600 * 1000)));
+  document.getElementById('ri-dias-ausencia').value = dias;
 }
 
 function calcularTiempoPermanencia() {
@@ -143,7 +160,7 @@ async function cargarHistorial() {
       return;
     }
 
-    const etiquetasTipo = { preocupacional_inicio: 'Preocupacional — inicio', retiro: 'Retiro' };
+    const etiquetasTipo = { preocupacional_inicio: 'Preocupacional — inicio', periodica: 'Periódica', reintegro: 'Reintegro', retiro: 'Retiro' };
     const etiquetasAptitud = {
       apto: ['Apto', 'verde'], apto_en_observacion: ['Apto en observación', 'ambar'],
       apto_con_limitaciones: ['Apto con limitaciones', 'ambar'], no_apto: ['No apto', 'rojo'],
@@ -169,6 +186,7 @@ async function cargarHistorial() {
             <span class="sisso-chip ${colorChip}">${etiquetaChip}</span>
             <button class="btn-mini" onclick="verDetalle('${e.id}')">👁 Ver detalle</button>
             <button class="btn-mini" onclick="descargarPdfEvaluacion('${e.id}')">📄 PDF</button>
+            <button class="btn-mini" onclick="descargarCertificado('${e.id}')">🏅 Certificado</button>
           </div>
         </div>`;
     }).join('');
@@ -184,6 +202,16 @@ async function descargarPdfEvaluacion(id) {
     sissoAbrirBlobEnNuevaPestana(blob);
   } catch (err) {
     alert('Error al descargar el PDF: ' + err.message);
+  }
+}
+
+// ------- Descargar el certificado de salud en el trabajo (HCU 081) -------
+async function descargarCertificado(id) {
+  try {
+    const blob = await sissoDescargarArchivo(`/historia-clinica/${id}/certificado`);
+    sissoAbrirBlobEnNuevaPestana(blob);
+  } catch (err) {
+    alert('Error al descargar el certificado: ' + err.message);
   }
 }
 
@@ -279,6 +307,67 @@ function renderizarDetalle(e) {
   </div>`;
 
   return html;
+}
+
+// ------- Registro de inmunizaciones (HCU 083) -------
+async function cargarInmunizaciones() {
+  const cont = document.getElementById('lista-inmunizaciones');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+  try {
+    const datos = await sissoFetch(`/historia-clinica/trabajadores/${trabajadorActualId}/inmunizaciones`);
+    const inmunizaciones = datos.inmunizaciones || [];
+    if (inmunizaciones.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Sin dosis registradas todavía.</div>';
+      return;
+    }
+    cont.innerHTML = inmunizaciones.map(i => `
+      <div class="historial-item">
+        <div>
+          <strong>${escHtml(i.vacuna_nombre)}</strong> — ${escHtml(i.numero_dosis)}
+          <div style="font-size:12px;color:var(--t3);margin-top:2px;">
+            ${formatearFecha(i.fecha_aplicacion)}${i.lote ? ' · Lote: ' + escHtml(i.lote) : ''}${i.establecimiento_salud ? ' · ' + escHtml(i.establecimiento_salud) : ''}
+          </div>
+        </div>
+        ${i.esquema_completo ? '<span class="sisso-chip verde">Esquema completo</span>' : ''}
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function registrarInmunizacion() {
+  ocultarError('error-inmunizacion');
+  ocultarExito('exito-inmunizacion');
+
+  const vacunaSeleccionada = document.getElementById('inm-vacuna').value;
+  const vacunaNombre = vacunaSeleccionada === 'Otra' ? document.getElementById('inm-vacuna-otra').value.trim() : vacunaSeleccionada;
+  const fecha = document.getElementById('inm-fecha').value;
+
+  if (!vacunaNombre) { mostrarError('error-inmunizacion', 'Indica el nombre de la vacuna.'); return; }
+  if (!fecha) { mostrarError('error-inmunizacion', 'La fecha de aplicación es obligatoria.'); return; }
+
+  try {
+    await sissoFetch(`/historia-clinica/trabajadores/${trabajadorActualId}/inmunizaciones`, {
+      method: 'POST',
+      body: {
+        vacunaNombre,
+        numeroDosis: document.getElementById('inm-dosis').value,
+        fechaAplicacion: fecha,
+        lote: document.getElementById('inm-lote').value.trim() || undefined,
+        esquemaCompleto: document.getElementById('inm-esquema-completo').checked,
+        establecimientoSalud: document.getElementById('inm-establecimiento').value.trim() || undefined,
+        responsableNombre: document.getElementById('inm-responsable').value.trim() || undefined,
+        observaciones: document.getElementById('inm-observaciones').value.trim() || undefined,
+      },
+    });
+
+    mostrarExito('exito-inmunizacion', 'Dosis registrada correctamente.');
+    ['inm-vacuna-otra', 'inm-lote', 'inm-establecimiento', 'inm-responsable', 'inm-observaciones', 'inm-fecha'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('inm-esquema-completo').checked = false;
+    await cargarInmunizaciones();
+  } catch (err) {
+    mostrarError('error-inmunizacion', err.message || 'Error al registrar la dosis.');
+  }
 }
 
 // ------- Bloque D: antecedentes laborales previos (filas dinamicas) -------
@@ -572,6 +661,10 @@ function firmaTieneContenido() {
 async function guardarEvaluacion() {
   if (tipoEvaluacionActual === 'retiro') {
     await guardarRetiro();
+  } else if (tipoEvaluacionActual === 'periodica') {
+    await guardarPeriodica();
+  } else if (tipoEvaluacionActual === 'reintegro') {
+    await guardarReintegro();
   } else {
     await guardarPreocupacional();
   }
@@ -771,6 +864,158 @@ async function guardarRetiro() {
   } finally {
     boton.disabled = false;
     boton.textContent = 'Guardar evaluación de retiro';
+  }
+}
+
+async function guardarPeriodica() {
+  ocultarError('error-form');
+  ocultarExito('exito-form');
+
+  if (!trabajadorActualId) { mostrarError('error-form', 'Selecciona un trabajador.'); return; }
+
+  const val = (id) => document.getElementById(id).value.trim() || null;
+  const num = (id) => { const v = document.getElementById(id).value; return v === '' ? null : parseFloat(v); };
+
+  const cuerpo = {
+    fechaAtencion: val('p-fecha-atencion'),
+    horaAtencion: val('p-hora-atencion'),
+
+    puestoTrabajoCiuo: val('a-ciuo'),
+
+    antecedentesClinicosQuirurgicos: val('c-clinicos-quirurgicos'),
+    habitosToxicos: {
+      tabaco: { consume: val('c-tabaco-consume'), detalle: val('c-tabaco-detalle') },
+      alcohol: { consume: val('c-alcohol-consume'), detalle: val('c-alcohol-detalle') },
+      otrasDrogas: { consume: val('c-drogas-consume'), detalle: val('c-drogas-detalle') },
+    },
+    estiloVida: {
+      actividadFisica: val('c-actividad-fisica'),
+      medicacionHabitual: val('c-medicacion-habitual'),
+    },
+    incidentes: val('c-incidentes'),
+    accidentesTrabajoPrevios: {
+      fueCalificado: val('d-accidente-calificado') === 'si', especificarEntidad: val('d-accidente-entidad'),
+      fecha: val('d-accidente-fecha'), observaciones: val('d-accidente-observaciones'),
+    },
+    enfermedadesProfesionalesPrevias: {
+      fueCalificado: val('d-enfermedad-calificada') === 'si', especificarEntidad: val('d-enfermedad-entidad'),
+      fecha: val('d-enfermedad-fecha'), observaciones: val('d-enfermedad-observaciones'),
+    },
+
+    antecedentesFamiliares: {
+      cardiovascular: val('e-cardiovascular'), metabolica: val('e-metabolica'), neurologica: val('e-neurologica'),
+      oncologica: val('e-oncologica'), infecciosa: val('e-infecciosa'), hereditariaCongenita: val('e-hereditaria'),
+      discapacidades: val('e-discapacidades'), otros: val('e-otros'),
+    },
+
+    factoresRiesgoActual: {
+      puestoArea: val('f-puesto-area'), actividades: val('f-actividades'),
+      ...leerMatricesRiesgo(),
+      medidasPreventivas: val('f-medidas-preventivas'),
+    },
+    tiempoPuestoActualMeses: num('f-tiempo-puesto-actual'),
+
+    enfermedadActual: val('h-enfermedad-actual'),
+    revisionOrganosSistemas: leerSistemas(),
+
+    presionArterialSistolica: num('j-pa-sistolica'), presionArterialDiastolica: num('j-pa-diastolica'),
+    temperaturaC: num('j-temperatura'), frecuenciaCardiaca: num('j-fc'), saturacionOxigeno: num('j-satO2'),
+    frecuenciaRespiratoria: num('j-fr'), pesoKg: num('j-peso'), tallaCm: num('j-talla'),
+    perimetroAbdominalCm: num('j-perimetro-abdominal'),
+
+    examenFisicoRegional: leerExamenRegional(),
+    resultadosExamenes: resultadosExamenes.filter(r => r.examen).map(({ id, ...resto }) => resto),
+    diagnosticos: diagnosticosSeleccionados,
+
+    aptitudMsp: val('n-aptitud'),
+    aptitudObservacion: val('n-observacion'),
+    aptitudLimitacion: val('n-limitacion'),
+
+    recomendacionesTratamiento: val('o-recomendaciones'),
+    codigoProfesionalSalud: val('p-codigo-profesional'),
+
+    firmaBase64: firmaTieneContenido() ? document.getElementById('lienzo-firma').toDataURL('image/png') : undefined,
+  };
+
+  const boton = document.getElementById('btn-guardar');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch(`/historia-clinica/trabajadores/${trabajadorActualId}/periodica`, {
+      method: 'POST',
+      body: cuerpo,
+    });
+    mostrarExito('exito-form', 'Evaluación periódica guardada correctamente.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await cargarHistorial();
+  } catch (err) {
+    mostrarError('error-form', err.message || 'Error al guardar la evaluación.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar evaluación periódica';
+  }
+}
+
+async function guardarReintegro() {
+  ocultarError('error-form');
+  ocultarExito('exito-form');
+
+  if (!trabajadorActualId) { mostrarError('error-form', 'Selecciona un trabajador.'); return; }
+
+  const val = (id) => document.getElementById(id).value.trim() || null;
+  const num = (id) => { const v = document.getElementById(id).value; return v === '' ? null : parseFloat(v); };
+
+  const cuerpo = {
+    fechaAtencion: val('p-fecha-atencion'),
+    horaAtencion: val('p-hora-atencion'),
+
+    fechaUltimoDiaLaboral: val('ri-fecha-ultimo-dia'),
+    fechaReingreso: val('ri-fecha-reingreso'),
+    totalDiasAusencia: num('ri-dias-ausencia'),
+    causaSalida: val('ri-causa-salida'),
+
+    enfermedadActual: val('h-enfermedad-actual'),
+
+    presionArterialSistolica: num('j-pa-sistolica'), presionArterialDiastolica: num('j-pa-diastolica'),
+    temperaturaC: num('j-temperatura'), frecuenciaCardiaca: num('j-fc'), saturacionOxigeno: num('j-satO2'),
+    frecuenciaRespiratoria: num('j-fr'), pesoKg: num('j-peso'), tallaCm: num('j-talla'),
+    perimetroAbdominalCm: num('j-perimetro-abdominal'),
+
+    examenFisicoRegional: leerExamenRegional(),
+    resultadosExamenes: resultadosExamenes.filter(r => r.examen).map(({ id, ...resto }) => resto),
+    diagnosticos: diagnosticosSeleccionados,
+
+    aptitudMsp: val('n-aptitud'),
+    aptitudObservacion: val('n-observacion'),
+    aptitudLimitacion: val('n-limitacion'),
+    aptitudReubicacion: val('n-reubicacion'),
+
+    recomendacionesTratamiento: val('o-recomendaciones'),
+    codigoProfesionalSalud: val('p-codigo-profesional'),
+
+    firmaBase64: firmaTieneContenido() ? document.getElementById('lienzo-firma').toDataURL('image/png') : undefined,
+  };
+
+  const boton = document.getElementById('btn-guardar');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch(`/historia-clinica/trabajadores/${trabajadorActualId}/reintegro`, {
+      method: 'POST',
+      body: cuerpo,
+    });
+    mostrarExito('exito-form', 'Evaluación de reintegro guardada correctamente.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await cargarHistorial();
+  } catch (err) {
+    mostrarError('error-form', err.message || 'Error al guardar la evaluación.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar evaluación de reintegro';
   }
 }
 

@@ -49,8 +49,8 @@
 
   .historial-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
-  .toggle-tipo-evaluacion { display: flex; gap: 10px; margin-bottom: 16px; }
-  .toggle-tipo-evaluacion button { flex: 1; padding: 10px; border: 1.5px solid var(--bd); border-radius: var(--r); background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--t2); font-family: inherit; }
+  .toggle-tipo-evaluacion { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .toggle-tipo-evaluacion button { flex: 1; min-width: 160px; padding: 10px; border: 1.5px solid var(--bd); border-radius: var(--r); background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--t2); font-family: inherit; }
   .toggle-tipo-evaluacion button.activo { border-color: var(--teal); background: var(--teal3); color: var(--teal2); }
 </style>
 </head>
@@ -86,9 +86,63 @@
     </div>
 
     <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Registro de inmunizaciones (HCU 083)</div>
+      <div class="sisso-tarjeta-subtitulo">Registro acumulativo — cada dosis aplicada se agrega como una fila nueva.</div>
+      <div class="sisso-error" id="error-inmunizacion"></div>
+      <div class="sisso-exito" id="exito-inmunizacion"></div>
+
+      <div id="lista-inmunizaciones" style="margin-bottom:14px;"></div>
+
+      <details class="bloque">
+        <summary><span class="bloque-letra">+</span> Registrar nueva dosis</summary>
+        <div class="bloque-cuerpo">
+          <div class="fila-campos" style="margin-bottom:12px;">
+            <div class="sisso-campo">
+              <label class="sisso-etiqueta">Vacuna</label>
+              <select id="inm-vacuna" class="sisso-select" onchange="document.getElementById('inm-vacuna-otra').style.display=this.value==='Otra'?'block':'none';">
+                <option value="Tétanos-Difteria">Tétanos-Difteria</option>
+                <option value="Hepatitis B">Hepatitis B</option>
+                <option value="Hepatitis A">Hepatitis A</option>
+                <option value="Influenza estacional">Influenza estacional</option>
+                <option value="Sarampión-Rubéola">Sarampión-Rubéola</option>
+                <option value="Fiebre Amarilla">Fiebre Amarilla</option>
+                <option value="COVID-19">COVID-19</option>
+                <option value="Otra">Otra…</option>
+              </select>
+            </div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">N° de dosis</label>
+              <select id="inm-dosis" class="sisso-select">
+                <option value="1ra">1ra</option>
+                <option value="2da">2da</option>
+                <option value="3ra">3ra</option>
+                <option value="Refuerzo">Refuerzo</option>
+                <option value="Única">Única</option>
+              </select>
+            </div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de aplicación</label><input id="inm-fecha" type="date" class="sisso-input"></div>
+          </div>
+          <input id="inm-vacuna-otra" class="sisso-input" placeholder="Nombre de la vacuna" style="display:none;margin-bottom:12px;">
+
+          <div class="fila-campos" style="margin-bottom:12px;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Lote</label><input id="inm-lote" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Establecimiento de salud</label><input id="inm-establecimiento" class="sisso-input"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Responsable de la aplicación</label><input id="inm-responsable" class="sisso-input"></div>
+          </div>
+          <label class="chip-checkbox" style="border-radius:8px;margin-bottom:12px;">
+            <input type="checkbox" id="inm-esquema-completo"> Esquema de vacunación completo
+          </label>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Observaciones</label><textarea id="inm-observaciones" class="sisso-textarea"></textarea></div>
+          <button class="sisso-boton" onclick="registrarInmunizacion()">Registrar dosis</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
       <div class="sisso-tarjeta-titulo">Nueva evaluación</div>
       <div class="toggle-tipo-evaluacion">
-        <button type="button" id="btn-tipo-preocupacional" class="activo" onclick="cambiarTipoEvaluacion('preocupacional_inicio')">Preocupacional — inicio (HCU 077)</button>
+        <button type="button" id="btn-tipo-preocupacional" class="activo" onclick="cambiarTipoEvaluacion('preocupacional_inicio')">Preocupacional (HCU 077)</button>
+        <button type="button" id="btn-tipo-periodica" onclick="cambiarTipoEvaluacion('periodica')">Periódica (HCU 078)</button>
+        <button type="button" id="btn-tipo-reintegro" onclick="cambiarTipoEvaluacion('reintegro')">Reintegro (HCU 079)</button>
         <button type="button" id="btn-tipo-retiro" onclick="cambiarTipoEvaluacion('retiro')">Retiro (HCU 080)</button>
       </div>
       <div class="sisso-error" id="error-form"></div>
@@ -105,6 +159,14 @@
               <div class="sisso-campo"><label class="sisso-etiqueta">Tiempo de permanencia (meses)</label><input id="r-tiempo-permanencia" type="number" min="0" class="sisso-input" placeholder="Se calcula automáticamente"></div>
             </div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Factores de riesgo a los que estuvo expuesto</label><textarea id="r-factores-riesgo-texto" class="sisso-textarea"></textarea></div>
+          </div>
+          <div data-solo="reintegro" style="display:none;">
+            <div class="fila-campos" style="margin-bottom:12px;">
+              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha del último día laboral</label><input id="ri-fecha-ultimo-dia" type="date" class="sisso-input" onchange="calcularDiasAusencia()"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de reingreso</label><input id="ri-fecha-reingreso" type="date" class="sisso-input" onchange="calcularDiasAusencia()"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Total de días de ausencia</label><input id="ri-dias-ausencia" type="number" min="0" class="sisso-input" placeholder="Se calcula automáticamente"></div>
+            </div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Causa de la salida</label><textarea id="ri-causa-salida" class="sisso-textarea"></textarea></div>
           </div>
           <div class="fila-campos" style="margin-bottom:12px;">
             <div class="sisso-campo"><label class="sisso-etiqueta">Código CIUO del puesto (opcional)</label><input id="a-ciuo" class="sisso-input"></div>
@@ -195,7 +257,9 @@
               <div class="sisso-campo"><label class="sisso-etiqueta">Hijos fallecidos</label><input id="c-m-hijos-muertos" type="number" min="0" class="sisso-input"></div>
             </div>
           </div>
+          </div>
 
+          <div data-solo="preocupacional_inicio periodica">
           <div class="matriz-riesgo-titulo" style="margin-top:14px;">Hábitos tóxicos</div>
           <div class="fila-campos" style="margin-bottom:10px;">
             <div class="sisso-campo"><label class="sisso-etiqueta">Tabaco — ¿consume?</label><select id="c-tabaco-consume" class="sisso-select"><option value="no">No</option><option value="si">Sí</option><option value="ex">Ex-consumidor</option></select></div>
@@ -211,6 +275,10 @@
             <div class="sisso-campo"><label class="sisso-etiqueta">Actividad física</label><input id="c-actividad-fisica" class="sisso-input" placeholder="Cuál y con qué frecuencia"></div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Medicación habitual</label><input id="c-medicacion-habitual" class="sisso-input" placeholder="Cuál y desde cuándo"></div>
           </div>
+          </div>
+
+          <div data-solo="periodica" style="display:none;margin-top:14px;">
+            <div class="sisso-campo"><label class="sisso-etiqueta">Incidentes de mayor recurrencia (que podrían derivar en accidente o enfermedad profesional)</label><textarea id="c-incidentes" class="sisso-textarea"></textarea></div>
           </div>
         </div>
       </details>
@@ -243,7 +311,7 @@
       </details>
 
       <!-- ============ BLOQUE E ============ -->
-      <details class="bloque" data-solo="preocupacional_inicio">
+      <details class="bloque" data-solo="preocupacional_inicio periodica">
         <summary><span class="bloque-letra">E</span> Antecedentes familiares</summary>
         <div class="bloque-cuerpo">
           <div class="fila-campos">
@@ -260,11 +328,12 @@
       </details>
 
       <!-- ============ BLOQUE F ============ -->
-      <details class="bloque" data-solo="preocupacional_inicio">
+      <details class="bloque" data-solo="preocupacional_inicio periodica">
         <summary><span class="bloque-letra">F</span> Factores de riesgo del puesto de trabajo actual</summary>
         <div class="bloque-cuerpo">
           <div class="fila-campos" style="margin-bottom:12px;">
             <div class="sisso-campo"><label class="sisso-etiqueta">Puesto / área</label><input id="f-puesto-area" class="sisso-input"></div>
+            <div class="sisso-campo" data-solo="periodica" style="display:none;"><label class="sisso-etiqueta">Tiempo en el puesto actual (meses)</label><input id="f-tiempo-puesto-actual" type="number" min="0" class="sisso-input"></div>
           </div>
           <div class="sisso-campo"><label class="sisso-etiqueta">Actividades del puesto</label><textarea id="f-actividades" class="sisso-textarea"></textarea></div>
           <div id="matrices-riesgo"></div>
@@ -281,7 +350,7 @@
       </details>
 
       <!-- ============ BLOQUE H ============ -->
-      <details class="bloque" data-solo="preocupacional_inicio">
+      <details class="bloque" data-solo="preocupacional_inicio periodica reintegro">
         <summary><span class="bloque-letra">H</span> Enfermedad actual</summary>
         <div class="bloque-cuerpo">
           <div class="sisso-campo"><textarea id="h-enfermedad-actual" class="sisso-textarea"></textarea></div>
@@ -289,7 +358,7 @@
       </details>
 
       <!-- ============ BLOQUE I ============ -->
-      <details class="bloque" data-solo="preocupacional_inicio">
+      <details class="bloque" data-solo="preocupacional_inicio periodica">
         <summary><span class="bloque-letra">I</span> Revisión actual de órganos y sistemas</summary>
         <div class="bloque-cuerpo" id="caja-sistemas"></div>
       </details>
@@ -341,7 +410,7 @@
       </details>
 
       <!-- ============ BLOQUE N ============ -->
-      <details class="bloque" open data-solo="preocupacional_inicio">
+      <details class="bloque" open data-solo="preocupacional_inicio periodica reintegro">
         <summary><span class="bloque-letra">N</span> Aptitud médica para el trabajo</summary>
         <div class="bloque-cuerpo">
           <div class="sisso-campo">
@@ -356,6 +425,7 @@
           </div>
           <div class="sisso-campo"><label class="sisso-etiqueta">Observación</label><textarea id="n-observacion" class="sisso-textarea"></textarea></div>
           <div class="sisso-campo"><label class="sisso-etiqueta">Limitación (si aplica)</label><textarea id="n-limitacion" class="sisso-textarea"></textarea></div>
+          <div class="sisso-campo" data-solo="reintegro" style="display:none;"><label class="sisso-etiqueta">Reubicación (si aplica)</label><textarea id="n-reubicacion" class="sisso-textarea"></textarea></div>
         </div>
       </details>
 
