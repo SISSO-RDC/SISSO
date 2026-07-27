@@ -36,7 +36,7 @@ const SissoLayout = (() => {
     { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '#',                          roles: ['medico', 'sso'] },
     { id: 'reba',         label: 'Calculadora REBA',   icono: '📐', href: '../reba/index.html',           roles: ['medico', 'sso'] },
     { id: 'rula',         label: 'Calculadora RULA',   icono: '📏', href: '../rula/index.html',           roles: ['medico', 'sso'] },
-    { id: 'niosh',        label: 'Ecuación NIOSH',     icono: '⚖️', href: '#',                          roles: ['medico', 'sso'] },
+    { id: 'niosh',        label: 'Ecuación NIOSH',     icono: '⚖️', href: '../niosh/index.html',        roles: ['medico', 'sso'] },
     { id: 'nordico',      label: 'Cuestionario Nórdico', icono: '🗂️', href: '../nordico/index.html',    roles: ['medico', 'sso'] },
 
     { seccion: 'GESTIÓN' },
