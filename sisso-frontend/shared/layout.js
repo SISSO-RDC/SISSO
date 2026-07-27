@@ -33,7 +33,7 @@ const SissoLayout = (() => {
     { id: 'visiometria',  label: 'Visiometría',        icono: '👁️', href: '../visiometria/index.html',  roles: ['medico'] },
 
     { seccion: 'ERGONOMÍA' },
-    { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '#',                          roles: ['medico', 'sso'] },
+    { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '../puestos-trabajo/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
     { id: 'reba',         label: 'Calculadora REBA',   icono: '📐', href: '../reba/index.html',           roles: ['medico', 'sso'] },
     { id: 'rula',         label: 'Calculadora RULA',   icono: '📏', href: '../rula/index.html',           roles: ['medico', 'sso'] },
     { id: 'niosh',        label: 'Ecuación NIOSH',     icono: '⚖️', href: '../niosh/index.html',        roles: ['medico', 'sso'] },

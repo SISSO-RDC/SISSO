@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — Puestos de Trabajo</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  .tabla-puestos { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tabla-puestos th { text-align: left; padding: 10px 8px; font-size: 11px; font-weight: 700; color: var(--t3); border-bottom: 2px solid var(--bd); }
+  .tabla-puestos td { padding: 10px 8px; border-bottom: 1px solid var(--bd); }
+  .tabla-puestos tr:last-child td { border-bottom: none; }
+
+  .matriz-riesgo { margin-bottom: 14px; }
+  .matriz-riesgo-titulo { font-size: 12.5px; font-weight: 700; color: var(--t2); margin-bottom: 6px; }
+  .chips-checkbox { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-checkbox { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--bd); border-radius: 16px; padding: 5px 11px; font-size: 12px; cursor: pointer; user-select: none; }
+  .chip-checkbox input { margin: 0; }
+  .chip-checkbox:has(input:checked) { background: var(--teal3); border-color: var(--teal); color: var(--teal2); font-weight: 600; }
+
+  .sisso-modal-fondo { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .sisso-modal-fondo.visible { display: flex; }
+  .sisso-modal-caja { background: #fff; border-radius: 14px; padding: 24px; width: 640px; max-width: 100%; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+
+  .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .fila-campos .sisso-campo { margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="sisso-tarjeta">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+      <div>
+        <div class="sisso-tarjeta-titulo" style="margin-bottom:2px;">Puestos de Trabajo</div>
+        <div class="sisso-tarjeta-subtitulo">Catálogo de puestos con su perfil de riesgo, reutilizable en otros módulos.</div>
+      </div>
+      <button class="sisso-boton" onclick="abrirModal()">+ Nuevo puesto</button>
+    </div>
+    <div class="sisso-exito" id="exito-lista"></div>
+    <div style="overflow-x:auto;">
+      <table class="tabla-puestos">
+        <thead>
+          <tr><th>Nombre</th><th>Área</th><th>CIUO</th><th>Trabajadores estimados</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="tabla-tbody">
+          <tr><td colspan="5" class="sisso-cargando">Cargando puestos…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: crear/editar puesto -->
+<div class="sisso-modal-fondo" id="modal-puesto">
+  <div class="sisso-modal-caja">
+    <div style="font-size:16px;font-weight:800;margin-bottom:16px;" id="titulo-modal">Nuevo puesto de trabajo</div>
+    <div class="sisso-error" id="error-modal"></div>
+
+    <div class="fila-campos" style="margin-bottom:12px;">
+      <div class="sisso-campo"><label class="sisso-etiqueta">Nombre del puesto *</label><input id="m-nombre" class="sisso-input"></div>
+      <div class="sisso-campo"><label class="sisso-etiqueta">Área</label><input id="m-area" class="sisso-input"></div>
+      <div class="sisso-campo"><label class="sisso-etiqueta">Código CIUO (opcional)</label><input id="m-ciuo" class="sisso-input"></div>
+      <div class="sisso-campo"><label class="sisso-etiqueta">N° trabajadores estimados</label><input id="m-numero-trabajadores" type="number" min="0" class="sisso-input"></div>
+    </div>
+
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta">Descripción de actividades</label>
+      <textarea id="m-actividades" class="sisso-textarea"></textarea>
+    </div>
+
+    <div class="matriz-riesgo-titulo" style="margin-top:10px;">Factores de riesgo del puesto</div>
+    <div id="matrices-riesgo"></div>
+
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta">Equipo de protección personal (EPP) requerido</label>
+      <textarea id="m-epp" class="sisso-textarea" placeholder="Ej: Casco, guantes de nitrilo, protección auditiva…"></textarea>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta">Medidas preventivas</label>
+      <textarea id="m-medidas" class="sisso-textarea"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+      <button class="sisso-boton secundario" onclick="cerrarModal()">Cancelar</button>
+      <button class="sisso-boton" id="btn-guardar-modal" onclick="guardarPuesto()">Guardar puesto</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="puestos-trabajo.js"></script>
+</body>
+</html>
