@@ -22,7 +22,7 @@ const SissoLayout = (() => {
     { id: 'empresa',      label: 'Mi Empresa',         icono: '🏢', href: '../mi-empresa/index.html',   roles: ['admin'] },
     { id: 'trabajadores', label: 'Trabajadores',       icono: '👥', href: '../trabajadores/index.html',   roles: [] },
     { id: 'alertas',      label: 'Alertas',            icono: '🔔', href: '#',                          roles: [] },
-    { id: 'calendario',   label: 'Calendario EMOs',    icono: '📅', href: '#',                          roles: [] },
+    { id: 'calendario',   label: 'Calendario EMOs',    icono: '📅', href: '../calendario-emos/index.html', roles: [] },
 
     { seccion: 'CLÍNICO' },
     { id: 'emos',         label: 'EMOs / Aptitud',     icono: '🩺', href: '../aptitud/index.html',        roles: ['medico'] },
@@ -41,7 +41,7 @@ const SissoLayout = (() => {
 
     { seccion: 'GESTIÓN' },
     { id: 'ausentismo',   label: 'Ausentismo',         icono: '📉', href: '#',                          roles: [] },
-    { id: 'proximos',     label: 'Próximos exámenes',  icono: '⏰', href: '#',                          roles: [] },
+    { id: 'proximos',     label: 'Próximos exámenes',  icono: '⏰', href: '../calendario-emos/index.html', roles: [] },
     { id: 'matriz',       label: 'Matriz de riesgos',  icono: '🗂️', href: '#',                          roles: ['medico', 'sso'] },
     { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '#',                          roles: ['medico', 'sso'] },
     { id: 'indicadores',  label: 'Indicadores SSO',    icono: '📈', href: '#',                          roles: [] },
