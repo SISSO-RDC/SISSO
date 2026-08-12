@@ -40,7 +40,7 @@ const SissoLayout = (() => {
     { id: 'nordico',      label: 'Cuestionario Nórdico', icono: '🗂️', href: '../nordico/index.html',    roles: ['medico', 'sso'] },
 
     { seccion: 'GESTIÓN' },
-    { id: 'ausentismo',   label: 'Ausentismo',         icono: '📉', href: '#',                          roles: [] },
+    { id: 'ausentismo',   label: 'Ausentismo',         icono: '📉', href: '../ausentismo/index.html',  roles: [] },
     { id: 'proximos',     label: 'Próximos exámenes',  icono: '⏰', href: '../calendario-emos/index.html', roles: [] },
     { id: 'matriz',       label: 'Matriz de riesgos',  icono: '🗂️', href: '../matriz-riesgos/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
     { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '#',                          roles: ['medico', 'sso'] },
