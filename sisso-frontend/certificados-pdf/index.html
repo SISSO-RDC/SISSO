@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — Certificados PDF</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  .tabs-cert { display: flex; gap: 6px; border-bottom: 2px solid var(--bd); margin-bottom: 18px; }
+  .tab-cert { padding: 10px 16px; font-size: 13px; font-weight: 700; color: var(--t3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab-cert.activa { color: var(--teal); border-bottom-color: var(--teal); }
+  .panel-cert { display: none; }
+  .panel-cert.activo { display: block; }
+
+  .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .fila-campos .sisso-campo { margin-bottom: 0; }
+
+  .tabla-cert { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 14px; }
+  .tabla-cert th { text-align: left; padding: 8px 6px; font-size: 11px; font-weight: 700; color: var(--t3); border-bottom: 2px solid var(--bd); }
+  .tabla-cert td { padding: 8px 6px; border-bottom: 1px solid var(--bd); vertical-align: top; }
+
+  .lista-asistentes { max-height: 220px; overflow-y: auto; border: 1px solid var(--bd); border-radius: 8px; padding: 8px; margin-top: 4px; }
+  .fila-asistente { display: flex; align-items: center; gap: 8px; padding: 5px 4px; font-size: 12.5px; }
+  .fila-asistente input { width: 15px; height: 15px; }
+
+  .aptitud-chip { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .aptitud-apto { background: #dcfce7; color: #16a34a; }
+  .aptitud-con_restricciones { background: #fef3c7; color: #d97706; }
+  .aptitud-no_apto { background: #fee2e2; color: #dc2626; }
+  .aptitud-pendiente { background: var(--bg3); color: var(--t3); }
+
+  .sisso-modal-fondo { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .sisso-modal-fondo.visible { display: flex; }
+  .sisso-modal-caja { background: #fff; border-radius: 14px; padding: 24px; width: 560px; max-width: 100%; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div class="sisso-tarjeta">
+    <div class="sisso-tarjeta-titulo">Certificados PDF</div>
+    <div class="sisso-tarjeta-subtitulo" style="margin-bottom:16px;">Genera y descarga certificados listos para entregar al trabajador.</div>
+
+    <div class="tabs-cert">
+      <div class="tab-cert activa" data-tab="hcu081" onclick="cambiarTab('hcu081')">Certificado HCU 081</div>
+      <div class="tab-cert" data-tab="capacitacion" onclick="cambiarTab('capacitacion')">Asistencia a capacitación</div>
+      <div class="tab-cert" data-tab="aptitud" onclick="cambiarTab('aptitud')">Aptitud independiente</div>
+    </div>
+
+    <div class="sisso-error" id="error-cert"></div>
+    <div class="sisso-exito" id="exito-cert"></div>
+
+    <!-- ===== TAB 1: HCU 081 ===== -->
+    <div class="panel-cert activo" id="panel-hcu081">
+      <p style="font-size:12.5px;color:var(--t3);margin-bottom:14px;">
+        Documento oficial derivado de una evaluación ocupacional ya registrada (Formulario HCU 081, Acuerdo Ministerial MSP 0341-2019). Solo visible para el rol médico.
+      </p>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta">Trabajador</label>
+        <select id="hcu-trabajador" class="sisso-select" onchange="cargarEvaluacionesHcu081()"><option value="">Selecciona un trabajador…</option></select>
+      </div>
+      <table class="tabla-cert" id="tabla-hcu081" style="display:none;">
+        <thead><tr><th>Tipo de evaluación</th><th>Fecha</th><th>Aptitud</th><th>Médico</th><th>Acción</th></tr></thead>
+        <tbody id="tbody-hcu081"></tbody>
+      </table>
+      <div id="sin-evaluaciones-hcu081" style="display:none;" class="sisso-vacio">Este trabajador no tiene evaluaciones registradas.</div>
+    </div>
+
+    <!-- ===== TAB 2: Capacitación ===== -->
+    <div class="panel-cert" id="panel-capacitacion">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <p style="font-size:12.5px;color:var(--t3);margin:0;">Registra una capacitación con su lista de asistentes, y genera el certificado individual de cada uno.</p>
+        <button class="sisso-boton" onclick="abrirModalCapacitacion()">+ Nueva capacitación</button>
+      </div>
+      <table class="tabla-cert">
+        <thead><tr><th>Capacitación</th><th>Fecha</th><th>Horas</th><th>Asistentes</th><th>Acciones</th></tr></thead>
+        <tbody id="tbody-capacitaciones"><tr><td colspan="5" class="sisso-cargando">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- ===== TAB 3: Aptitud independiente ===== -->
+    <div class="panel-cert" id="panel-aptitud">
+      <p style="font-size:12.5px;color:var(--t3);margin-bottom:14px;">
+        Certificado breve que confirma el estado de aptitud médica vigente en el sistema (no reemplaza al HCU 081).
+      </p>
+      <div class="fila-campos">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">Trabajador</label>
+          <select id="apt-trabajador" class="sisso-select" onchange="mostrarPreviewAptitud()"><option value="">Selecciona un trabajador…</option></select>
+        </div>
+      </div>
+      <div id="preview-aptitud" style="margin-top:16px;display:none;">
+        <div style="font-size:13px;margin-bottom:10px;">Aptitud actual: <span id="preview-aptitud-chip"></span></div>
+        <button class="sisso-boton" onclick="descargarCertificadoAptitud()">📄 Generar certificado</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nueva capacitacion -->
+<div class="sisso-modal-fondo" id="modal-capacitacion">
+  <div class="sisso-modal-caja">
+    <div style="font-size:16px;font-weight:800;margin-bottom:16px;">Nueva capacitación</div>
+    <div class="sisso-error" id="error-modal-capacitacion"></div>
+
+    <div class="sisso-campo"><label class="sisso-etiqueta">Nombre de la capacitación *</label><input id="cap-nombre" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta">Tema / contenido (opcional)</label><textarea id="cap-tema" class="sisso-textarea"></textarea></div>
+
+    <div class="fila-campos" style="margin-bottom:12px;">
+      <div class="sisso-campo"><label class="sisso-etiqueta">Fecha *</label><input id="cap-fecha" type="date" class="sisso-input"></div>
+      <div class="sisso-campo"><label class="sisso-etiqueta">Horas de duración *</label><input id="cap-horas" type="number" min="0.5" step="0.5" class="sisso-input"></div>
+    </div>
+    <div class="sisso-campo"><label class="sisso-etiqueta">Instructor (opcional)</label><input id="cap-instructor" class="sisso-input"></div>
+
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta">Asistentes</label>
+      <div class="lista-asistentes" id="lista-asistentes-modal"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button class="sisso-boton secundario" onclick="cerrarModalCapacitacion()">Cancelar</button>
+      <button class="sisso-boton" id="btn-guardar-capacitacion" onclick="guardarCapacitacion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: ver asistentes / descargar certificados individuales -->
+<div class="sisso-modal-fondo" id="modal-asistentes">
+  <div class="sisso-modal-caja">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px;" id="titulo-modal-asistentes">Asistentes</div>
+    <div class="sisso-error" id="error-modal-asistentes"></div>
+    <table class="tabla-cert">
+      <thead><tr><th>Trabajador</th><th>Documento</th><th>Certificado</th></tr></thead>
+      <tbody id="tbody-asistentes"></tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button class="sisso-boton secundario" onclick="cerrarModalAsistentes()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="certificados-pdf.js"></script>
+</body>
+</html>

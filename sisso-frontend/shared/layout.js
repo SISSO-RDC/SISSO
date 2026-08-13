@@ -43,9 +43,9 @@ const SissoLayout = (() => {
     { id: 'ausentismo',   label: 'Ausentismo',         icono: '📉', href: '../ausentismo/index.html',  roles: [] },
     { id: 'proximos',     label: 'Próximos exámenes',  icono: '⏰', href: '../calendario-emos/index.html', roles: [] },
     { id: 'matriz',       label: 'Matriz de riesgos',  icono: '🗂️', href: '../matriz-riesgos/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
-    { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '../reportes-bi/index.html', roles: ['admin', 'sso', 'th'] },
+    { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '../reportes-bi/index.html', roles: [] },
     { id: 'indicadores',  label: 'Indicadores SSO',    icono: '📈', href: '../indicadores/index.html',  roles: [] },
-    { id: 'certificados', label: 'Certificados PDF',   icono: '📄', href: '#',                          roles: [] },
+    { id: 'certificados', label: 'Certificados PDF',   icono: '📄', href: '../certificados-pdf/index.html', roles: [] },
 
     { seccion: 'SISTEMA' },
     { id: 'configuracion', label: 'Configuración',     icono: '⚙️', href: '../configuracion/index.html', roles: ['admin'] },
