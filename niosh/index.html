@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — Ecuación NIOSH</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 6px; }
+  .fila-campos .sisso-campo { margin-bottom: 0; }
+  .ayuda-campo { font-size: 11px; color: var(--t3); margin-top: 4px; }
+
+  .resultado-caja { border: 1px solid var(--bd); border-radius: var(--r); padding: 18px; margin-top: 16px; }
+  .li-grande { font-size: 34px; font-weight: 800; }
+  .clasificacion-chip-grande { display: inline-flex; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 800; margin-top: 6px; }
+  .tabla-multiplicadores { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+  .tabla-multiplicadores th, .tabla-multiplicadores td { padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--bd); }
+  .tabla-multiplicadores th { color: var(--t3); font-weight: 700; font-size: 11px; }
+
+  .historial-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="sisso-tarjeta" id="caja-selector">
+    <div class="sisso-tarjeta-titulo">Ecuación NIOSH — Levantamiento manual de cargas</div>
+    <div class="sisso-tarjeta-subtitulo">Ecuación revisada de NIOSH (Waters et al., 1994) para tareas de levantamiento simple.</div>
+    <div class="sisso-error" id="error-selector"></div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+    </div>
+  </div>
+
+  <div id="caja-principal" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;"></div>
+        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+      </div>
+    </div>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Historial de evaluaciones</div>
+      <div id="lista-historial"><div class="sisso-cargando">Cargando historial…</div></div>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Nueva evaluación</div>
+      <div class="sisso-error" id="error-form"></div>
+      <div class="sisso-exito" id="exito-form"></div>
+
+      <div class="fila-campos">
+        <div class="sisso-campo"><label class="sisso-etiqueta">Nombre de la tarea</label><input id="nombre-tarea" class="sisso-input" placeholder="Ej: Carga de cajas a estantería"></div>
+        <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de evaluación</label><input id="fecha-evaluacion" type="date" class="sisso-input"></div>
+      </div>
+
+      <div class="fila-campos" style="margin-top:14px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">H — Distancia horizontal (cm)</label>
+          <input id="horizontal" type="number" step="0.5" min="1" max="200" class="sisso-input" placeholder="Ej: 30">
+          <div class="ayuda-campo">Distancia entre el punto medio de los tobillos y el punto medio de las manos, al agarrar la carga.</div>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">V — Altura de las manos (cm)</label>
+          <input id="vertical" type="number" step="0.5" min="0" max="200" class="sisso-input" placeholder="Ej: 75">
+          <div class="ayuda-campo">Altura de las manos respecto al piso, al agarrar la carga (origen del levantamiento).</div>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">D — Distancia vertical recorrida (cm)</label>
+          <input id="distancia-vertical" type="number" step="0.5" min="0" max="300" class="sisso-input" placeholder="Ej: 40">
+          <div class="ayuda-campo">Distancia vertical que se desplaza la carga entre el origen y el destino.</div>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">A — Ángulo de asimetría (grados)</label>
+          <input id="angulo" type="number" step="1" min="0" max="180" class="sisso-input" placeholder="Ej: 0">
+          <div class="ayuda-campo">Grado de giro del tronco respecto a las caderas, sin mover los pies. 0° = de frente.</div>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">F — Frecuencia (levantamientos/min)</label>
+          <input id="frecuencia" type="number" step="0.1" min="0.1" max="20" class="sisso-input" placeholder="Ej: 2">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">Duración de la tarea</label>
+          <select id="duracion" class="sisso-select">
+            <option value="corta">Corta (hasta 1 hora)</option>
+            <option value="media">Media (más de 1 y hasta 2 horas)</option>
+            <option value="larga" selected>Larga (más de 2 y hasta 8 horas)</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">Calidad del agarre</label>
+          <select id="calidad-agarre" class="sisso-select">
+            <option value="bueno">Bueno (asas o cortes óptimos)</option>
+            <option value="regular" selected>Regular (agarre aceptable pero no óptimo)</option>
+            <option value="malo">Malo (sin asas, bordes filosos, bolsas)</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta">Peso de la carga (kg)</label>
+          <input id="peso-carga" type="number" step="0.1" min="0.1" max="200" class="sisso-input" placeholder="Ej: 15">
+        </div>
+      </div>
+
+      <div class="sisso-campo" style="margin-top:14px;">
+        <label class="sisso-etiqueta">Observaciones</label>
+        <textarea id="observaciones" class="sisso-textarea" placeholder="Notas sobre la tarea evaluada…"></textarea>
+      </div>
+
+      <button class="sisso-boton ancho-completo" id="btn-guardar" onclick="guardarEvaluacion()">Calcular y guardar evaluación</button>
+
+      <div id="caja-resultado"></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="niosh.js"></script>
+</body>
+</html>
