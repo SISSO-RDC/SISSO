@@ -62,42 +62,72 @@
       <!-- Mensaje de error -->
       <div class="sisso-error" id="error-login"></div>
 
-      <!-- Formulario -->
-      <div class="sisso-campo">
-        <label class="sisso-etiqueta" for="email">Correo electrónico</label>
-        <input
-          id="email"
-          type="email"
-          class="sisso-input"
-          placeholder="tu@correo.com"
-          autocomplete="email"
-          autofocus
-        >
-      </div>
-
-      <div class="sisso-campo">
-        <label class="sisso-etiqueta" for="contrasena">Contraseña</label>
-        <div class="campo-contrasena">
+      <!-- Paso 1: correo + contrasena -->
+      <div id="paso-credenciales">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="email">Correo electrónico</label>
           <input
-            id="contrasena"
-            type="password"
+            id="email"
+            type="email"
             class="sisso-input"
-            placeholder="••••••••"
-            autocomplete="current-password"
+            placeholder="tu@correo.com"
+            autocomplete="email"
+            autofocus
           >
-          <button class="ojo-contrasena" type="button" onclick="alternarContrasena()" title="Mostrar/ocultar contraseña">
-            👁
-          </button>
         </div>
+
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="contrasena">Contraseña</label>
+          <div class="campo-contrasena">
+            <input
+              id="contrasena"
+              type="password"
+              class="sisso-input"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            >
+            <button class="ojo-contrasena" type="button" onclick="alternarContrasena()" title="Mostrar/ocultar contraseña">
+              👁
+            </button>
+          </div>
+        </div>
+
+        <button
+          class="sisso-boton ancho-completo"
+          id="btn-login"
+          onclick="iniciarSesion()"
+        >
+          Iniciar sesión
+        </button>
       </div>
 
-      <button
-        class="sisso-boton ancho-completo"
-        id="btn-login"
-        onclick="iniciarSesion()"
-      >
-        Iniciar sesión
-      </button>
+      <!-- Paso 2: codigo de verificacion (solo si el usuario tiene MFA habilitado) -->
+      <div id="paso-mfa" style="display:none;">
+        <p style="font-size:12.5px;color:var(--t3);margin:0 0 16px;text-align:center;">
+          Ingresa el código de 6 dígitos de tu app de autenticación.
+        </p>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="codigo-mfa">Código de verificación</label>
+          <input
+            id="codigo-mfa"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            class="sisso-input"
+            placeholder="000000"
+            style="text-align:center;letter-spacing:6px;font-size:18px;"
+            autocomplete="one-time-code"
+            autofocus
+          >
+        </div>
+        <button class="sisso-boton ancho-completo" id="btn-verificar-mfa" onclick="verificarMfa()">
+          Verificar
+        </button>
+        <button class="sisso-boton secundario ancho-completo" style="margin-top:8px;" onclick="volverACredenciales()">
+          Volver
+        </button>
+      </div>
     </div>
 
     <div class="version">SISSO v2.0 · Plataforma médico-ocupacional</div>
@@ -134,6 +164,8 @@
     document.getElementById('error-login').classList.remove('visible');
   }
 
+  let mfaTokenPendiente = null;
+
   async function iniciarSesion() {
     ocultarError();
 
@@ -160,10 +192,18 @@
         return cuerpo;
       });
 
-      // Guardar sesion completa en localStorage
-      SissoSesion.guardar(datos);
+      // Si el usuario tiene MFA habilitado, el backend no entrega
+      // tokens todavia: pide el segundo factor primero.
+      if (datos.requiereMfa) {
+        mfaTokenPendiente = datos.mfaToken;
+        document.getElementById('paso-credenciales').style.display = 'none';
+        document.getElementById('paso-mfa').style.display = 'block';
+        document.getElementById('codigo-mfa').value = '';
+        document.getElementById('codigo-mfa').focus();
+        return;
+      }
 
-      // Redirigir al dashboard
+      SissoSesion.guardar(datos);
       window.location.href = '../dashboard/index.html';
 
     } catch (err) {
@@ -176,6 +216,58 @@
       boton.textContent = 'Iniciar sesión';
     }
   }
+
+  function volverACredenciales() {
+    mfaTokenPendiente = null;
+    ocultarError();
+    document.getElementById('paso-mfa').style.display = 'none';
+    document.getElementById('paso-credenciales').style.display = 'block';
+    document.getElementById('contrasena').value = '';
+  }
+
+  async function verificarMfa() {
+    ocultarError();
+    const codigo = document.getElementById('codigo-mfa').value.trim();
+    const boton = document.getElementById('btn-verificar-mfa');
+
+    if (!codigo || codigo.length !== 6) {
+      mostrarError('Ingresa el código de 6 dígitos.');
+      return;
+    }
+    if (!mfaTokenPendiente) {
+      mostrarError('La sesión de verificación expiró. Vuelve a ingresar tu contraseña.');
+      volverACredenciales();
+      return;
+    }
+
+    boton.disabled = true;
+    boton.textContent = 'Verificando…';
+
+    try {
+      const datos = await fetch('https://sissso-backend.onrender.com/api/auth/mfa/verificar-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mfaToken: mfaTokenPendiente, codigo }),
+      }).then(async (r) => {
+        const cuerpo = await r.json();
+        if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Código incorrecto.'), { status: r.status });
+        return cuerpo;
+      });
+
+      SissoSesion.guardar(datos);
+      window.location.href = '../dashboard/index.html';
+
+    } catch (err) {
+      mostrarError(err.message || 'Código incorrecto.');
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Verificar';
+    }
+  }
+
+  document.getElementById('codigo-mfa').addEventListener('keydown', e => {
+    if (e.key === 'Enter') verificarMfa();
+  });
 </script>
 </body>
 </html>
