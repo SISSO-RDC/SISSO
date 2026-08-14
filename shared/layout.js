@@ -97,6 +97,9 @@ const SissoLayout = (() => {
           <button onclick="sissoAbrirCambioPassword()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
             Cambiar mi contraseña
           </button>
+          <button onclick="sissoAbrirMfa()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+            Verificación en 2 pasos
+          </button>
           <button onclick="sissoCerrarSesionConConfirmacion()" style="width:100%;padding:7px;background:rgba(220,38,38,.15);color:#fca5a5;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
             Cerrar sesión
           </button>
@@ -278,5 +281,116 @@ async function sissoConfirmarCambioPassword(forzado) {
     errorEl.style.display = 'block';
     boton.disabled = false;
     boton.textContent = 'Guardar nueva contraseña';
+  }
+}
+
+// ------------------------------------------------------------
+// Verificacion en 2 pasos (MFA / TOTP).
+// Boton "Verificación en 2 pasos" del sidebar. El modal se adapta
+// segun el estado actual: si el usuario NO tiene MFA, muestra el
+// QR para activarlo; si YA lo tiene, muestra la opcion de
+// desactivarlo (pidiendo la contrasena, ver
+// authController.js:deshabilitarMfa).
+// ------------------------------------------------------------
+async function sissoAbrirMfa() {
+  if (document.getElementById('sisso-modal-mfa')) return;
+
+  const html = `
+    <div id="sisso-modal-mfa" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;">
+      <div style="background:#fff;border-radius:14px;padding:26px;width:420px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">Verificación en 2 pasos</div>
+        <div id="sisso-mfa-contenido" style="font-size:13px;color:#64748b;">Cargando…</div>
+        <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+          <button onclick="sissoCerrarModalMfa()" style="padding:11px 18px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  try {
+    const perfil = await sissoFetch('/auth/perfil');
+    if (perfil.usuario.mfaHabilitado) {
+      sissoRenderizarMfaActivo();
+    } else {
+      await sissoRenderizarMfaSetup();
+    }
+  } catch (err) {
+    document.getElementById('sisso-mfa-contenido').innerHTML =
+      `<div style="background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;">Error al cargar: ${err.message}</div>`;
+  }
+}
+
+function sissoCerrarModalMfa() {
+  const el = document.getElementById('sisso-modal-mfa');
+  if (el) el.remove();
+}
+
+function sissoRenderizarMfaActivo() {
+  document.getElementById('sisso-mfa-contenido').innerHTML = `
+    <div style="background:#f0fdf4;color:#166534;padding:10px 12px;border-radius:8px;margin-bottom:16px;font-weight:700;">✓ La verificación en 2 pasos está activa en tu cuenta.</div>
+    <div id="sisso-mfa-error" style="display:none;background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
+    <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Escribe tu contraseña para desactivarla</label>
+    <input id="sisso-mfa-password" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
+    <button id="sisso-mfa-btn-desactivar" onclick="sissoDesactivarMfa()" style="width:100%;padding:11px;background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Desactivar verificación en 2 pasos</button>`;
+}
+
+async function sissoDesactivarMfa() {
+  const errorEl = document.getElementById('sisso-mfa-error');
+  errorEl.style.display = 'none';
+  const password = document.getElementById('sisso-mfa-password').value;
+  if (!password) {
+    errorEl.textContent = 'Ingresa tu contraseña.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  const boton = document.getElementById('sisso-mfa-btn-desactivar');
+  boton.disabled = true;
+  boton.textContent = 'Desactivando…';
+  try {
+    await sissoFetch('/auth/mfa/deshabilitar', { method: 'POST', body: { password } });
+    sissoCerrarModalMfa();
+  } catch (err) {
+    errorEl.textContent = err.message || 'Error al desactivar.';
+    errorEl.style.display = 'block';
+    boton.disabled = false;
+    boton.textContent = 'Desactivar verificación en 2 pasos';
+  }
+}
+
+async function sissoRenderizarMfaSetup() {
+  const datos = await sissoFetch('/auth/mfa/iniciar-configuracion', { method: 'POST' });
+  document.getElementById('sisso-mfa-contenido').innerHTML = `
+    <p style="margin:0 0 12px;">1. Escanea este código con Google Authenticator, Authy o similar:</p>
+    <div style="text-align:center;margin-bottom:14px;">
+      <img src="${datos.qrCodeDataUrl}" alt="Código QR de MFA" style="width:180px;height:180px;border:1px solid #e2e8f0;border-radius:8px;">
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px;">¿No puedes escanear? Código manual: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${datos.secreto}</code></div>
+    </div>
+    <p style="margin:0 0 8px;">2. Escribe el código de 6 dígitos que te muestra la app para confirmar:</p>
+    <div id="sisso-mfa-error" style="display:none;background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;"></div>
+    <input id="sisso-mfa-codigo" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:16px;text-align:center;letter-spacing:4px;margin-bottom:14px;box-sizing:border-box;font-family:inherit;">
+    <button id="sisso-mfa-btn-confirmar" onclick="sissoConfirmarMfaSetup()" style="width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Activar verificación en 2 pasos</button>`;
+  document.getElementById('sisso-mfa-codigo').focus();
+}
+
+async function sissoConfirmarMfaSetup() {
+  const errorEl = document.getElementById('sisso-mfa-error');
+  errorEl.style.display = 'none';
+  const codigo = document.getElementById('sisso-mfa-codigo').value.trim();
+  if (!codigo || codigo.length !== 6) {
+    errorEl.textContent = 'Ingresa el código de 6 dígitos.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  const boton = document.getElementById('sisso-mfa-btn-confirmar');
+  boton.disabled = true;
+  boton.textContent = 'Verificando…';
+  try {
+    await sissoFetch('/auth/mfa/confirmar', { method: 'POST', body: { codigo } });
+    sissoRenderizarMfaActivo();
+  } catch (err) {
+    errorEl.textContent = err.message || 'Código incorrecto.';
+    errorEl.style.display = 'block';
+    boton.disabled = false;
+    boton.textContent = 'Activar verificación en 2 pasos';
   }
 }
