@@ -2,40 +2,40 @@
 // SISSO - Modulo compartido de API.
 //
 // Centraliza: la URL del backend, el manejo de sesion (guardar/leer/
-// borrar el token), y una funcion fetch() que ya agrega el header
-// de autenticacion y reintenta una vez con el refresh token si el
-// access token expiro.
+// borrar el access token), y una funcion fetch() que ya agrega el
+// header de autenticacion y reintenta una vez si el access token
+// expiro.
 //
 // Por que un solo archivo: si el backend cambia de URL, o si la
 // logica de sesion necesita un ajuste, se edita aqui UNA vez y
 // todos los modulos (reba, rula, aptitud, etc.) quedan actualizados
 // automaticamente, porque todos importan este archivo.
 //
-// CORREGIDO tras auditoria de seguridad (hallazgo GRAVE): los
-// tokens (access y refresh) se guardaban en localStorage. Ahora se
-// guardan en sessionStorage.
+// CORREGIDO tras auditoria de seguridad (hallazgo GRAVE G4, version
+// 2): el refresh token YA NO pasa por JavaScript en absoluto. Antes
+// vivia en sessionStorage (una mitigacion parcial que dejamos en la
+// correccion anterior); ahora el backend lo entrega como cookie
+// HttpOnly (ver authController.js: completarLogin/refrescar/logout),
+// asi que ni siquiera un XSS activo en esta pagina puede leerlo. El
+// navegador la adjunta solo el mismo, automaticamente, en las 3
+// peticiones que la necesitan.
 //
-// Por que este cambio y que NO resuelve:
-//   - localStorage persiste indefinidamente (sobrevive cerrar el
-//     navegador), asi que un XSS que robe el refresh token da al
-//     atacante acceso indefinido hasta que se revoque manualmente.
-//     sessionStorage se borra al cerrar la pestaña/navegador, asi
-//     que acorta la ventana de un robo. Es una mitigacion, no una
-//     solucion completa: sessionStorage sigue siendo legible por
-//     cualquier JavaScript que corra en la pagina (un XSS activo
-//     durante la sesion abierta igual puede robar el token).
-//   - La proteccion real contra robo de tokens vía XSS es que el
-//     refresh token viva en una cookie HttpOnly + Secure + SameSite,
-//     invisible para JavaScript incluso con un XSS activo. El
-//     backend ya tiene `credentials: true` en CORS (ver src/index.js),
-//     lo que sugiere que se penso dejar esa puerta abierta para una
-//     migracion futura, pero login/refrescar/logout todavia
-//     devuelven los tokens en el cuerpo JSON en vez de asentarlos
-//     como cookies. Migrar a cookies HttpOnly es el siguiente paso
-//     recomendado y requiere cambios coordinados en el backend
-//     (Set-Cookie en authController.js) y en este archivo (usar
-//     `credentials: 'include'` y dejar de manejar el token a mano),
-//     por lo que no se hizo en esta correccion puntual.
+// Esto cambia el contrato con el backend: login/verificar-mfa/
+// refrescar ya NO devuelven `refreshToken` en el JSON, y refrescar/
+// logout ya NO necesitan mandarlo en el body. Todas las llamadas
+// fetch que hablan con el backend deben incluir `credentials:
+// 'include'` para que el navegador mande/reciba esa cookie (las
+// peticiones sin esto simplemente no veran la cookie, con o sin
+// error visible, asi que es facil de olvidar en un fetch nuevo que
+// se agregue mas adelante — ver sissoFetch/sissoDescargarArchivo
+// abajo, que ya lo incluyen por defecto).
+//
+// El access token (de corta duracion, 15 min) sigue guardandose en
+// sessionStorage: es una perdida de sesion aceptable si se cierra la
+// pestaña (se renueva solo con la cookie mientras dure el refresh
+// token), y mantenerlo ahi permite que sissoFetch() lo agregue como
+// header Authorization en cada peticion sin depender de que la
+// cookie httpOnly (invisible para JS, a proposito) exista todavia.
 // ============================================================
 
 // ------------------------------------------------------------
@@ -45,9 +45,10 @@
 const SISSO_API_BASE = 'https://sissso-backend.onrender.com/api';
 
 // Claves usadas en sessionStorage. Prefijadas con "sisso_" para no
-// chocar con nada mas que pueda existir en el navegador.
+// chocar con nada mas que pueda existir en el navegador. Ya NO hay
+// clave de refresh token: vive exclusivamente en la cookie HttpOnly
+// que administra el backend.
 const CLAVE_ACCESS_TOKEN = 'sisso_access_token';
-const CLAVE_REFRESH_TOKEN = 'sisso_refresh_token';
 const CLAVE_USUARIO = 'sisso_usuario';
 
 // ------------------------------------------------------------
@@ -56,33 +57,24 @@ const CLAVE_USUARIO = 'sisso_usuario';
 const SissoSesion = {
   /**
    * Guarda la sesion completa tras un login exitoso.
-   * @param {{accessToken: string, refreshToken: string, usuario: object}} datos
+   * @param {{accessToken: string, usuario: object}} datos
    */
   guardar(datos) {
     sessionStorage.setItem(CLAVE_ACCESS_TOKEN, datos.accessToken);
-    sessionStorage.setItem(CLAVE_REFRESH_TOKEN, datos.refreshToken);
     sessionStorage.setItem(CLAVE_USUARIO, JSON.stringify(datos.usuario));
   },
 
   /**
-   * Actualiza los tokens tras un refresh exitoso. Guarda tanto el
-   * access token como el refresh token nuevos: desde la correccion
-   * de seguridad de rotacion de refresh tokens (backend), cada
-   * refresh invalida el token anterior y emite uno nuevo, asi que
-   * el frontend SIEMPRE debe reemplazar el refresh token guardado o
-   * la siguiente renovacion fallara (se interpretaria como reuso).
+   * Actualiza el access token tras un refresh exitoso. El refresh
+   * token rotado ya quedo asentado como cookie por el propio
+   * backend en la respuesta; aqui no hay nada que hacer con el.
    */
-  actualizarTokens(nuevoAccessToken, nuevoRefreshToken) {
+  actualizarAccessToken(nuevoAccessToken) {
     sessionStorage.setItem(CLAVE_ACCESS_TOKEN, nuevoAccessToken);
-    if (nuevoRefreshToken) sessionStorage.setItem(CLAVE_REFRESH_TOKEN, nuevoRefreshToken);
   },
 
   obtenerAccessToken() {
     return sessionStorage.getItem(CLAVE_ACCESS_TOKEN);
-  },
-
-  obtenerRefreshToken() {
-    return sessionStorage.getItem(CLAVE_REFRESH_TOKEN);
   },
 
   /** @returns {{id:string, email:string, nombreCompleto:string, rol:string, organizacion:object}|null} */
@@ -97,7 +89,6 @@ const SissoSesion = {
 
   limpiar() {
     sessionStorage.removeItem(CLAVE_ACCESS_TOKEN);
-    sessionStorage.removeItem(CLAVE_REFRESH_TOKEN);
     sessionStorage.removeItem(CLAVE_USUARIO);
   },
 };
@@ -107,22 +98,21 @@ const SissoSesion = {
 // ------------------------------------------------------------
 
 /**
- * Intenta renovar el access token usando el refresh token guardado.
+ * Intenta renovar el access token usando el refresh token, que el
+ * navegador manda solo (cookie HttpOnly) gracias a `credentials:
+ * 'include'`. Ya no se lee ni se manda ningun token a mano aqui.
  * @returns {Promise<boolean>} true si se renovo con exito.
  */
 async function intentarRefrescarToken() {
-  const refreshToken = SissoSesion.obtenerRefreshToken();
-  if (!refreshToken) return false;
-
   try {
     const respuesta = await fetch(`${SISSO_API_BASE}/auth/refrescar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
     if (!respuesta.ok) return false;
     const datos = await respuesta.json();
-    SissoSesion.actualizarTokens(datos.accessToken, datos.refreshToken);
+    SissoSesion.actualizarAccessToken(datos.accessToken);
     return true;
   } catch (err) {
     return false;
@@ -159,6 +149,7 @@ async function sissoFetch(ruta, opciones = {}) {
     ...opciones,
     headers: construirHeaders(),
     body: cuerpo,
+    credentials: 'include',
   });
 
   // Si el token expiro, intentamos renovarlo una sola vez y reintentamos.
@@ -173,6 +164,7 @@ async function sissoFetch(ruta, opciones = {}) {
           ...opciones,
           headers: construirHeaders(),
           body: cuerpo,
+          credentials: 'include',
         });
       } else {
         SissoSesion.limpiar();
@@ -212,12 +204,12 @@ async function sissoDescargarArchivo(ruta) {
     return headers;
   };
 
-  let respuesta = await fetch(`${SISSO_API_BASE}${ruta}`, { headers: construirHeaders() });
+  let respuesta = await fetch(`${SISSO_API_BASE}${ruta}`, { headers: construirHeaders(), credentials: 'include' });
 
   if (respuesta.status === 401) {
     const renovado = await intentarRefrescarToken();
     if (renovado) {
-      respuesta = await fetch(`${SISSO_API_BASE}${ruta}`, { headers: construirHeaders() });
+      respuesta = await fetch(`${SISSO_API_BASE}${ruta}`, { headers: construirHeaders(), credentials: 'include' });
     } else {
       SissoSesion.limpiar();
       window.location.href = '../login/index.html';
@@ -248,20 +240,18 @@ function sissoAbrirBlobEnNuevaPestana(blob) {
 
 /**
  * Cierra la sesion: avisa al backend para revocar el refresh token
- * y limpia todo lo guardado localmente, luego redirige al login.
+ * (que el navegador manda solo via cookie) y limpia todo lo
+ * guardado localmente, luego redirige al login.
  */
 async function sissoCerrarSesion() {
-  const refreshToken = SissoSesion.obtenerRefreshToken();
-  if (refreshToken) {
-    try {
-      await fetch(`${SISSO_API_BASE}/auth/logout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-    } catch (err) {
-      // Si el backend no responde, igual cerramos la sesion localmente.
-    }
+  try {
+    await fetch(`${SISSO_API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+  } catch (err) {
+    // Si el backend no responde, igual cerramos la sesion localmente.
   }
   SissoSesion.limpiar();
   window.location.href = '../login/index.html';

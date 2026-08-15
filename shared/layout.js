@@ -11,6 +11,36 @@
 // se agrega aqui una vez y aparece en TODAS las paginas.
 // ============================================================
 
+// ------------------------------------------------------------
+// CORREGIDO tras auditoria de seguridad (hallazgo G9): esta funcion
+// es global (no esta dentro del IIFE de SissoLayout) a proposito,
+// para que cualquier modulo que cargue shared/layout.js (es decir,
+// todas las paginas internas) tenga una unica funcion de escape de
+// HTML disponible, en vez de que cada modulo defina su propia copia
+// local (escHtml, escCert, escHtmlBI, etc. — que hoy siguen
+// existiendo en varios modulos y funcionan bien, pero duplican la
+// misma logica). Los modulos nuevos deberian usar esta en vez de
+// definir una copia propia.
+//
+// Por que hace falta: este archivo interpola datos que vienen de la
+// base de datos (nombre de la organizacion, nombre del usuario)
+// directamente en innerHTML sin escapar (ver construirSidebar mas
+// abajo). Como layout.js corre en CADA pagina autenticada, un
+// nombre de organizacion o de usuario con HTML/JS embebido
+// ejecutaria ese script en el navegador de TODOS los usuarios de esa
+// organizacion, en cada carga de pagina — un XSS persistente con
+// alcance amplio. Escapar antes de interpolar neutraliza eso.
+// ------------------------------------------------------------
+function escaparHtml(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const SissoLayout = (() => {
 
   // Definicion completa del menu lateral, en el mismo orden que
@@ -18,6 +48,7 @@ const SissoLayout = (() => {
   // item — si el array esta vacio, lo ven todos los roles.
   const MENU = [
     { seccion: 'GENERAL' },
+
     { id: 'dashboard',    label: 'Dashboard',          icono: '⊞',  href: '../dashboard/index.html',      roles: [] },
     { id: 'empresa',      label: 'Mi Empresa',         icono: '🏢', href: '../mi-empresa/index.html',   roles: ['admin'] },
     { id: 'trabajadores', label: 'Trabajadores',       icono: '👥', href: '../trabajadores/index.html',   roles: [] },
@@ -85,14 +116,14 @@ const SissoLayout = (() => {
           <div class="sisso-sidebar-icono">S</div>
           <div>
             <div class="sisso-sidebar-nombre">SISSO</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.35);">${usuario.organizacion?.nombre || 'Sistema'}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.35);">${escaparHtml(usuario.organizacion?.nombre) || 'Sistema'}</div>
           </div>
         </div>
         ${itemsHtml}
         <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.06);">
           <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px;padding:0 4px;">
-            ${usuario.nombreCompleto}
-            <span style="display:block;font-size:10px;margin-top:1px;">${usuario.rol?.toUpperCase()}</span>
+            ${escaparHtml(usuario.nombreCompleto)}
+            <span style="display:block;font-size:10px;margin-top:1px;">${escaparHtml(usuario.rol?.toUpperCase())}</span>
           </div>
           <button onclick="sissoAbrirCambioPassword()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
             Cambiar mi contraseña
@@ -318,7 +349,7 @@ async function sissoAbrirMfa() {
     }
   } catch (err) {
     document.getElementById('sisso-mfa-contenido').innerHTML =
-      `<div style="background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;">Error al cargar: ${err.message}</div>`;
+      `<div style="background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;">Error al cargar: ${escaparHtml(err.message)}</div>`;
   }
 }
 
