@@ -514,6 +514,22 @@ function mostrarResultado(evaluacion) {
   document.getElementById('d-accion').textContent = evaluacion.accion_requerida;
 }
 
+// CORREGIDO tras auditoria de seguridad (hallazgo G12): ver nota
+// completa en reba/index.html (mismo patron, endpoint bajo
+// /ergonomia/rula/ en vez de /ergonomia/).
+async function verEvidenciaFirmada(evaluacionId, event) {
+  if (event) event.preventDefault();
+  const ventana = window.open('', '_blank');
+  try {
+    const datos = await sissoFetch(`/ergonomia/rula/evaluaciones/${evaluacionId}/evidencia-url`);
+    if (ventana) ventana.location.href = datos.url;
+  } catch (err) {
+    if (ventana) ventana.close();
+    alert(err.message || 'No se pudo obtener el enlace de la evidencia.');
+  }
+  return false;
+}
+
 async function agregarPosturaALista(evaluacion) {
   const lista = document.getElementById('lista-posturas');
   if (lista.querySelector('.sisso-vacio')) lista.innerHTML = '';
@@ -523,7 +539,7 @@ async function agregarPosturaALista(evaluacion) {
   item.innerHTML = `
     <div>
       <strong>${escHtml(evaluacion.nombre_postura)}</strong>
-      ${evaluacion.evidencia_url ? `<a href="${evaluacion.evidencia_url}" target="_blank" style="margin-left:8px;font-size:11px;color:var(--blue);">📎 ver evidencia</a>` : ''}
+      ${evaluacion.evidencia_url ? `<a href="#" onclick="return verEvidenciaFirmada('${evaluacion.id}', event)" style="margin-left:8px;font-size:11px;color:var(--blue);">📎 ver evidencia</a>` : ''}
     </div>
     <span class="sisso-chip" style="background:${colorNivelRiesgoRula(evaluacion.nivel_riesgo)}22;color:${colorNivelRiesgoRula(evaluacion.nivel_riesgo)};">
       Score ${evaluacion.puntuacion_c} · ${etiquetaNivelRiesgoRula(evaluacion.nivel_riesgo)}

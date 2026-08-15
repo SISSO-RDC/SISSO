@@ -409,6 +409,25 @@ async function descargarPdfFirmado(id) {
   }
 }
 
+// CORREGIDO tras auditoria de seguridad (hallazgo G12): la imagen de
+// la firma ya no tiene una URL publica permanente (backend:
+// consentimientosController.js/cloudinaryService.js). Se abre la
+// pestaña ANTES de esperar el fetch (ver nota completa en
+// reba/index.html:verEvidenciaFirmada) para que el navegador no
+// bloquee el popup.
+async function verFirmaFirmada(id, event) {
+  if (event) event.preventDefault();
+  const ventana = window.open('', '_blank');
+  try {
+    const datos = await sissoFetch(`/consentimientos/${id}/firma-url`);
+    if (ventana) ventana.location.href = datos.url;
+  } catch (err) {
+    if (ventana) ventana.close();
+    alert(err.message || 'No se pudo obtener el enlace de la firma.');
+  }
+  return false;
+}
+
 // ------- Listar consentimientos del trabajador -------
 async function cargarConsentimientos() {
   const cont = document.getElementById('lista-consentimientos');
@@ -434,7 +453,7 @@ async function cargarConsentimientos() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <a href="${c.firma_imagen_url}" target="_blank" class="btn-mini">✍ Ver firma</a>
+          <a href="#" onclick="return verFirmaFirmada('${c.id}', event)" class="btn-mini">✍ Ver firma</a>
           <button class="btn-mini" onclick="descargarPdfFirmado('${c.id}')">📄 PDF</button>
           ${c.revocado
             ? '<span class="sisso-chip rojo">Revocado</span>'

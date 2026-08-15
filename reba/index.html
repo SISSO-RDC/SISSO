@@ -591,6 +591,31 @@ function mostrarResultado(evaluacion) {
   document.getElementById('d-accion').textContent = evaluacion.accion_requerida;
 }
 
+// CORREGIDO tras auditoria de seguridad (hallazgo G12): el archivo
+// de evidencia ya no tiene una URL publica permanente (backend:
+// ergonomiaController.js/cloudinaryService.js). Hay que pedirle al
+// backend una URL firmada de corta duracion cada vez que alguien
+// quiere verla, en vez de usar directamente evidencia_url.
+//
+// Se abre la pestaña ANTES de esperar la respuesta del backend
+// (con about:blank) y recien despues se le asigna la URL real,
+// porque los navegadores solo permiten window.open() sin bloqueo
+// de popups si ocurre de forma sincrona dentro del clic del
+// usuario — si se espera al fetch primero, muchos navegadores
+// bloquean la ventana.
+async function verEvidenciaFirmada(evaluacionId, event) {
+  if (event) event.preventDefault();
+  const ventana = window.open('', '_blank');
+  try {
+    const datos = await sissoFetch(`/ergonomia/evaluaciones/${evaluacionId}/evidencia-url`);
+    if (ventana) ventana.location.href = datos.url;
+  } catch (err) {
+    if (ventana) ventana.close();
+    alert(err.message || 'No se pudo obtener el enlace de la evidencia.');
+  }
+  return false;
+}
+
 async function agregarPosturaALista(evaluacion) {
   const lista = document.getElementById('lista-posturas');
   if (lista.querySelector('.sisso-vacio')) lista.innerHTML = '';
@@ -600,7 +625,7 @@ async function agregarPosturaALista(evaluacion) {
   item.innerHTML = `
     <div>
       <strong>${escHtml(evaluacion.nombre_postura)}</strong>
-      ${evaluacion.evidencia_url ? `<a href="${evaluacion.evidencia_url}" target="_blank" style="margin-left:8px;font-size:11px;color:var(--blue);">📎 ver evidencia</a>` : ''}
+      ${evaluacion.evidencia_url ? `<a href="#" onclick="return verEvidenciaFirmada('${evaluacion.id}', event)" style="margin-left:8px;font-size:11px;color:var(--blue);">📎 ver evidencia</a>` : ''}
     </div>
     <span class="sisso-chip" style="background:${colorNivelRiesgo(evaluacion.nivel_riesgo)}22;color:${colorNivelRiesgo(evaluacion.nivel_riesgo)};">
       Score ${evaluacion.puntuacion_final} · ${etiquetaNivelRiesgo(evaluacion.nivel_riesgo)}

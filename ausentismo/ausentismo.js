@@ -116,6 +116,14 @@ function renderizarTabla(filas) {
     tbody.innerHTML = '<tr><td colspan="7" class="sisso-vacio">No hay ausencias registradas con estos filtros.</td></tr>';
     return;
   }
+  // CORREGIDO tras auditoria de seguridad (hallazgo G12/G7): el
+  // certificado ya no tiene una URL publica permanente (backend:
+  // ausentismoController.js/cloudinaryService.js), y el nuevo
+  // endpoint que da la URL firmada esta restringido a medico/sso
+  // (el certificado medico es informacion clinica). Por eso, si el
+  // usuario actual es Talento Humano, ni siquiera mostramos el
+  // enlace — mostrarlo y que falle al hacer clic seria confuso.
+  const puedeVerCertificado = ['medico', 'sso'].includes(SissoSesion.obtenerUsuario()?.rol);
   tbody.innerHTML = filas.map(f => `
     <tr>
       <td style="font-weight:600;">${escHtml(f.nombre_completo)}<div style="font-size:11px;color:var(--t3);font-weight:400;">${escHtml(f.area || '—')}</div></td>
@@ -123,12 +131,28 @@ function renderizarTabla(filas) {
       <td>${formatearFecha(f.fecha_inicio)}</td>
       <td>${formatearFecha(f.fecha_fin)}</td>
       <td style="text-align:center;font-weight:700;">${f.dias_calendario}</td>
-      <td>${f.certificado_url ? `<a href="${f.certificado_url}" target="_blank" rel="noopener">Ver</a>` : '—'}</td>
+      <td>${f.certificado_url ? (puedeVerCertificado ? `<a href="#" onclick="return verCertificadoFirmado('${f.id}', event)">Ver</a>` : '<span style="color:var(--t3);">Adjunto</span>') : '—'}</td>
       <td>
         <button class="btn-mini" onclick="abrirModal('${f.id}')">✎</button>
         <button class="btn-mini" onclick="eliminarItem('${f.id}')">🗑</button>
       </td>
     </tr>`).join('');
+}
+
+// Ver nota de seguridad completa junto a puedeVerCertificado() arriba
+// (renderizarTabla). Mismo patron de "abrir pestaña en blanco antes
+// de esperar el fetch" que en reba/index.html.
+async function verCertificadoFirmado(ausenciaId, event) {
+  if (event) event.preventDefault();
+  const ventana = window.open('', '_blank');
+  try {
+    const datos = await sissoFetch(`/ausentismo/${ausenciaId}/certificado-url`);
+    if (ventana) ventana.location.href = datos.url;
+  } catch (err) {
+    if (ventana) ventana.close();
+    alert(err.message || 'No se pudo obtener el enlace del certificado.');
+  }
+  return false;
 }
 
 function renderizarPaginacion(p) {
@@ -180,7 +204,10 @@ async function abrirModal(id) {
       document.getElementById('m-numero-certificado').value = a.numero_certificado || '';
       document.getElementById('m-observaciones').value = a.observaciones || '';
       if (a.certificado_url) {
-        document.getElementById('m-certificado-actual').innerHTML = `Certificado actual: <a href="${a.certificado_url}" target="_blank" rel="noopener">ver archivo</a> (sube uno nuevo para reemplazarlo)`;
+        const puedeVerCertificado = ['medico', 'sso'].includes(SissoSesion.obtenerUsuario()?.rol);
+        document.getElementById('m-certificado-actual').innerHTML = puedeVerCertificado
+          ? `Certificado actual: <a href="#" onclick="return verCertificadoFirmado('${a.id}', event)">ver archivo</a> (sube uno nuevo para reemplazarlo)`
+          : `Certificado actual: adjunto (sube uno nuevo para reemplazarlo)`;
       }
     } catch (err) {
       mostrarErrorModal(err.message);
