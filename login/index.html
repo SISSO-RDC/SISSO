@@ -185,6 +185,7 @@
       const datos = await fetch('https://sissso-backend.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password: contrasena }),
       }).then(async (r) => {
         const cuerpo = await r.json();
@@ -247,6 +248,7 @@
       const datos = await fetch('https://sissso-backend.onrender.com/api/auth/mfa/verificar-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ mfaToken: mfaTokenPendiente, codigo }),
       }).then(async (r) => {
         const cuerpo = await r.json();
