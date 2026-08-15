@@ -2,14 +2,40 @@
 // SISSO - Modulo compartido de API.
 //
 // Centraliza: la URL del backend, el manejo de sesion (guardar/leer/
-// borrar el token en localStorage), y una funcion fetch() que ya
-// agrega el header de autenticacion y reintenta una vez con el
-// refresh token si el access token expiro.
+// borrar el token), y una funcion fetch() que ya agrega el header
+// de autenticacion y reintenta una vez con el refresh token si el
+// access token expiro.
 //
 // Por que un solo archivo: si el backend cambia de URL, o si la
 // logica de sesion necesita un ajuste, se edita aqui UNA vez y
 // todos los modulos (reba, rula, aptitud, etc.) quedan actualizados
 // automaticamente, porque todos importan este archivo.
+//
+// CORREGIDO tras auditoria de seguridad (hallazgo GRAVE): los
+// tokens (access y refresh) se guardaban en localStorage. Ahora se
+// guardan en sessionStorage.
+//
+// Por que este cambio y que NO resuelve:
+//   - localStorage persiste indefinidamente (sobrevive cerrar el
+//     navegador), asi que un XSS que robe el refresh token da al
+//     atacante acceso indefinido hasta que se revoque manualmente.
+//     sessionStorage se borra al cerrar la pestaña/navegador, asi
+//     que acorta la ventana de un robo. Es una mitigacion, no una
+//     solucion completa: sessionStorage sigue siendo legible por
+//     cualquier JavaScript que corra en la pagina (un XSS activo
+//     durante la sesion abierta igual puede robar el token).
+//   - La proteccion real contra robo de tokens vía XSS es que el
+//     refresh token viva en una cookie HttpOnly + Secure + SameSite,
+//     invisible para JavaScript incluso con un XSS activo. El
+//     backend ya tiene `credentials: true` en CORS (ver src/index.js),
+//     lo que sugiere que se penso dejar esa puerta abierta para una
+//     migracion futura, pero login/refrescar/logout todavia
+//     devuelven los tokens en el cuerpo JSON en vez de asentarlos
+//     como cookies. Migrar a cookies HttpOnly es el siguiente paso
+//     recomendado y requiere cambios coordinados en el backend
+//     (Set-Cookie en authController.js) y en este archivo (usar
+//     `credentials: 'include'` y dejar de manejar el token a mano),
+//     por lo que no se hizo en esta correccion puntual.
 // ============================================================
 
 // ------------------------------------------------------------
@@ -18,7 +44,7 @@
 // ------------------------------------------------------------
 const SISSO_API_BASE = 'https://sissso-backend.onrender.com/api';
 
-// Claves usadas en localStorage. Prefijadas con "sisso_" para no
+// Claves usadas en sessionStorage. Prefijadas con "sisso_" para no
 // chocar con nada mas que pueda existir en el navegador.
 const CLAVE_ACCESS_TOKEN = 'sisso_access_token';
 const CLAVE_REFRESH_TOKEN = 'sisso_refresh_token';
@@ -33,9 +59,9 @@ const SissoSesion = {
    * @param {{accessToken: string, refreshToken: string, usuario: object}} datos
    */
   guardar(datos) {
-    localStorage.setItem(CLAVE_ACCESS_TOKEN, datos.accessToken);
-    localStorage.setItem(CLAVE_REFRESH_TOKEN, datos.refreshToken);
-    localStorage.setItem(CLAVE_USUARIO, JSON.stringify(datos.usuario));
+    sessionStorage.setItem(CLAVE_ACCESS_TOKEN, datos.accessToken);
+    sessionStorage.setItem(CLAVE_REFRESH_TOKEN, datos.refreshToken);
+    sessionStorage.setItem(CLAVE_USUARIO, JSON.stringify(datos.usuario));
   },
 
   /**
@@ -47,21 +73,21 @@ const SissoSesion = {
    * la siguiente renovacion fallara (se interpretaria como reuso).
    */
   actualizarTokens(nuevoAccessToken, nuevoRefreshToken) {
-    localStorage.setItem(CLAVE_ACCESS_TOKEN, nuevoAccessToken);
-    if (nuevoRefreshToken) localStorage.setItem(CLAVE_REFRESH_TOKEN, nuevoRefreshToken);
+    sessionStorage.setItem(CLAVE_ACCESS_TOKEN, nuevoAccessToken);
+    if (nuevoRefreshToken) sessionStorage.setItem(CLAVE_REFRESH_TOKEN, nuevoRefreshToken);
   },
 
   obtenerAccessToken() {
-    return localStorage.getItem(CLAVE_ACCESS_TOKEN);
+    return sessionStorage.getItem(CLAVE_ACCESS_TOKEN);
   },
 
   obtenerRefreshToken() {
-    return localStorage.getItem(CLAVE_REFRESH_TOKEN);
+    return sessionStorage.getItem(CLAVE_REFRESH_TOKEN);
   },
 
   /** @returns {{id:string, email:string, nombreCompleto:string, rol:string, organizacion:object}|null} */
   obtenerUsuario() {
-    const crudo = localStorage.getItem(CLAVE_USUARIO);
+    const crudo = sessionStorage.getItem(CLAVE_USUARIO);
     return crudo ? JSON.parse(crudo) : null;
   },
 
@@ -70,9 +96,9 @@ const SissoSesion = {
   },
 
   limpiar() {
-    localStorage.removeItem(CLAVE_ACCESS_TOKEN);
-    localStorage.removeItem(CLAVE_REFRESH_TOKEN);
-    localStorage.removeItem(CLAVE_USUARIO);
+    sessionStorage.removeItem(CLAVE_ACCESS_TOKEN);
+    sessionStorage.removeItem(CLAVE_REFRESH_TOKEN);
+    sessionStorage.removeItem(CLAVE_USUARIO);
   },
 };
 

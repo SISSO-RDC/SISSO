@@ -217,7 +217,7 @@ function sissoMostrarModalCambioPassword(forzado) {
         <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Contraseña actual (o la temporal que te dieron)</label>
         <input id="sisso-cp-actual" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:14px;box-sizing:border-box;font-family:inherit;">
 
-        <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Nueva contraseña (mínimo 8 caracteres)</label>
+        <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Nueva contraseña (mínimo 12 caracteres)</label>
         <input id="sisso-cp-nueva" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:20px;box-sizing:border-box;font-family:inherit;">
 
         <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -247,8 +247,8 @@ async function sissoConfirmarCambioPassword(forzado) {
     errorEl.style.display = 'block';
     return;
   }
-  if (passwordNueva.length < 8) {
-    errorEl.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+  if (passwordNueva.length < 12) {
+    errorEl.textContent = 'La nueva contraseña debe tener al menos 12 caracteres.';
     errorEl.style.display = 'block';
     return;
   }
@@ -269,10 +269,12 @@ async function sissoConfirmarCambioPassword(forzado) {
     });
 
     // Actualizamos la sesion local para que ya no vuelva a pedirse.
+    // CORREGIDO: sessionStorage en vez de localStorage (ver nota de
+    // seguridad en shared/api.js).
     const usuario = SissoSesion.obtenerUsuario();
     if (usuario) {
       usuario.requiereCambioPassword = false;
-      localStorage.setItem('sisso_usuario', JSON.stringify(usuario));
+      sessionStorage.setItem('sisso_usuario', JSON.stringify(usuario));
     }
 
     sissoCerrarModalCambioPassword();
@@ -331,15 +333,26 @@ function sissoRenderizarMfaActivo() {
     <div id="sisso-mfa-error" style="display:none;background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
     <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Escribe tu contraseña para desactivarla</label>
     <input id="sisso-mfa-password" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
+    <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Código de tu app de autenticación</label>
+    <input id="sisso-mfa-codigo-desactivar" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:16px;text-align:center;letter-spacing:4px;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
     <button id="sisso-mfa-btn-desactivar" onclick="sissoDesactivarMfa()" style="width:100%;padding:11px;background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Desactivar verificación en 2 pasos</button>`;
 }
 
+// CORREGIDO tras auditoria de seguridad (hallazgo CRITICO): ahora se
+// exige contrasena + codigo TOTP vigente, no solo contrasena (ver
+// authController.js:deshabilitarMfa para el detalle de por que).
 async function sissoDesactivarMfa() {
   const errorEl = document.getElementById('sisso-mfa-error');
   errorEl.style.display = 'none';
   const password = document.getElementById('sisso-mfa-password').value;
+  const codigo = document.getElementById('sisso-mfa-codigo-desactivar').value.trim();
   if (!password) {
     errorEl.textContent = 'Ingresa tu contraseña.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (!codigo) {
+    errorEl.textContent = 'Ingresa el código de 6 dígitos de tu app de autenticación.';
     errorEl.style.display = 'block';
     return;
   }
@@ -347,7 +360,7 @@ async function sissoDesactivarMfa() {
   boton.disabled = true;
   boton.textContent = 'Desactivando…';
   try {
-    await sissoFetch('/auth/mfa/deshabilitar', { method: 'POST', body: { password } });
+    await sissoFetch('/auth/mfa/deshabilitar', { method: 'POST', body: { password, codigo } });
     sissoCerrarModalMfa();
   } catch (err) {
     errorEl.textContent = err.message || 'Error al desactivar.';
