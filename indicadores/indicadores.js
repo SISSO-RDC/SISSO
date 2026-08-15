@@ -84,7 +84,9 @@ function renderizar(d) {
   document.getElementById('contenido').innerHTML = html;
 }
 
-function escHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+// CORREGIDO tras auditoria de seguridad (hallazgo G9): se usa la
+// funcion de escape compartida (shared/layout.js), que tambien
+// cubre comillas simples/dobles (relevante cuando el texto escapado
+// termina dentro de un atributo HTML entre comillas, no solo en el
+// texto visible), en vez de la copia local que solo cubria &, < y >.
+const escHtml = escaparHtml;

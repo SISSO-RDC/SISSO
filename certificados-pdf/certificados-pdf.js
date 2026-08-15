@@ -270,10 +270,12 @@ function formatearFechaCert(fecha) {
   if (!fecha) return '—';
   return new Date(fecha.split('T')[0] + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-function escCert(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+// CORREGIDO tras auditoria de seguridad (hallazgo G9): se usa la
+// funcion de escape compartida (shared/layout.js), que tambien
+// cubre comillas simples/dobles (relevante cuando el texto escapado
+// termina dentro de un atributo HTML entre comillas, no solo en el
+// texto visible), en vez de la copia local que solo cubria &, < y >.
+const escCert = escaparHtml;
 function mostrarErrorCert(msg) { const el = document.getElementById('error-cert'); el.textContent = msg; el.classList.add('visible'); }
 function ocultarErrorCert() { document.getElementById('error-cert').classList.remove('visible'); }
 function mostrarExitoCert(msg) { const el = document.getElementById('exito-cert'); el.textContent = msg; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 4000); }
