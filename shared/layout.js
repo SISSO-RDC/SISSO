@@ -113,11 +113,9 @@ const SissoLayout = (() => {
     return `
       <div class="sisso-sidebar">
         <div class="sisso-sidebar-logo">
-          <div class="sisso-sidebar-icono">S</div>
-          <div>
-            <div class="sisso-sidebar-nombre">SISSO</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.35);">${escaparHtml(usuario.organizacion?.nombre) || 'Sistema'}</div>
-          </div>
+          <img src="../shared/logo.png" alt="SISSO" class="sisso-sidebar-logo-img">
+          <div class="sisso-sidebar-nombre">SISSO</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.35);">${escaparHtml(usuario.organizacion?.nombre) || 'Sistema'}</div>
         </div>
         ${itemsHtml}
         <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.06);">

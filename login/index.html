@@ -8,6 +8,24 @@
   <link rel="stylesheet" href="../shared/estilos.css">
   <style>
     /* Estilos especificos del login, que no necesitan vivir en estilos.css */
+    /* CORREGIDO: logo de la organizacion (antes era un cuadrado con la
+       letra "S"). Como el logo es un grafico horizontal, no un icono
+       cuadrado, se muestra centrado y apilado sobre el texto en vez de
+       en fila junto a el (ver sisso-login-logo mas abajo, que ya no
+       esta en estilos.css sino aqui porque es especifico de esta
+       pagina). */
+    .sisso-login-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .sisso-login-logo-img {
+      width: 130px;
+      height: auto;
+      margin-bottom: 4px;
+    }
     .login-marca {
       font-size: 22px;
       font-weight: 900;
@@ -51,11 +69,9 @@
     <div class="sisso-login-caja">
       <!-- Logo e identidad -->
       <div class="sisso-login-logo">
-        <div class="sisso-login-icono">S</div>
-        <div>
-          <div class="login-marca">SISSO</div>
-          <div style="font-size:11px;color:var(--t3);font-weight:600;">Salud Ocupacional</div>
-        </div>
+        <img src="../shared/logo.png" alt="SISSO" class="sisso-login-logo-img">
+        <div class="login-marca">SISSO</div>
+        <div style="font-size:11px;color:var(--t3);font-weight:600;margin-top:-8px;">Salud Ocupacional</div>
       </div>
       <div class="login-sub">Sistema Integral de Seguridad y Salud Ocupacional</div>
 

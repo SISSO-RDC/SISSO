@@ -75,18 +75,6 @@ a { color: inherit; }
   justify-content: center;
 }
 
-.sisso-login-icono {
-  width: 46px;
-  height: 46px;
-  background: var(--teal);
-  border-radius: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 800;
-  font-size: 18px;
-}
 
 .sisso-login-titulo {
   font-size: 20px;
@@ -231,22 +219,20 @@ a { color: inherit; }
   padding: 15px;
   border-bottom: 1px solid rgba(255, 255, 255, .08);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  text-align: center;
+  gap: 2px;
 }
 
-.sisso-sidebar-icono {
-  width: 33px;
-  height: 33px;
-  background: var(--teal);
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: #fff;
-  font-weight: 800;
-  font-size: 14px;
+/* CORREGIDO: reemplaza el antiguo icono cuadrado con la letra "S"
+   por el logo real de la organizacion. Como es un grafico horizontal
+   (no un icono cuadrado), se muestra apilado sobre el texto en vez
+   de en fila junto a el (igual criterio que en login/index.html). */
+.sisso-sidebar-logo-img {
+  width: 92px;
+  height: auto;
+  margin-bottom: 2px;
 }
 
 .sisso-sidebar-nombre { color: #fff; font-weight: 700; font-size: 14px; }
