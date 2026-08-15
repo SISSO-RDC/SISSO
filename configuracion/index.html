@@ -87,7 +87,7 @@
     </div>
     <div class="sisso-campo">
       <label class="sisso-etiqueta" for="n-password">Contraseña temporal *</label>
-      <input id="n-password" type="text" class="sisso-input" placeholder="Mínimo 8 caracteres">
+      <input id="n-password" type="text" class="sisso-input" placeholder="Mínimo 12 caracteres">
       <div style="font-size:11px;color:var(--t3);margin-top:5px;">Compártela de forma segura; el usuario podrá cambiarla después de su primer ingreso.</div>
     </div>
 
@@ -115,7 +115,7 @@
 
     <div class="sisso-campo">
       <label class="sisso-etiqueta" for="reset-password">Nueva contraseña temporal *</label>
-      <input id="reset-password" type="text" class="sisso-input" placeholder="Mínimo 8 caracteres">
+      <input id="reset-password" type="text" class="sisso-input" placeholder="Mínimo 12 caracteres">
       <div style="font-size:11px;color:var(--t3);margin-top:5px;">Compártela de forma segura. El usuario deberá cambiarla por una propia en su próximo inicio de sesión, y su cuenta quedará desbloqueada si estaba bloqueada por intentos fallidos.</div>
     </div>
 
@@ -199,7 +199,7 @@ async function guardarUsuario() {
   const password = document.getElementById('n-password').value;
 
   if (!nombreCompleto || !email || !password) { mostrarError('error-nuevo', 'Completa todos los campos obligatorios.'); return; }
-  if (password.length < 8) { mostrarError('error-nuevo', 'La contraseña debe tener al menos 8 caracteres.'); return; }
+  if (password.length < 12) { mostrarError('error-nuevo', 'La contraseña debe tener al menos 12 caracteres.'); return; }
   if (!rolElegido) { mostrarError('error-nuevo', 'Selecciona un rol para el usuario.'); return; }
 
   const boton = document.getElementById('btn-guardar');
@@ -249,8 +249,8 @@ async function confirmarReset() {
   ocultarError('error-reset');
   const passwordTemporal = document.getElementById('reset-password').value;
 
-  if (!passwordTemporal || passwordTemporal.length < 8) {
-    mostrarError('error-reset', 'La contraseña debe tener al menos 8 caracteres.');
+  if (!passwordTemporal || passwordTemporal.length < 12) {
+    mostrarError('error-reset', 'La contraseña debe tener al menos 12 caracteres.');
     return;
   }
 
