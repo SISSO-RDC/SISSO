@@ -108,6 +108,23 @@
           </div>
         </div>
 
+        <!-- CORREGIDO (hallazgo CRITICO C1: login multi-tenant
+             ambiguo). Solo aparece en el caso raro de que el mismo
+             correo exista en 2+ organizaciones Y la contraseña
+             ingresada sea valida para mas de una de ellas (ver
+             authController.js:login, codigo ORGANIZACION_AMBIGUA).
+             Oculto por defecto: la inmensa mayoria de logins nunca lo ve. -->
+        <div class="sisso-campo" id="campo-codigo-organizacion" style="display:none;">
+          <label class="sisso-etiqueta" for="codigo-organizacion">Código de tu organización</label>
+          <input
+            id="codigo-organizacion"
+            type="text"
+            class="sisso-input"
+            placeholder="EMPRESA-XYZ123"
+            autocomplete="off"
+          >
+        </div>
+
         <button
           class="sisso-boton ancho-completo"
           id="btn-login"
@@ -228,6 +245,7 @@
 
     const email = document.getElementById('email').value.trim();
     const contrasena = document.getElementById('contrasena').value;
+    const codigoOrganizacion = document.getElementById('codigo-organizacion').value.trim();
     const boton = document.getElementById('btn-login');
 
     if (!email || !contrasena) {
@@ -239,11 +257,14 @@
     boton.textContent = 'Iniciando sesión…';
 
     try {
+      const cuerpoPeticion = { email, password: contrasena };
+      if (codigoOrganizacion) cuerpoPeticion.codigoOrganizacion = codigoOrganizacion;
+
       const datos = await fetch('https://sissso-backend.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password: contrasena }),
+        body: JSON.stringify(cuerpoPeticion),
       }).then(async (r) => {
         const cuerpo = await r.json();
         if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error al iniciar sesión.'), { status: r.status, codigo: cuerpo.codigo, mfaToken: cuerpo.mfaToken });
@@ -272,6 +293,16 @@
       if (err.codigo === 'MFA_OBLIGATORIO_NO_CONFIGURADO' && err.mfaToken) {
         mfaTokenPendiente = err.mfaToken;
         await iniciarConfiguracionMfaObligatoria();
+        return;
+      }
+      // CORREGIDO (hallazgo CRITICO C1): el mismo correo existe en
+      // mas de una organizacion y la contraseña es valida en ambas.
+      // Mostramos el campo de codigo de organizacion para que el
+      // usuario pueda desambiguar, en vez de fallar sin explicacion.
+      if (err.codigo === 'ORGANIZACION_AMBIGUA') {
+        document.getElementById('campo-codigo-organizacion').style.display = 'block';
+        document.getElementById('codigo-organizacion').focus();
+        mostrarError(err.message || 'Hay más de una cuenta con este correo. Ingresa el código de tu organización.');
         return;
       }
       let mensaje = err.message || 'Error al conectar con el servidor.';
