@@ -129,6 +129,9 @@ const SissoLayout = (() => {
           <button onclick="sissoAbrirMfa()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
             Verificación en 2 pasos
           </button>
+          <button onclick="sissoAbrirSesiones()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+            Sesiones activas
+          </button>
           <button onclick="sissoCerrarSesionConConfirmacion()" style="width:100%;padding:7px;background:rgba(220,38,38,.15);color:#fca5a5;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
             Cerrar sesión
           </button>
@@ -434,5 +437,121 @@ async function sissoConfirmarMfaSetup() {
     errorEl.style.display = 'block';
     boton.disabled = false;
     boton.textContent = 'Activar verificación en 2 pasos';
+  }
+}
+
+// ------------------------------------------------------------
+// Gestión de sesiones activas (hallazgo MODERADO de la auditoría).
+// Botón "Sesiones activas" del sidebar: lista los dispositivos con
+// sesión abierta (ver GET /api/auth/sesiones en authController.js)
+// y permite cerrar cualquiera de ellos individualmente, o todos los
+// demás de una vez, sin tener que esperar a que expiren solos.
+// ------------------------------------------------------------
+async function sissoAbrirSesiones() {
+  if (document.getElementById('sisso-modal-sesiones')) return;
+
+  const html = `
+    <div id="sisso-modal-sesiones" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;">
+      <div style="background:#fff;border-radius:14px;padding:26px;width:460px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">Sesiones activas</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:14px;">Dispositivos donde tu cuenta tiene una sesión abierta actualmente.</div>
+        <div id="sisso-sesiones-contenido" style="font-size:13px;color:#64748b;">Cargando…</div>
+        <div style="display:flex;justify-content:space-between;margin-top:18px;gap:8px;">
+          <button id="sisso-sesiones-btn-cerrar-otras" onclick="sissoRevocarOtrasSesiones()" style="padding:9px 14px;background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">
+            Cerrar todas las demás
+          </button>
+          <button onclick="sissoCerrarModalSesiones()" style="padding:9px 16px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  await sissoCargarSesiones();
+}
+
+function sissoCerrarModalSesiones() {
+  const el = document.getElementById('sisso-modal-sesiones');
+  if (el) el.remove();
+}
+
+function sissoFormatearFechaHoraSesion(fechaISO) {
+  if (!fechaISO) return '—';
+  const f = new Date(fechaISO);
+  return f.toLocaleString('es-EC', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+// Resumen legible del user agent (no pretende ser un parser preciso
+// de dispositivos, solo dar una pista util a simple vista: navegador
+// + sistema operativo aproximado).
+function sissoResumenDispositivo(userAgent) {
+  if (!userAgent) return 'Dispositivo desconocido';
+  let so = 'Dispositivo';
+  if (/windows/i.test(userAgent)) so = 'Windows';
+  else if (/mac os/i.test(userAgent)) so = 'macOS';
+  else if (/android/i.test(userAgent)) so = 'Android';
+  else if (/iphone|ipad/i.test(userAgent)) so = 'iOS';
+  else if (/linux/i.test(userAgent)) so = 'Linux';
+
+  let navegador = 'Navegador';
+  if (/edg\//i.test(userAgent)) navegador = 'Edge';
+  else if (/chrome\//i.test(userAgent)) navegador = 'Chrome';
+  else if (/firefox\//i.test(userAgent)) navegador = 'Firefox';
+  else if (/safari\//i.test(userAgent)) navegador = 'Safari';
+
+  return `${navegador} · ${so}`;
+}
+
+async function sissoCargarSesiones() {
+  const cont = document.getElementById('sisso-sesiones-contenido');
+  try {
+    const datos = await sissoFetch('/auth/sesiones');
+    if (!datos.sesiones || datos.sesiones.length === 0) {
+      cont.innerHTML = '<div>No hay sesiones activas.</div>';
+      return;
+    }
+
+    cont.innerHTML = datos.sesiones.map((s) => `
+      <div style="border:1.5px solid ${s.esSesionActual ? '#99f6e4' : '#e2e8f0'};background:${s.esSesionActual ? '#f0fdfa' : '#fff'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="min-width:0;">
+            <div style="font-weight:700;font-size:13px;color:#1e293b;">
+              ${escaparHtml(sissoResumenDispositivo(s.userAgent))}
+              ${s.esSesionActual ? '<span style="margin-left:6px;font-size:10px;font-weight:700;background:#0d9488;color:#fff;padding:1px 6px;border-radius:8px;">ESTA SESIÓN</span>' : ''}
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:3px;">
+              Iniciada: ${sissoFormatearFechaHoraSesion(s.creadoEn)}
+              ${s.ipOrigen ? ` · IP: ${escaparHtml(s.ipOrigen)}` : ''}
+            </div>
+          </div>
+          ${s.esSesionActual ? '' : `<button onclick="sissoRevocarSesion('${escaparHtml(s.familiaId)}')" style="flex-shrink:0;padding:5px 10px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>`}
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    cont.innerHTML = `<div style="background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;">Error al cargar: ${escaparHtml(err.message)}</div>`;
+  }
+}
+
+async function sissoRevocarSesion(familiaId) {
+  try {
+    await sissoFetch(`/auth/sesiones/${encodeURIComponent(familiaId)}`, { method: 'DELETE' });
+    await sissoCargarSesiones();
+  } catch (err) {
+    alert(err.message || 'No se pudo cerrar esa sesión.');
+  }
+}
+
+async function sissoRevocarOtrasSesiones() {
+  if (!confirm('¿Cerrar todas las demás sesiones? Los otros dispositivos tendrán que iniciar sesión de nuevo.')) return;
+  const boton = document.getElementById('sisso-sesiones-btn-cerrar-otras');
+  boton.disabled = true;
+  boton.textContent = 'Cerrando…';
+  try {
+    await sissoFetch('/auth/sesiones', { method: 'DELETE' });
+    await sissoCargarSesiones();
+  } catch (err) {
+    alert(err.message || 'No se pudieron cerrar las sesiones.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Cerrar todas las demás';
   }
 }
