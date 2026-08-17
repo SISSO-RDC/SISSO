@@ -87,6 +87,20 @@ const SissoSesion = {
     return !!this.obtenerAccessToken();
   },
 
+  /**
+   * Actualiza solo el logo de la organizacion en la sesion en cache,
+   * para que el sidebar lo refleje de inmediato tras subir/cambiar
+   * el logo desde Mi Empresa, sin tener que cerrar sesion y volver
+   * a entrar para verlo.
+   */
+  actualizarLogoOrganizacion(nuevoLogoUrl) {
+    const usuario = this.obtenerUsuario();
+    if (!usuario) return;
+    usuario.organizacion = usuario.organizacion || {};
+    usuario.organizacion.logoUrl = nuevoLogoUrl;
+    sessionStorage.setItem(CLAVE_USUARIO, JSON.stringify(usuario));
+  },
+
   limpiar() {
     sessionStorage.removeItem(CLAVE_ACCESS_TOKEN);
     sessionStorage.removeItem(CLAVE_USUARIO);

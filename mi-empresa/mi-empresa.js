@@ -105,6 +105,9 @@ async function subirLogo(evento) {
     try {
       const datos = await sissoFetch('/organizacion/logo', { method: 'PUT', body: { logoBase64: lector.result } });
       document.getElementById('logo-preview').innerHTML = `<img src="${datos.organizacion.logo_url}" alt="Logo">`;
+      // Para que el sidebar muestre el logo nuevo de inmediato, sin
+      // tener que cerrar sesion y volver a entrar.
+      SissoSesion.actualizarLogoOrganizacion(datos.organizacion.logo_url);
     } catch (err) {
       alert('Error al subir el logo: ' + err.message);
     }

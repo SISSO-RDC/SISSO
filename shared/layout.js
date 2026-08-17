@@ -86,38 +86,102 @@ const SissoLayout = (() => {
     return !item.roles || item.roles.length === 0 || item.roles.includes(rol);
   }
 
-  function construirSidebar(moduloActivo, usuario) {
-    const itemsHtml = MENU.map(item => {
-      // Es un separador de seccion, no un item de menu
+  // CORREGIDO (mejora de UX solicitada: "el menu es muy largo, que
+  // cada seccion se pueda contraer/expandir"). Se guarda que
+  // secciones estan colapsadas en localStorage (no sessionStorage:
+  // asi la preferencia se mantiene entre sesiones, no solo mientras
+  // dura la pestana) bajo una clave por usuario, para que cada quien
+  // recuerde su propia preferencia en un equipo compartido.
+  function claveColapso(usuario) {
+    return `sisso_secciones_colapsadas_${usuario.id}`;
+  }
+
+  function leerSeccionesColapsadas(usuario) {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(claveColapso(usuario)) || '[]'));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function guardarSeccionesColapsadas(usuario, set) {
+    try {
+      localStorage.setItem(claveColapso(usuario), JSON.stringify([...set]));
+    } catch { /* localStorage no disponible (modo privado, etc.): no es critico */ }
+  }
+
+  // Agrupa el MENU plano en secciones, filtrando por rol y
+  // descartando secciones que terminan sin ningun item visible (por
+  // ejemplo, un rol que no ve nada de "CLÍNICO" no deberia ver un
+  // encabezado "CLÍNICO" vacio colgando en su sidebar).
+  function agruparPorSeccion(usuario) {
+    const secciones = [];
+    let actual = null;
+    for (const item of MENU) {
       if (item.seccion) {
-        return `<div class="sisso-nav-seccion">${item.seccion}</div>`;
+        actual = { nombre: item.seccion, items: [] };
+        secciones.push(actual);
+        continue;
       }
+      if (puedeVerItem(item, usuario.rol) && actual) {
+        actual.items.push(item);
+      }
+    }
+    return secciones.filter((s) => s.items.length > 0);
+  }
 
-      if (!puedeVerItem(item, usuario.rol)) return '';
+  function construirSidebar(moduloActivo, usuario) {
+    const secciones = agruparPorSeccion(usuario);
+    const colapsadas = leerSeccionesColapsadas(usuario);
+    // La seccion que contiene el modulo activo siempre se ve
+    // expandida al cargar la pagina, sin importar la preferencia
+    // guardada -- perderse de vista donde uno esta parado seria peor
+    // que el menu largo que esto intenta arreglar.
+    const seccionActiva = secciones.find((s) => s.items.some((it) => it.id === moduloActivo));
 
-      const estaActivo = item.id === moduloActivo;
-      const esPendiente = item.href === '#';
+    const seccionesHtml = secciones.map((seccion) => {
+      const estaColapsada = colapsadas.has(seccion.nombre) && seccion !== seccionActiva;
+      const itemsHtml = seccion.items.map((item) => {
+        const estaActivo = item.id === moduloActivo;
+        const esPendiente = item.href === '#';
+        return `<a
+          href="${item.href}"
+          class="sisso-nav-item${estaActivo ? ' activo' : ''}${esPendiente ? ' pendiente' : ''}"
+          ${esPendiente ? 'onclick="return false;" title="Próximamente"' : ''}
+          style="${esPendiente ? 'opacity:.4;cursor:not-allowed;' : ''}"
+        >
+          <span style="width:18px;text-align:center">${item.icono}</span>
+          <span>${item.label}</span>
+          ${esPendiente ? '<span style="margin-left:auto;font-size:9px;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.4);padding:1px 5px;border-radius:8px">PRONTO</span>' : ''}
+        </a>`;
+      }).join('');
 
-      return `<a
-        href="${item.href}"
-        class="sisso-nav-item${estaActivo ? ' activo' : ''}${esPendiente ? ' pendiente' : ''}"
-        ${esPendiente ? 'onclick="return false;" title="Próximamente"' : ''}
-        style="${esPendiente ? 'opacity:.4;cursor:not-allowed;' : ''}"
-      >
-        <span style="width:18px;text-align:center">${item.icono}</span>
-        <span>${item.label}</span>
-        ${esPendiente ? '<span style="margin-left:auto;font-size:9px;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.4);padding:1px 5px;border-radius:8px">PRONTO</span>' : ''}
-      </a>`;
+      return `
+        <button type="button" class="sisso-nav-seccion-btn" aria-expanded="${!estaColapsada}" onclick="sissoToggleSeccion(this, '${escaparHtml(seccion.nombre)}')">
+          <span class="sisso-nav-seccion">${escaparHtml(seccion.nombre)}</span>
+          <span class="sisso-nav-seccion-flecha">▼</span>
+        </button>
+        <div class="sisso-nav-seccion-items${estaColapsada ? ' colapsada' : ''}">${itemsHtml}</div>`;
     }).join('');
+
+    const org = usuario.organizacion || {};
+    const franjaEmpresa = org.logoUrl
+      ? `<div class="sisso-sidebar-empresa">
+           <img src="${escaparHtml(org.logoUrl)}" alt="${escaparHtml(org.nombre)}" class="sisso-sidebar-empresa-logo">
+           <span class="sisso-sidebar-empresa-nombre">${escaparHtml(org.nombre) || 'Empresa'}</span>
+         </div>`
+      : `<div class="sisso-sidebar-empresa">
+           <span class="sisso-sidebar-empresa-nombre">${escaparHtml(org.nombre) || 'Sistema'}</span>
+         </div>`;
 
     return `
       <div class="sisso-sidebar">
         <div class="sisso-sidebar-logo">
           <img src="../shared/logo.png" alt="SISSO" class="sisso-sidebar-logo-img">
           <div class="sisso-sidebar-nombre">SISSO</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.35);">${escaparHtml(usuario.organizacion?.nombre) || 'Sistema'}</div>
         </div>
-        ${itemsHtml}
+        ${franjaEmpresa}
+        ${seccionesHtml}
         <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.06);">
           <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px;padding:0 4px;">
             ${escaparHtml(usuario.nombreCompleto)}
@@ -212,6 +276,37 @@ async function sissoCerrarSesionConConfirmacion() {
   if (confirm('¿Deseas cerrar tu sesión?')) {
     await sissoCerrarSesion();
   }
+}
+
+/**
+ * Contrae/expande una seccion del sidebar y recuerda la preferencia
+ * en localStorage (por usuario) para las proximas visitas. Global
+ * por el mismo motivo que sissoCerrarSesionConConfirmacion: la llama
+ * un onclick generado dinamicamente dentro del sidebar.
+ */
+function sissoToggleSeccion(boton, nombreSeccion) {
+  const usuario = SissoSesion.obtenerUsuario();
+  if (!usuario) return;
+
+  const contenedor = boton.nextElementSibling;
+  const clave = `sisso_secciones_colapsadas_${usuario.id}`;
+  let colapsadas;
+  try {
+    colapsadas = new Set(JSON.parse(localStorage.getItem(clave) || '[]'));
+  } catch {
+    colapsadas = new Set();
+  }
+
+  const vaAColapsarse = !contenedor.classList.contains('colapsada');
+  contenedor.classList.toggle('colapsada', vaAColapsarse);
+  boton.setAttribute('aria-expanded', String(!vaAColapsarse));
+
+  if (vaAColapsarse) colapsadas.add(nombreSeccion);
+  else colapsadas.delete(nombreSeccion);
+
+  try {
+    localStorage.setItem(clave, JSON.stringify([...colapsadas]));
+  } catch { /* localStorage no disponible: no es critico, solo no se recuerda la preferencia */ }
 }
 
 /**

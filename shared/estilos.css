@@ -237,6 +237,36 @@ a { color: inherit; }
 
 .sisso-sidebar-nombre { color: #fff; font-weight: 700; font-size: 14px; }
 
+/* CORREGIDO: logo de la empresa cliente, ademas del logo de la
+   plataforma (antes solo se veia "SISSO", nunca la marca del
+   cliente actual). Se muestra en una franja propia, mas discreta,
+   justo debajo del logo de la plataforma -- SISSO sigue siendo lo
+   primero que se ve (es la plataforma), la empresa es contexto. */
+.sisso-sidebar-empresa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.sisso-sidebar-empresa-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #fff;
+  object-fit: contain;
+  flex-shrink: 0;
+  padding: 2px;
+}
+.sisso-sidebar-empresa-nombre {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, .55);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sisso-nav-seccion {
   padding: 11px 16px 3px;
   font-size: 10px;
@@ -245,6 +275,34 @@ a { color: inherit; }
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+
+/* CORREGIDO: secciones del sidebar ahora colapsables (el menu crece
+   con cada modulo nuevo y sin esto obliga a hacer scroll largo). El
+   encabezado de seccion es un boton clickeable con una flecha que
+   gira; los items de esa seccion se ocultan con display:none en vez
+   de animarse con max-height, para no depender de medir alturas
+   dinamicas de contenido variable. */
+.sisso-nav-seccion-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.sisso-nav-seccion-btn .sisso-nav-seccion { padding: 0; }
+.sisso-nav-seccion-flecha {
+  font-size: 9px;
+  color: rgba(255, 255, 255, .3);
+  transition: transform .15s;
+  flex-shrink: 0;
+}
+.sisso-nav-seccion-btn[aria-expanded="false"] .sisso-nav-seccion-flecha { transform: rotate(-90deg); }
+.sisso-nav-seccion-items.colapsada { display: none; }
 
 .sisso-nav-item {
   display: flex;
