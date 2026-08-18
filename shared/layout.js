@@ -62,6 +62,14 @@ const SissoLayout = (() => {
     { id: 'audiometria',  label: 'Audiometría',        icono: '🔊', href: '../audiometria/index.html', roles: ['medico'] },
     { id: 'espirometria', label: 'Espirometría',       icono: '💨', href: '../espirometria/index.html', roles: ['medico'] },
     { id: 'visiometria',  label: 'Visiometría',        icono: '👁️', href: '../visiometria/index.html',  roles: ['medico'] },
+    // CORREGIDO tras Auditoria SISSO N.06 (puntos 17 y 25): modulos
+    // medicos nuevos. "enfermedad-profesional" es exclusivo del
+    // medico (SSO tiene su propia vista preventiva agregada, sin
+    // acceso clinico, dentro del mismo modulo). "restricciones" la
+    // ve tambien SSO/TH pero en modo solo-lectura de la medida
+    // laboral (nunca el motivo clinico) — ver restriccionesMedicasController.js.
+    { id: 'enfermedad-profesional', label: 'Enfermedad profesional', icono: '🧬', href: '../enfermedad-profesional/index.html', roles: ['medico', 'sso'] },
+    { id: 'restricciones', label: 'Restricciones médicas', icono: '🚧', href: '../restricciones-medicas/index.html', roles: ['medico', 'sso', 'th'] },
 
     { seccion: 'ERGONOMÍA' },
     { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '../puestos-trabajo/index.html', roles: ['admin', 'medico', 'sso', 'th'] },

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Restricciones Médicas</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .selector-trabajador-caja { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .restr-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; }
+    .restr-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+    .restr-acciones { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .aviso-operativo {
+      background: var(--teal3); color: var(--teal2); padding: 12px 14px; border-radius: var(--r);
+      font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
+    }
+    .modal-fondo {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="sisso-tarjeta" id="caja-seleccion-trabajador">
+    <div class="sisso-tarjeta-titulo">Restricciones médicas</div>
+    <div class="sisso-tarjeta-subtitulo">Selecciona un trabajador para ver o gestionar sus restricciones.</div>
+    <div class="sisso-error" id="error-trabajador"></div>
+    <div class="selector-trabajador-caja">
+      <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+    </div>
+  </div>
+
+  <div id="caja-principal" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;">Trabajador</div>
+        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+      </div>
+    </div>
+
+    <div id="aviso-rol"></div>
+
+    <!-- Solo medico: emitir nueva restriccion -->
+    <div class="sisso-tarjeta" id="caja-emitir" style="display:none;margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Emitir nueva restricción</div>
+      <div class="sisso-error" id="error-emitir"></div>
+      <div class="sisso-exito" id="exito-emitir"></div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-motivo">Motivo clínico * <span style="color:var(--t3);font-weight:400;">(mínimo 10 caracteres, solo visible para médico)</span></label>
+        <textarea id="e-motivo" class="sisso-textarea" placeholder="Criterio clínico que origina la restricción."></textarea>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-cie10">Código CIE-10 relacionado</label>
+        <input id="e-cie10" class="sisso-input" placeholder="Opcional, ej: M54.5">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-medida">Medida laboral * <span style="color:var(--t3);font-weight:400;">(esto es lo único que verán SSO/TH)</span></label>
+        <textarea id="e-medida" class="sisso-textarea" placeholder="Ej: No levantar cargas mayores a 5kg. Rotación de puesto cada 2 horas."></textarea>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-fecha-emision">Fecha de emisión *</label>
+        <input id="e-fecha-emision" type="date" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-vigencia">Vigente hasta <span style="color:var(--t3);font-weight:400;">(vacío = indefinida hasta que se levante)</span></label>
+        <input id="e-vigencia" type="date" class="sisso-input">
+      </div>
+      <button class="sisso-boton ancho-completo" id="btn-emitir" onclick="emitirRestriccion()">Emitir restricción</button>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Restricciones registradas</div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t2);margin-bottom:12px;">
+        <input type="checkbox" id="chk-solo-activas" checked onchange="cargarRestricciones()"> Mostrar solo activas/prorrogadas
+      </label>
+      <div id="lista-restricciones"><div class="sisso-cargando">Cargando restricciones…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: prorrogar / modificar / levantar (solo medico) -->
+<div class="modal-fondo" id="modal-fondo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo" id="modal-titulo">Acción</div>
+    <div class="sisso-error" id="error-modal"></div>
+    <div id="modal-cuerpo"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" id="btn-modal-confirmar" onclick="confirmarModal()">Confirmar</button>
+      <button class="sisso-boton secundario" style="flex:1;" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let trabajadores = [];
+let trabajadorActualId = null;
+let esMedico = false;
+let accionModal = null; // 'prorrogar' | 'modificar' | 'levantar'
+let restriccionModalId = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('restricciones', 'Restricciones Médicas');
+
+  const usuario = SissoSesion.obtenerUsuario();
+  esMedico = usuario.rol === 'medico';
+
+  document.getElementById('aviso-rol').innerHTML = esMedico
+    ? ''
+    : `<div class="aviso-operativo">🔒 Como rol ${escHtml(usuario.rol.toUpperCase())} ves únicamente la medida laboral a ejecutar.
+       El motivo clínico y el diagnóstico relacionado son exclusivos del Médico Ocupacional
+       (corrección del punto 3.3 de la Auditoría SISSO N.º 06).</div>`;
+
+  if (esMedico) document.getElementById('caja-emitir').style.display = 'block';
+
+  await cargarTrabajadores();
+});
+
+async function cargarTrabajadores() {
+  const sel = document.getElementById('sel-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar trabajadores</option>';
+    mostrarError('error-trabajador', err.message);
+  }
+}
+
+function elegirTrabajador() {
+  ocultarError('error-trabajador');
+  const id = document.getElementById('sel-trabajador').value;
+  if (!id) { mostrarError('error-trabajador', 'Selecciona un trabajador.'); return; }
+
+  trabajadorActualId = id;
+  const t = trabajadores.find(x => x.id === id);
+  document.getElementById('titulo-trabajador').textContent = t ? `${t.nombre_completo} — ${t.documento}` : 'Trabajador';
+
+  document.getElementById('caja-seleccion-trabajador').style.display = 'none';
+  document.getElementById('caja-principal').style.display = 'block';
+  cargarRestricciones();
+}
+
+function cambiarTrabajador() {
+  trabajadorActualId = null;
+  document.getElementById('caja-seleccion-trabajador').style.display = 'block';
+  document.getElementById('caja-principal').style.display = 'none';
+}
+
+async function emitirRestriccion() {
+  ocultarError('error-emitir');
+  ocultarExito('exito-emitir');
+
+  const motivo = document.getElementById('e-motivo').value.trim();
+  const cie10 = document.getElementById('e-cie10').value.trim();
+  const medida = document.getElementById('e-medida').value.trim();
+  const fechaEmision = document.getElementById('e-fecha-emision').value;
+  const vigencia = document.getElementById('e-vigencia').value;
+
+  if (motivo.length < 10) { mostrarError('error-emitir', 'El motivo clínico debe tener al menos 10 caracteres.'); return; }
+  if (medida.length < 5) { mostrarError('error-emitir', 'La medida laboral debe tener al menos 5 caracteres.'); return; }
+  if (!fechaEmision) { mostrarError('error-emitir', 'Indica la fecha de emisión.'); return; }
+
+  const boton = document.getElementById('btn-emitir');
+  boton.disabled = true;
+  boton.textContent = 'Emitiendo…';
+
+  try {
+    await sissoFetch(`/restricciones-medicas/trabajadores/${trabajadorActualId}`, {
+      method: 'POST',
+      body: {
+        motivoClinico: motivo,
+        diagnosticoCie10Relacionado: cie10 || undefined,
+        medidaLaboral: medida,
+        fechaEmision,
+        fechaVigenciaHasta: vigencia || undefined,
+      },
+    });
+    mostrarExito('exito-emitir', 'Restricción emitida correctamente.');
+    document.getElementById('e-motivo').value = '';
+    document.getElementById('e-cie10').value = '';
+    document.getElementById('e-medida').value = '';
+    document.getElementById('e-vigencia').value = '';
+    await cargarRestricciones();
+  } catch (err) {
+    mostrarError('error-emitir', err.message || 'Error al emitir la restricción.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Emitir restricción';
+  }
+}
+
+async function cargarRestricciones() {
+  const cont = document.getElementById('lista-restricciones');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando restricciones…</div>';
+  const soloActivas = document.getElementById('chk-solo-activas').checked;
+
+  try {
+    const datos = await sissoFetch(`/restricciones-medicas/trabajadores/${trabajadorActualId}?activas=${soloActivas}`);
+    const restricciones = datos.restricciones || [];
+    if (restricciones.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay restricciones registradas para este filtro.</div>';
+      return;
+    }
+    cont.innerHTML = restricciones.map(r => `
+      <div class="restr-item">
+        <div class="restr-cabecera">
+          ${chipDeEstado(r.estado)}
+          <span style="font-size:11px;color:var(--t3);">Emitida: ${formatearFecha(r.fecha_emision)}${r.fecha_vigencia_hasta ? ` · Vigente hasta: ${formatearFecha(r.fecha_vigencia_hasta)}` : ' · Vigencia indefinida'}</span>
+        </div>
+        ${esMedico && r.motivo_clinico ? `<div style="font-size:12.5px;color:var(--t2);margin-bottom:4px;"><strong>Motivo clínico:</strong> ${escHtml(r.motivo_clinico)}</div>` : ''}
+        <div style="font-size:12.5px;color:var(--t2);"><strong>Medida laboral:</strong> ${escHtml(r.medida_laboral)}</div>
+        ${r.fecha_levantamiento ? `<div style="font-size:11.5px;color:var(--t3);margin-top:4px;">Levantada el ${formatearFecha(r.fecha_levantamiento)}${r.motivo_levantamiento ? ': ' + escHtml(r.motivo_levantamiento) : ''}</div>` : ''}
+        ${esMedico && r.estado !== 'levantada' ? `
+          <div class="restr-acciones">
+            <button class="btn-mini" onclick="abrirModal('prorrogar', '${r.id}')">📅 Prorrogar</button>
+            <button class="btn-mini" onclick="abrirModal('modificar', '${r.id}')">✎ Modificar</button>
+            <button class="btn-mini" onclick="abrirModal('levantar', '${r.id}')">✕ Levantar</button>
+          </div>` : ''}
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar las restricciones: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ======= Modal (solo medico) =======
+function abrirModal(accion, restriccionId) {
+  accionModal = accion;
+  restriccionModalId = restriccionId;
+  ocultarError('error-modal');
+
+  const cuerpos = {
+    prorrogar: `
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-nueva-vigencia">Nueva fecha de vigencia *</label>
+        <input id="m-nueva-vigencia" type="date" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-motivo">Motivo de la prórroga</label>
+        <textarea id="m-motivo" class="sisso-textarea"></textarea>
+      </div>`,
+    modificar: `
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-medida">Nueva medida laboral</label>
+        <textarea id="m-medida" class="sisso-textarea" placeholder="Dejar vacío para no cambiar."></textarea>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-motivo-clinico">Nuevo motivo clínico</label>
+        <textarea id="m-motivo-clinico" class="sisso-textarea" placeholder="Dejar vacío para no cambiar."></textarea>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-motivo">Motivo de la modificación</label>
+        <textarea id="m-motivo" class="sisso-textarea"></textarea>
+      </div>`,
+    levantar: `
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-motivo-levantamiento">Motivo del levantamiento * <span style="color:var(--t3);font-weight:400;">(mínimo 5 caracteres)</span></label>
+        <textarea id="m-motivo-levantamiento" class="sisso-textarea"></textarea>
+      </div>`,
+  };
+  const titulos = { prorrogar: 'Prorrogar restricción', modificar: 'Modificar restricción', levantar: 'Levantar restricción' };
+
+  document.getElementById('modal-titulo').textContent = titulos[accion];
+  document.getElementById('modal-cuerpo').innerHTML = cuerpos[accion];
+  document.getElementById('modal-fondo').classList.add('visible');
+}
+
+function cerrarModal() {
+  document.getElementById('modal-fondo').classList.remove('visible');
+  accionModal = null;
+  restriccionModalId = null;
+}
+
+async function confirmarModal() {
+  ocultarError('error-modal');
+  const boton = document.getElementById('btn-modal-confirmar');
+
+  try {
+    if (accionModal === 'prorrogar') {
+      const nuevaFecha = document.getElementById('m-nueva-vigencia').value;
+      const motivo = document.getElementById('m-motivo').value.trim();
+      if (!nuevaFecha) { mostrarError('error-modal', 'Indica la nueva fecha de vigencia.'); return; }
+      boton.disabled = true;
+      await sissoFetch(`/restricciones-medicas/${restriccionModalId}/prorrogar`, {
+        method: 'PUT', body: { nuevaFechaVigenciaHasta: nuevaFecha, motivo: motivo || undefined },
+      });
+    } else if (accionModal === 'modificar') {
+      const medida = document.getElementById('m-medida').value.trim();
+      const motivoClinico = document.getElementById('m-motivo-clinico').value.trim();
+      const motivo = document.getElementById('m-motivo').value.trim();
+      boton.disabled = true;
+      await sissoFetch(`/restricciones-medicas/${restriccionModalId}/modificar`, {
+        method: 'PUT', body: { medidaLaboral: medida || undefined, motivoClinico: motivoClinico || undefined, motivo: motivo || undefined },
+      });
+    } else if (accionModal === 'levantar') {
+      const motivoLevantamiento = document.getElementById('m-motivo-levantamiento').value.trim();
+      if (motivoLevantamiento.length < 5) { mostrarError('error-modal', 'El motivo debe tener al menos 5 caracteres.'); return; }
+      boton.disabled = true;
+      await sissoFetch(`/restricciones-medicas/${restriccionModalId}/levantar`, {
+        method: 'PUT', body: { motivoLevantamiento },
+      });
+    }
+
+    cerrarModal();
+    await cargarRestricciones();
+  } catch (err) {
+    mostrarError('error-modal', err.message || 'Error al procesar la acción.');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+// ======= Utilidades =======
+function chipDeEstado(estado) {
+  const mapa = {
+    activa: ['verde', 'Activa'], prorrogada: ['teal', 'Prorrogada'],
+    levantada: ['gris', 'Levantada'], vencida: ['rojo', 'Vencida'],
+  };
+  const [clase, label] = mapa[estado] || ['gris', estado];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Enfermedad Profesional</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .selector-trabajador-caja { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .caso-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .caso-item:hover { background: var(--bg); }
+    .caso-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .panel-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .panel-2col { grid-template-columns: 1fr; } }
+    .seguimiento-item { border-left: 3px solid var(--teal2); padding: 8px 12px; margin-bottom: 8px; background: var(--bg); border-radius: 0 var(--r) var(--r) 0; }
+    .aviso-preventivo {
+      background: var(--teal3); color: var(--teal2); padding: 12px 14px; border-radius: var(--r);
+      font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
+    }
+    table.tabla-resumen { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.tabla-resumen th, table.tabla-resumen td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bd); }
+    table.tabla-resumen th { color: var(--t3); font-size: 11px; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- ======= VISTA SSO: resumen preventivo agregado ======= -->
+  <div id="vista-sso" style="display:none;">
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Enfermedad profesional — vista preventiva</div>
+      <div class="sisso-tarjeta-subtitulo">
+        Esta es una vista AGREGADA y preventiva. No incluye diagnóstico, evolución clínica
+        ni el nombre del trabajador: esa información es exclusiva del Médico Ocupacional
+        (corrección del punto 3.1/3.2 de la Auditoría SISSO N.º 06).
+      </div>
+      <div class="aviso-preventivo">
+        🔒 Como rol SSO puedes ver la exposición/factor de riesgo relacionado y cuántos casos
+        existen por estado y puesto, para poder actuar sobre el control preventivo. El expediente
+        clínico individual permanece bajo el Médico Ocupacional.
+      </div>
+      <div id="tabla-resumen-sso"><div class="sisso-cargando">Cargando resumen…</div></div>
+    </div>
+  </div>
+
+  <!-- ======= VISTA MÉDICO: gestión clínica completa ======= -->
+  <div id="vista-medico" style="display:none;">
+
+    <div class="sisso-tarjeta" id="caja-seleccion-trabajador">
+      <div class="sisso-tarjeta-titulo">Enfermedad profesional</div>
+      <div class="sisso-tarjeta-subtitulo">Selecciona un trabajador para ver o abrir un caso.</div>
+      <div class="sisso-error" id="error-trabajador"></div>
+      <div class="selector-trabajador-caja">
+        <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+          <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+          <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+        </div>
+        <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+      </div>
+    </div>
+
+    <div id="caja-principal" style="display:none;margin-top:16px;">
+
+      <div class="sisso-tarjeta" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;">Trabajador</div>
+          <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+        </div>
+      </div>
+
+      <div class="panel-2col">
+        <!-- Columna izquierda: nuevo caso -->
+        <div class="sisso-tarjeta">
+          <div class="sisso-tarjeta-titulo">Abrir nuevo caso (sospecha)</div>
+          <div class="sisso-error" id="error-nuevo-caso"></div>
+          <div class="sisso-exito" id="exito-nuevo-caso"></div>
+
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="nc-fecha">Fecha de sospecha *</label>
+            <input id="nc-fecha" type="date" class="sisso-input">
+          </div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="nc-diagnostico-presuntivo">Diagnóstico presuntivo</label>
+            <textarea id="nc-diagnostico-presuntivo" class="sisso-textarea" placeholder="Texto libre mientras no hay CIE-10 confirmado."></textarea>
+          </div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="nc-exposicion">Exposición / factor de riesgo relacionado</label>
+            <textarea id="nc-exposicion" class="sisso-textarea" placeholder="Ej: exposición a ruido continuo en puesto de corte. Este campo es el único visible para SSO."></textarea>
+          </div>
+          <button class="sisso-boton ancho-completo" id="btn-nuevo-caso" onclick="crearCaso()">Abrir caso</button>
+        </div>
+
+        <!-- Columna derecha: casos existentes -->
+        <div class="sisso-tarjeta">
+          <div class="sisso-tarjeta-titulo">Casos de este trabajador</div>
+          <div id="lista-casos"><div class="sisso-cargando">Cargando casos…</div></div>
+        </div>
+      </div>
+
+      <!-- Detalle de caso -->
+      <div class="sisso-tarjeta" id="caja-detalle-caso" style="display:none;margin-top:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div class="sisso-tarjeta-titulo" style="margin-bottom:0;">Detalle del caso</div>
+          <button class="btn-mini" onclick="cerrarDetalleCaso()">✕ Cerrar</button>
+        </div>
+        <div class="sisso-error" id="error-detalle"></div>
+        <div class="sisso-exito" id="exito-detalle"></div>
+
+        <div class="panel-2col" style="margin-top:12px;">
+          <div>
+            <div class="sisso-campo">
+              <label class="sisso-etiqueta" for="d-estado">Estado del caso</label>
+              <select id="d-estado" class="sisso-select">
+                <option value="sospecha">Sospecha</option>
+                <option value="en_evaluacion">En evaluación</option>
+                <option value="confirmada">Confirmada</option>
+                <option value="descartada">Descartada</option>
+                <option value="en_seguimiento">En seguimiento</option>
+                <option value="cerrada">Cerrada</option>
+              </select>
+            </div>
+            <div class="sisso-campo">
+              <label class="sisso-etiqueta" for="d-diagnostico-cie10">Código CIE-10 (si ya hay diagnóstico)</label>
+              <input id="d-diagnostico-cie10" class="sisso-input" placeholder="Ej: J62.8">
+            </div>
+            <div class="sisso-campo">
+              <label class="sisso-etiqueta" for="d-evolucion">Evolución clínica</label>
+              <textarea id="d-evolucion" class="sisso-textarea" placeholder="Notas de evolución del caso."></textarea>
+            </div>
+            <div class="sisso-campo">
+              <label class="sisso-etiqueta" for="d-conclusion">Conclusión clínica <span style="color:var(--t3);font-weight:400;">(obligatoria para cerrar el caso)</span></label>
+              <textarea id="d-conclusion" class="sisso-textarea"></textarea>
+            </div>
+            <button class="sisso-boton ancho-completo" id="btn-guardar-caso" onclick="guardarCaso()">Guardar cambios</button>
+          </div>
+
+          <div>
+            <div class="sisso-tarjeta-subtitulo" style="margin-bottom:8px;">Seguimiento longitudinal</div>
+            <div id="lista-seguimientos" style="margin-bottom:12px;"></div>
+
+            <div class="sisso-campo">
+              <label class="sisso-etiqueta" for="s-fecha">Fecha</label>
+              <input id="s-fecha" type="date" class="sisso-input">
+            </div>
+            <div class="sisso-campo">
+              <label class="sisso-etiqueta" for="s-nota">Nota clínica</label>
+              <textarea id="s-nota" class="sisso-textarea" placeholder="Mínimo 5 caracteres."></textarea>
+            </div>
+            <button class="sisso-boton secundario ancho-completo" onclick="agregarSeguimiento()">+ Agregar seguimiento</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let trabajadores = [];
+let trabajadorActualId = null;
+let casoActualId = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('enfermedad-profesional', 'Enfermedad Profesional');
+
+  const usuario = SissoSesion.obtenerUsuario();
+  if (usuario.rol === 'sso') {
+    document.getElementById('vista-sso').style.display = 'block';
+    await cargarVistaPreventivaSso();
+  } else {
+    // 'medico' es el unico otro rol con acceso a este modulo (ver
+    // shared/layout.js MENU y enfermedadProfesionalRoutes.js).
+    document.getElementById('vista-medico').style.display = 'block';
+    await cargarTrabajadores();
+  }
+});
+
+// ======= VISTA SSO =======
+async function cargarVistaPreventivaSso() {
+  const cont = document.getElementById('tabla-resumen-sso');
+  try {
+    const datos = await sissoFetch('/enfermedad-profesional/vista-preventiva-sso');
+    const resumen = datos.resumen || [];
+    if (resumen.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay casos registrados por el Médico Ocupacional todavía.</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <table class="tabla-resumen">
+        <thead><tr><th>Estado</th><th>Exposición relacionada</th><th>Casos</th></tr></thead>
+        <tbody>
+          ${resumen.map(r => `
+            <tr>
+              <td>${chipDeEstado(r.estado)}</td>
+              <td>${escHtml(r.exposicion_relacionada || '—')}</td>
+              <td><strong>${r.total}</strong></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar el resumen: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ======= VISTA MÉDICO =======
+async function cargarTrabajadores() {
+  const sel = document.getElementById('sel-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar trabajadores</option>';
+    mostrarError('error-trabajador', err.message);
+  }
+}
+
+function elegirTrabajador() {
+  ocultarError('error-trabajador');
+  const id = document.getElementById('sel-trabajador').value;
+  if (!id) { mostrarError('error-trabajador', 'Selecciona un trabajador.'); return; }
+
+  trabajadorActualId = id;
+  const t = trabajadores.find(x => x.id === id);
+  document.getElementById('titulo-trabajador').textContent = t ? `${t.nombre_completo} — ${t.documento}` : 'Trabajador';
+
+  document.getElementById('caja-seleccion-trabajador').style.display = 'none';
+  document.getElementById('caja-principal').style.display = 'block';
+  cerrarDetalleCaso();
+  cargarCasos();
+}
+
+function cambiarTrabajador() {
+  trabajadorActualId = null;
+  document.getElementById('caja-seleccion-trabajador').style.display = 'block';
+  document.getElementById('caja-principal').style.display = 'none';
+}
+
+async function crearCaso() {
+  ocultarError('error-nuevo-caso');
+  ocultarExito('exito-nuevo-caso');
+
+  const fecha = document.getElementById('nc-fecha').value;
+  const diagnosticoPresuntivo = document.getElementById('nc-diagnostico-presuntivo').value.trim();
+  const exposicion = document.getElementById('nc-exposicion').value.trim();
+
+  if (!fecha) { mostrarError('error-nuevo-caso', 'Indica la fecha de sospecha.'); return; }
+
+  const boton = document.getElementById('btn-nuevo-caso');
+  boton.disabled = true;
+  boton.textContent = 'Abriendo caso…';
+
+  try {
+    await sissoFetch(`/enfermedad-profesional/trabajadores/${trabajadorActualId}`, {
+      method: 'POST',
+      body: { fechaSospecha: fecha, diagnosticoPresuntivo: diagnosticoPresuntivo || undefined, exposicionRelacionada: exposicion || undefined },
+    });
+    mostrarExito('exito-nuevo-caso', 'Caso abierto correctamente.');
+    document.getElementById('nc-diagnostico-presuntivo').value = '';
+    document.getElementById('nc-exposicion').value = '';
+    await cargarCasos();
+  } catch (err) {
+    mostrarError('error-nuevo-caso', err.message || 'Error al abrir el caso.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Abrir caso';
+  }
+}
+
+async function cargarCasos() {
+  const cont = document.getElementById('lista-casos');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando casos…</div>';
+  try {
+    const datos = await sissoFetch(`/enfermedad-profesional/trabajadores/${trabajadorActualId}`);
+    const casos = datos.casos || [];
+    if (casos.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Este trabajador aún no tiene casos de enfermedad profesional.</div>';
+      return;
+    }
+    cont.innerHTML = casos.map(c => `
+      <div class="caso-item" onclick="abrirDetalleCaso('${c.id}')">
+        <div class="caso-cabecera">
+          ${chipDeEstado(c.estado)}
+          <span style="font-size:11px;color:var(--t3);">${formatearFecha(c.fecha_sospecha)}</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:6px;">
+          ${escHtml(c.diagnostico_descripcion || c.diagnostico_presuntivo || 'Sin diagnóstico registrado aún.')}
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar los casos: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function abrirDetalleCaso(casoId) {
+  casoActualId = casoId;
+  ocultarError('error-detalle');
+  ocultarExito('exito-detalle');
+  document.getElementById('caja-detalle-caso').style.display = 'block';
+  document.getElementById('caja-detalle-caso').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const datos = await sissoFetch(`/enfermedad-profesional/casos/${casoId}`);
+    const c = datos.caso;
+    document.getElementById('d-estado').value = c.estado;
+    document.getElementById('d-diagnostico-cie10').value = c.diagnostico_cie10 || '';
+    document.getElementById('d-evolucion').value = c.evolucion_clinica || '';
+    document.getElementById('d-conclusion').value = c.conclusion || '';
+
+    const seguimientos = datos.seguimientos || [];
+    document.getElementById('lista-seguimientos').innerHTML = seguimientos.length === 0
+      ? '<div class="sisso-vacio">Sin seguimientos registrados.</div>'
+      : seguimientos.map(s => `
+          <div class="seguimiento-item">
+            <div style="font-size:11px;color:var(--t3);margin-bottom:3px;">${formatearFecha(s.fecha)}</div>
+            <div style="font-size:12.5px;color:var(--t2);">${escHtml(s.nota_clinica)}</div>
+          </div>`).join('');
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al cargar el caso.');
+  }
+}
+
+function cerrarDetalleCaso() {
+  casoActualId = null;
+  document.getElementById('caja-detalle-caso').style.display = 'none';
+}
+
+async function guardarCaso() {
+  ocultarError('error-detalle');
+  ocultarExito('exito-detalle');
+
+  const estado = document.getElementById('d-estado').value;
+  const diagnosticoCie10 = document.getElementById('d-diagnostico-cie10').value.trim();
+  const evolucionClinica = document.getElementById('d-evolucion').value.trim();
+  const conclusion = document.getElementById('d-conclusion').value.trim();
+
+  const boton = document.getElementById('btn-guardar-caso');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch(`/enfermedad-profesional/casos/${casoActualId}`, {
+      method: 'PUT',
+      body: {
+        estado,
+        diagnosticoCie10: diagnosticoCie10 || undefined,
+        evolucionClinica: evolucionClinica || undefined,
+        conclusion: conclusion || undefined,
+        conclusionExistente: !!conclusion,
+      },
+    });
+    mostrarExito('exito-detalle', 'Caso actualizado.');
+    await cargarCasos();
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al guardar el caso.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar cambios';
+  }
+}
+
+async function agregarSeguimiento() {
+  ocultarError('error-detalle');
+  const fecha = document.getElementById('s-fecha').value;
+  const nota = document.getElementById('s-nota').value.trim();
+
+  if (!fecha || nota.length < 5) {
+    mostrarError('error-detalle', 'Indica fecha y una nota clínica de al menos 5 caracteres.');
+    return;
+  }
+
+  try {
+    await sissoFetch(`/enfermedad-profesional/casos/${casoActualId}/seguimientos`, {
+      method: 'POST',
+      body: { fecha, notaClinica: nota },
+    });
+    document.getElementById('s-nota').value = '';
+    await abrirDetalleCaso(casoActualId);
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al agregar el seguimiento.');
+  }
+}
+
+// ======= Utilidades =======
+function chipDeEstado(estado) {
+  const mapa = {
+    sospecha: ['ambar', 'Sospecha'], en_evaluacion: ['ambar', 'En evaluación'],
+    confirmada: ['rojo', 'Confirmada'], descartada: ['gris', 'Descartada'],
+    en_seguimiento: ['teal', 'En seguimiento'], cerrada: ['verde', 'Cerrada'],
+  };
+  const [clase, label] = mapa[estado] || ['gris', estado];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>
