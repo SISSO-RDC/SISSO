@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Espirometría</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .panel-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .panel-2col { grid-template-columns: 1fr; } }
+
+    .tabla-medidas { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .tabla-medidas th { text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 700; color: var(--t3); border-bottom: 2px solid var(--bd); }
+    .tabla-medidas td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--bd); }
+    .tabla-medidas tr:last-child td { border-bottom: none; }
+    .tabla-medidas td:first-child { text-align: left; font-weight: 600; color: var(--t2); padding-left: 8px; }
+    .input-med { width: 70px; text-align: center; padding: 6px 4px; border: 1.5px solid var(--bd); border-radius: 6px; font-size: 13px; font-family: inherit; }
+    .input-med:focus { outline: none; border-color: var(--teal); }
+
+    .aviso-datos { background: var(--amb3); border-left: 4px solid var(--amb); border-radius: var(--r); padding: 12px 14px; margin-bottom: 14px; font-size: 13px; color: var(--amb2); }
+    .aviso-datos button { margin-top: 8px; }
+
+    .toggle-postbd { display: flex; align-items: center; gap: 8px; margin: 14px 0; font-size: 13px; font-weight: 600; }
+
+    .resultado-caja { border: 1px solid var(--bd); border-radius: var(--r); padding: 14px; margin-top: 14px; }
+    .resultado-fila { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--bd); font-size: 13px; }
+    .resultado-fila:last-child { border-bottom: none; }
+    .resultado-fila .valor { font-weight: 700; }
+    .barra-pct { height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; margin-top: 4px; width: 140px; }
+    .barra-pct-fill { height: 100%; background: var(--teal); }
+
+    .patron-chip-grande { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 800; }
+
+    .alerta-reversibilidad { background: var(--grn3); border-left: 4px solid var(--grn); border-radius: var(--r); padding: 12px 14px; margin-top: 10px; }
+    .alerta-reversibilidad-titulo { font-weight: 800; color: var(--grn2); margin-bottom: 4px; }
+
+    .historial-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 8px; }
+    .historial-cabecera { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- Selector de trabajador -->
+  <div class="sisso-tarjeta" id="caja-selector">
+    <div class="sisso-tarjeta-titulo">Espirometría ocupacional</div>
+    <div class="sisso-tarjeta-subtitulo">Validación ATS/ERS 2005, valores de referencia ECSC/ERS 1993 (Quanjer).</div>
+    <div class="sisso-error" id="error-selector"></div>
+    <div class="selector-caja" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
+        <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
+        <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+    </div>
+  </div>
+
+  <!-- Panel principal -->
+  <div id="caja-principal" style="display:none;margin-top:16px;">
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;"></div>
+        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+      </div>
+    </div>
+
+    <!-- Aviso si faltan datos antropometricos -->
+    <div class="sisso-tarjeta" id="caja-datos-faltantes" style="display:none;margin-bottom:16px;">
+      <div class="aviso-datos">
+        <strong>⚠ Faltan datos para calcular los valores predichos:</strong> <span id="texto-faltantes"></span>.
+        Complétalos para poder registrar el examen.
+      </div>
+      <div class="panel-2col">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="dato-sexo">Sexo</label>
+          <select id="dato-sexo" class="sisso-select">
+            <option value="">Selecciona…</option>
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="dato-nacimiento">Fecha de nacimiento</label>
+          <input id="dato-nacimiento" type="date" class="sisso-input">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="dato-talla">Talla (cm)</label>
+          <input id="dato-talla" type="number" min="100" max="250" class="sisso-input" placeholder="Ej: 170">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="dato-peso">Peso (kg) — opcional</label>
+          <input id="dato-peso" type="number" min="20" max="300" step="0.1" class="sisso-input" placeholder="Ej: 72.5">
+        </div>
+      </div>
+      <div class="sisso-error" id="error-datos-faltantes"></div>
+      <button class="sisso-boton" onclick="guardarDatosAntropometricos()">Guardar datos</button>
+    </div>
+
+    <!-- Formulario de nuevo examen -->
+    <div class="sisso-tarjeta" id="caja-formulario" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Registrar nuevo examen de espirometría</div>
+      <div class="sisso-error" id="error-examen"></div>
+      <div class="sisso-exito" id="exito-examen"></div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+        <div class="sisso-campo" style="margin-bottom:0;">
+          <label class="sisso-etiqueta" for="fecha-examen">Fecha del examen</label>
+          <input id="fecha-examen" type="date" class="sisso-input" style="width:160px;">
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="tabla-medidas">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding-left:8px;">Parámetro</th>
+              <th>Pre-broncodilatador</th>
+              <th id="col-post" style="display:none;">Post-broncodilatador</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FVC (L) *</td>
+              <td><input type="number" step="0.01" class="input-med" id="fvc-pre" placeholder="0.00"></td>
+              <td class="col-post-celda" style="display:none;"><input type="number" step="0.01" class="input-med" id="fvc-post" placeholder="0.00"></td>
+            </tr>
+            <tr>
+              <td>FEV1 (L) *</td>
+              <td><input type="number" step="0.01" class="input-med" id="fev1-pre" placeholder="0.00"></td>
+              <td class="col-post-celda" style="display:none;"><input type="number" step="0.01" class="input-med" id="fev1-post" placeholder="0.00"></td>
+            </tr>
+            <tr>
+              <td>PEF (L/s)</td>
+              <td><input type="number" step="0.01" class="input-med" id="pef-pre" placeholder="0.00"></td>
+              <td class="col-post-celda" style="display:none;"><input type="number" step="0.01" class="input-med" id="pef-post" placeholder="0.00"></td>
+            </tr>
+            <tr>
+              <td>FEF25-75 (L/s)</td>
+              <td><input type="number" step="0.01" class="input-med" id="fef2575-pre" placeholder="0.00"></td>
+              <td class="col-post-celda" style="display:none;"><input type="number" step="0.01" class="input-med" id="fef2575-post" placeholder="0.00"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="toggle-postbd">
+        <input type="checkbox" id="tiene-postbd" style="width:16px;height:16px;" onchange="alternarPostBD()">
+        <label for="tiene-postbd" style="cursor:pointer;">Se realizó prueba de reversibilidad (post-broncodilatador)</label>
+      </div>
+
+      <div class="sisso-campo" id="campo-minutos-post" style="display:none;max-width:280px;">
+        <label class="sisso-etiqueta" for="minutos-post">Minutos tras el broncodilatador</label>
+        <input id="minutos-post" type="number" min="1" max="120" class="sisso-input" placeholder="Ej: 15">
+      </div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="observaciones">Observaciones</label>
+        <textarea id="observaciones" class="sisso-textarea" placeholder="Condiciones de la prueba, cooperación del paciente, medicación previa…" style="min-height:60px;"></textarea>
+      </div>
+
+      <button class="sisso-boton ancho-completo" id="btn-guardar" onclick="guardarExamen()">Guardar examen de espirometría</button>
+
+      <!-- Resultado del ultimo examen calculado -->
+      <div id="caja-resultado"></div>
+    </div>
+
+    <!-- Historial de examenes -->
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Historial de espirometrías</div>
+      <div id="lista-examenes"><div class="sisso-cargando">Cargando historial…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let trabajadores = [];
+let trabajadorActualId = null;
+let trabajadorActual = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('espirometria', 'Espirometría Ocupacional');
+  document.getElementById('fecha-examen').value = new Date().toISOString().split('T')[0];
+  await cargarTrabajadores();
+  const presel = localStorage.getItem('sisso_trabajador_id');
+  if (presel) document.getElementById('sel-trabajador').value = presel;
+});
+
+async function cargarTrabajadores() {
+  const sel = document.getElementById('sel-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar</option>';
+    mostrarError('error-selector', err.message);
+  }
+}
+
+function elegirTrabajador() {
+  ocultarError('error-selector');
+  const id = document.getElementById('sel-trabajador').value;
+  if (!id) { mostrarError('error-selector', 'Selecciona un trabajador.'); return; }
+  trabajadorActualId = id;
+  trabajadorActual = trabajadores.find(x => x.id === id) || null;
+  document.getElementById('titulo-trabajador').textContent = trabajadorActual
+    ? `${trabajadorActual.nombre_completo} — ${trabajadorActual.documento}` : 'Trabajador';
+  document.getElementById('caja-selector').style.display = 'none';
+  document.getElementById('caja-principal').style.display = 'block';
+
+  revisarDatosAntropometricos();
+  cargarHistorial();
+}
+
+function cambiarTrabajador() {
+  trabajadorActualId = null;
+  trabajadorActual = null;
+  document.getElementById('caja-selector').style.display = 'block';
+  document.getElementById('caja-principal').style.display = 'none';
+}
+
+// ------- Datos antropometricos -------
+function revisarDatosAntropometricos() {
+  const faltantes = [];
+  if (!trabajadorActual.sexo) faltantes.push('sexo');
+  if (!trabajadorActual.fecha_nacimiento) faltantes.push('fecha de nacimiento');
+  if (!trabajadorActual.talla_cm) faltantes.push('talla');
+
+  const cajaFaltantes = document.getElementById('caja-datos-faltantes');
+  const cajaFormulario = document.getElementById('caja-formulario');
+
+  if (faltantes.length > 0) {
+    document.getElementById('texto-faltantes').textContent = faltantes.join(', ');
+    if (trabajadorActual.sexo) document.getElementById('dato-sexo').value = trabajadorActual.sexo;
+    if (trabajadorActual.fecha_nacimiento) document.getElementById('dato-nacimiento').value = trabajadorActual.fecha_nacimiento.split('T')[0];
+    if (trabajadorActual.talla_cm) document.getElementById('dato-talla').value = trabajadorActual.talla_cm;
+    if (trabajadorActual.peso_kg) document.getElementById('dato-peso').value = trabajadorActual.peso_kg;
+    cajaFaltantes.style.display = 'block';
+    cajaFormulario.style.display = 'none';
+  } else {
+    cajaFaltantes.style.display = 'none';
+    cajaFormulario.style.display = 'block';
+  }
+}
+
+async function guardarDatosAntropometricos() {
+  ocultarError('error-datos-faltantes');
+  const sexo = document.getElementById('dato-sexo').value;
+  const fechaNacimiento = document.getElementById('dato-nacimiento').value;
+  const tallaCm = document.getElementById('dato-talla').value;
+  const pesoKg = document.getElementById('dato-peso').value;
+
+  if (!sexo || !fechaNacimiento || !tallaCm) {
+    mostrarError('error-datos-faltantes', 'Sexo, fecha de nacimiento y talla son obligatorios.');
+    return;
+  }
+
+  try {
+    const datos = await sissoFetch(`/trabajadores/${trabajadorActualId}/datos-antropometricos`, {
+      method: 'PUT',
+      body: { sexo, fechaNacimiento, tallaCm: parseInt(tallaCm, 10), pesoKg: pesoKg ? parseFloat(pesoKg) : undefined }
+    });
+    trabajadorActual = { ...trabajadorActual, ...datos.trabajador };
+    // Reflejar tambien en el arreglo cacheado
+    const idx = trabajadores.findIndex(t => t.id === trabajadorActualId);
+    if (idx >= 0) trabajadores[idx] = trabajadorActual;
+    revisarDatosAntropometricos();
+  } catch (err) {
+    mostrarError('error-datos-faltantes', err.message || 'Error al guardar los datos.');
+  }
+}
+
+// ------- Toggle post-BD -------
+function alternarPostBD() {
+  const activo = document.getElementById('tiene-postbd').checked;
+  document.getElementById('col-post').style.display = activo ? '' : 'none';
+  document.querySelectorAll('.col-post-celda').forEach(td => td.style.display = activo ? '' : 'none');
+  document.getElementById('campo-minutos-post').style.display = activo ? 'block' : 'none';
+}
+
+function leerValor(id) {
+  const val = document.getElementById(id).value;
+  return val === '' ? null : parseFloat(val);
+}
+
+// ------- Guardar examen -------
+async function guardarExamen() {
+  ocultarError('error-examen');
+  ocultarExito('exito-examen');
+
+  const fvcPre = leerValor('fvc-pre');
+  const fev1Pre = leerValor('fev1-pre');
+  if (!fvcPre || !fev1Pre) {
+    mostrarError('error-examen', 'FVC y FEV1 pre-broncodilatador son obligatorios.');
+    return;
+  }
+
+  const tienePostBD = document.getElementById('tiene-postbd').checked;
+  const cuerpo = {
+    fechaExamen: document.getElementById('fecha-examen').value || undefined,
+    fvcPre, fev1Pre,
+    pefPre: leerValor('pef-pre') ?? undefined,
+    fef2575Pre: leerValor('fef2575-pre') ?? undefined,
+    observaciones: document.getElementById('observaciones').value.trim() || undefined,
+  };
+
+  if (tienePostBD) {
+    cuerpo.fvcPost = leerValor('fvc-post') ?? undefined;
+    cuerpo.fev1Post = leerValor('fev1-post') ?? undefined;
+    cuerpo.pefPost = leerValor('pef-post') ?? undefined;
+    cuerpo.fef2575Post = leerValor('fef2575-post') ?? undefined;
+    cuerpo.minutosPostBroncodilatador = leerValor('minutos-post') ?? undefined;
+  }
+
+  const boton = document.getElementById('btn-guardar');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    const datos = await sissoFetch(`/espirometria/trabajadores/${trabajadorActualId}`, {
+      method: 'POST',
+      body: cuerpo
+    });
+
+    mostrarExito('exito-examen', 'Examen de espirometría registrado correctamente.');
+    mostrarResultado(datos.examen);
+
+    document.querySelectorAll('.input-med').forEach(el => el.value = '');
+    document.getElementById('observaciones').value = '';
+    document.getElementById('tiene-postbd').checked = false;
+    alternarPostBD();
+    await cargarHistorial();
+
+  } catch (err) {
+    mostrarError('error-examen', err.message || 'Error al guardar el examen.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar examen de espirometría';
+  }
+}
+
+function mostrarResultado(examen) {
+  const cont = document.getElementById('caja-resultado');
+  const info = infoPatron(examen.patron);
+
+  let htmlReversibilidad = '';
+  if (examen.reversibilidad_positiva) {
+    htmlReversibilidad = `
+      <div class="alerta-reversibilidad">
+        <div class="alerta-reversibilidad-titulo">✓ Respuesta broncodilatadora positiva</div>
+        <div>FEV1 aumentó ${examen.cambio_fev1_pct}% (criterio ATS/ERS 2005: ≥12% y ≥200 mL).</div>
+      </div>`;
+  }
+
+  cont.innerHTML = `
+    <div class="resultado-caja">
+      <div style="margin-bottom:10px;">
+        <span class="patron-chip-grande" style="background:${info.bg};color:${info.fg};">${info.etiqueta}</span>
+      </div>
+      <div class="resultado-fila">
+        <div>FVC</div>
+        <div class="valor">${examen.fvc_pre} L (${examen.fvc_pct_predicho ?? '—'}% del predicho)</div>
+      </div>
+      <div class="resultado-fila">
+        <div>FEV1</div>
+        <div class="valor">${examen.fev1_pre} L (${examen.fev1_pct_predicho ?? '—'}% del predicho)</div>
+      </div>
+      <div class="resultado-fila">
+        <div>FEV1/FVC</div>
+        <div class="valor">${examen.fev1_fvc_medido ?? '—'}%</div>
+      </div>
+      ${htmlReversibilidad}
+    </div>`;
+}
+
+// ------- Historial -------
+async function cargarHistorial() {
+  const cont = document.getElementById('lista-examenes');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando historial…</div>';
+  try {
+    const datos = await sissoFetch(`/espirometria/trabajadores/${trabajadorActualId}`);
+    const examenes = datos.examenes || [];
+
+    if (examenes.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Aún no hay espirometrías registradas para este trabajador.</div>';
+      return;
+    }
+
+    cont.innerHTML = examenes.map(e => {
+      const info = infoPatron(e.patron);
+      return `
+        <div class="historial-item">
+          <div class="historial-cabecera">
+            <div>
+              <strong>${formatearFecha(e.fecha_examen)}</strong>
+              <span class="sisso-chip" style="background:${info.bg};color:${info.fg};margin-left:8px;">${info.etiqueta}</span>
+              ${e.reversibilidad_positiva ? '<span class="sisso-chip verde" style="margin-left:4px;">✓ Reversibilidad +</span>' : ''}
+            </div>
+            <span style="font-size:11px;color:var(--t3);">Dr(a). ${escHtml(e.medico_nombre)}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;">
+            <div>FVC: ${e.fvc_pre} L (${e.fvc_pct_predicho ?? '—'}%)</div>
+            <div>FEV1: ${e.fev1_pre} L (${e.fev1_pct_predicho ?? '—'}%)</div>
+            <div>FEV1/FVC: ${e.fev1_fvc_medido ?? '—'}%</div>
+          </div>
+          ${e.observaciones ? `<div style="font-size:12px;color:var(--t3);margin-top:6px;">${escHtml(e.observaciones)}</div>` : ''}
+        </div>`;
+    }).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function infoPatron(patron) {
+  const mapa = {
+    normal:                        { etiqueta: 'Normal',                       bg: 'var(--grn3)', fg: 'var(--grn2)' },
+    obstructivo_leve:              { etiqueta: 'Obstructivo leve',             bg: 'var(--amb3)', fg: 'var(--amb2)' },
+    obstructivo_moderado:          { etiqueta: 'Obstructivo moderado',         bg: 'var(--amb3)', fg: 'var(--amb2)' },
+    obstructivo_moderado_severo:   { etiqueta: 'Obstructivo moderado-severo',  bg: 'var(--red3)', fg: 'var(--red2)' },
+    obstructivo_severo:            { etiqueta: 'Obstructivo severo',           bg: 'var(--red3)', fg: 'var(--red2)' },
+    obstructivo_muy_severo:        { etiqueta: 'Obstructivo muy severo',       bg: 'var(--red3)', fg: 'var(--red2)' },
+    restrictivo_sugerido:          { etiqueta: 'Restrictivo sugerido',         bg: 'var(--blue3)', fg: 'var(--blue2)' },
+    mixto_sugerido:                { etiqueta: 'Mixto sugerido',               bg: 'var(--pur3)', fg: 'var(--pur2)' },
+    no_clasificable:               { etiqueta: 'No clasificable',              bg: 'var(--bg3)', fg: 'var(--t2)' },
+  };
+  return mapa[patron] || mapa.no_clasificable;
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return '';
+  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' });
+}
+// CORREGIDO tras auditoria de seguridad (hallazgo G9): se usa la
+// funcion de escape compartida (shared/layout.js), que tambien
+// cubre comillas simples/dobles (relevante cuando el texto escapado
+// termina dentro de un atributo HTML entre comillas, no solo en el
+// texto visible), en vez de la copia local que solo cubria &, < y >.
+const escHtml = escaparHtml;
+function mostrarError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); }
+function ocultarError(id) { document.getElementById(id).classList.remove('visible'); }
+function mostrarExito(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); }
+function ocultarExito(id) { document.getElementById(id).classList.remove('visible'); }
+</script>
+</body>
+</html>

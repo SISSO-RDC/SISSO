@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — Indicadores SSO</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  .seccion-titulo { font-size: 13px; font-weight: 800; color: var(--t1); margin: 22px 0 10px; }
+  .seccion-titulo:first-child { margin-top: 0; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .kpi-tarjeta { border: 1px solid var(--bd); border-radius: var(--r); padding: 16px; }
+  .kpi-numero { font-size: 26px; font-weight: 800; }
+  .kpi-etiqueta { font-size: 11.5px; color: var(--t3); margin-top: 2px; }
+  .kpi-barra { height: 6px; border-radius: 3px; background: var(--bg3); margin-top: 10px; overflow: hidden; }
+  .kpi-barra-fill { height: 100%; }
+  .kpi-desglose { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; font-size: 11px; color: var(--t3); }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div class="sisso-tarjeta">
+    <div class="sisso-tarjeta-titulo">Indicadores SSO</div>
+    <div class="sisso-tarjeta-subtitulo">Panorama general de gestión de seguridad y salud ocupacional (cifras agregadas).</div>
+    <div class="sisso-error" id="error-general"></div>
+    <div id="contenido"><div class="sisso-cargando">Calculando indicadores…</div></div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="indicadores.js"></script>
+</body>
+</html>
