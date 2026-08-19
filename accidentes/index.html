@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Accidentes / Incidentes</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .filtros-caja { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+    .filtros-caja .sisso-campo { margin-bottom: 0; min-width: 150px; }
+    .caso-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .caso-item:hover { background: var(--bg); }
+    .caso-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .caso-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .accion-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 10px 12px; margin-bottom: 8px; }
+    .accion-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .accion-botones { display: flex; gap: 6px; margin-top: 8px; }
+    .evidencia-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid var(--bd); border-radius: var(--r); margin-bottom: 6px; font-size: 12.5px; }
+    .panel-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .panel-2col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- ======= LISTADO ======= -->
+  <div id="vista-listado">
+    <div class="sisso-tarjeta" id="caja-crear" style="display:none;margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Reportar nuevo caso</div>
+      <div class="sisso-error" id="error-crear"></div>
+      <div class="sisso-exito" id="exito-crear"></div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-tipo">Tipo *</label>
+        <select id="c-tipo" class="sisso-select" onchange="alCambiarTipo()">
+          <option value="accidente">Accidente</option>
+          <option value="incidente">Incidente</option>
+          <option value="casi_accidente">Casi accidente</option>
+        </select>
+      </div>
+      <div class="sisso-campo" id="campo-trabajador">
+        <label class="sisso-etiqueta" for="c-trabajador">Trabajador afectado *</label>
+        <select id="c-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-fecha">Fecha de ocurrencia *</label>
+          <input id="c-fecha" type="date" class="sisso-input">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-hora">Hora</label>
+          <input id="c-hora" type="time" class="sisso-input">
+        </div>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-lugar">Lugar *</label>
+        <input id="c-lugar" class="sisso-input" placeholder="Ej: Planta 1, línea de corte">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-descripcion">Descripción del evento * <span style="color:var(--t3);font-weight:400;">(mínimo 10 caracteres)</span></label>
+        <textarea id="c-descripcion" class="sisso-textarea"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-gravedad">Gravedad</label>
+          <select id="c-gravedad" class="sisso-select">
+            <option value="no_aplica">No aplica</option>
+            <option value="leve">Leve</option>
+            <option value="moderada">Moderada</option>
+            <option value="grave">Grave</option>
+            <option value="mortal">Mortal</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-dias-perdidos">Días perdidos</label>
+          <input id="c-dias-perdidos" type="number" min="0" class="sisso-input" value="0">
+        </div>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-tipo-lesion">Tipo de lesión <span style="color:var(--t3);font-weight:400;">(clasificación general, no diagnóstico)</span></label>
+        <input id="c-tipo-lesion" class="sisso-input" placeholder="Ej: corte, contusión, quemadura">
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t2);margin-bottom:14px;">
+        <input type="checkbox" id="c-atencion-medica"> Requiere atención médica (el caso clínico se registra aparte, en Historia Clínica)
+      </label>
+      <button class="sisso-boton ancho-completo" id="btn-crear" onclick="crearCaso()">Reportar caso</button>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Accidentes, incidentes y casi accidentes</div>
+      <div class="filtros-caja">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-tipo">Tipo</label>
+          <select id="f-tipo" class="sisso-select" onchange="cargarListado()">
+            <option value="">Todos</option>
+            <option value="accidente">Accidente</option>
+            <option value="incidente">Incidente</option>
+            <option value="casi_accidente">Casi accidente</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-estado">Estado</label>
+          <select id="f-estado" class="sisso-select" onchange="cargarListado()">
+            <option value="">Todos</option>
+            <option value="reportado">Reportado</option>
+            <option value="en_investigacion">En investigación</option>
+            <option value="con_acciones">Con acciones</option>
+            <option value="cerrado">Cerrado</option>
+          </select>
+        </div>
+      </div>
+      <div id="lista-casos"><div class="sisso-cargando">Cargando casos…</div></div>
+    </div>
+  </div>
+
+  <!-- ======= DETALLE ======= -->
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" onclick="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-caso"></div>
+      <div id="acciones-caso-caja" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);">
+        <label class="sisso-etiqueta">Cambiar estado del caso</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="d-estado" class="sisso-select" style="max-width:220px;">
+            <option value="reportado">Reportado</option>
+            <option value="en_investigacion">En investigación</option>
+            <option value="con_acciones">Con acciones</option>
+            <option value="cerrado">Cerrado</option>
+          </select>
+          <button class="sisso-boton secundario" onclick="cambiarEstadoCaso()">Guardar estado</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-2col">
+      <!-- Investigación -->
+      <div class="sisso-tarjeta">
+        <div class="sisso-tarjeta-titulo">Investigación</div>
+        <div id="investigacion-existente"></div>
+        <div id="form-investigacion-caja" style="display:none;margin-top:10px;">
+          <div class="sisso-error" id="error-investigacion"></div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="i-metodo">Método de investigación</label>
+            <input id="i-metodo" class="sisso-input" placeholder="Ej: Árbol de causas, 5 porqués">
+          </div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="i-causas-inmediatas">Causas inmediatas *</label>
+            <textarea id="i-causas-inmediatas" class="sisso-textarea" placeholder="Actos y condiciones subestándar directas."></textarea>
+          </div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="i-causas-basicas">Causas básicas *</label>
+            <textarea id="i-causas-basicas" class="sisso-textarea" placeholder="Factores personales y del trabajo de fondo."></textarea>
+          </div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="i-factores">Factores contribuyentes</label>
+            <textarea id="i-factores" class="sisso-textarea"></textarea>
+          </div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="i-fecha">Fecha de investigación *</label>
+            <input id="i-fecha" type="date" class="sisso-input">
+          </div>
+          <button class="sisso-boton ancho-completo" onclick="guardarInvestigacion()">Guardar investigación</button>
+        </div>
+      </div>
+
+      <!-- Evidencia -->
+      <div class="sisso-tarjeta">
+        <div class="sisso-tarjeta-titulo">Evidencia</div>
+        <div id="form-evidencia-caja" style="display:none;margin-bottom:12px;">
+          <div class="sisso-error" id="error-evidencia"></div>
+          <input type="file" id="e-archivo" accept="image/*,video/*" class="sisso-input" style="margin-bottom:8px;">
+          <input type="text" id="e-descripcion" class="sisso-input" placeholder="Descripción breve (opcional)" style="margin-bottom:8px;">
+          <button class="sisso-boton secundario ancho-completo" onclick="subirEvidencia()">Subir evidencia</button>
+        </div>
+        <div id="lista-evidencias"><div class="sisso-vacio">Sin evidencia todavía.</div></div>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="sisso-tarjeta" style="margin-top:16px;">
+      <div class="sisso-tarjeta-titulo">Acciones correctivas / preventivas</div>
+      <div id="form-accion-caja" style="display:none;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--bd);">
+        <div class="sisso-error" id="error-accion"></div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="a-descripcion">Descripción de la acción *</label>
+          <textarea id="a-descripcion" class="sisso-textarea"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="a-responsable">Responsable *</label>
+            <select id="a-responsable" class="sisso-select"><option value="">Cargando…</option></select>
+          </div>
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta" for="a-fecha-limite">Fecha límite *</label>
+            <input id="a-fecha-limite" type="date" class="sisso-input">
+          </div>
+        </div>
+        <button class="sisso-boton secundario ancho-completo" onclick="crearAccion()">+ Agregar acción</button>
+      </div>
+      <div id="lista-acciones"><div class="sisso-vacio">Sin acciones registradas.</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let esGestor = false; // admin o sso: puede crear/investigar/accionar
+let trabajadores = [];
+let usuariosOrganizacion = [];
+let casoActualId = null;
+let archivoEvidenciaPendiente = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('accidentes', 'Accidentes / Incidentes');
+
+  const usuario = SissoSesion.obtenerUsuario();
+  esGestor = ['admin', 'sso'].includes(usuario.rol);
+
+  if (esGestor) {
+    document.getElementById('caja-crear').style.display = 'block';
+    document.getElementById('form-investigacion-caja').style.display = 'block';
+    document.getElementById('form-evidencia-caja').style.display = 'block';
+    document.getElementById('form-accion-caja').style.display = 'block';
+    document.getElementById('acciones-caso-caja').style.display = 'block';
+    await cargarTrabajadores();
+    await cargarUsuarios();
+  }
+
+  await cargarListado();
+});
+
+// ======= Listado =======
+async function cargarTrabajadores() {
+  const sel = document.getElementById('c-trabajador');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    sel.innerHTML = '<option value="">Selecciona un trabajador…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar trabajadores</option>';
+  }
+}
+
+async function cargarUsuarios() {
+  try {
+    const datos = await sissoFetch('/usuarios');
+    usuariosOrganizacion = datos.usuarios || [];
+    const sel = document.getElementById('a-responsable');
+    sel.innerHTML = '<option value="">Selecciona un responsable…</option>' +
+      usuariosOrganizacion.map(u => `<option value="${u.id}">${escHtml(u.nombre_completo)} (${escHtml(u.rol)})</option>`).join('');
+  } catch (err) {
+    document.getElementById('a-responsable').innerHTML = '<option value="">Error al cargar usuarios</option>';
+  }
+}
+
+function alCambiarTipo() {
+  const esCasiAccidente = document.getElementById('c-tipo').value === 'casi_accidente';
+  document.getElementById('campo-trabajador').style.display = esCasiAccidente ? 'none' : 'block';
+}
+
+async function crearCaso() {
+  ocultarError('error-crear');
+  ocultarExito('exito-crear');
+
+  const tipo = document.getElementById('c-tipo').value;
+  const trabajadorId = document.getElementById('c-trabajador').value;
+  const fecha = document.getElementById('c-fecha').value;
+  const hora = document.getElementById('c-hora').value;
+  const lugar = document.getElementById('c-lugar').value.trim();
+  const descripcion = document.getElementById('c-descripcion').value.trim();
+  const gravedad = document.getElementById('c-gravedad').value;
+  const diasPerdidos = parseInt(document.getElementById('c-dias-perdidos').value, 10) || 0;
+  const tipoLesion = document.getElementById('c-tipo-lesion').value.trim();
+  const requiereAtencionMedica = document.getElementById('c-atencion-medica').checked;
+
+  if (tipo !== 'casi_accidente' && !trabajadorId) { mostrarError('error-crear', 'Selecciona el trabajador afectado.'); return; }
+  if (!fecha) { mostrarError('error-crear', 'Indica la fecha de ocurrencia.'); return; }
+  if (!lugar) { mostrarError('error-crear', 'Indica el lugar.'); return; }
+  if (descripcion.length < 10) { mostrarError('error-crear', 'La descripción debe tener al menos 10 caracteres.'); return; }
+
+  const boton = document.getElementById('btn-crear');
+  boton.disabled = true;
+  boton.textContent = 'Reportando…';
+
+  try {
+    await sissoFetch('/accidentes', {
+      method: 'POST',
+      body: {
+        tipo, trabajadorId: trabajadorId || undefined, fechaOcurrencia: fecha, horaOcurrencia: hora || undefined,
+        lugar, descripcion, gravedad, diasPerdidos, tipoLesion: tipoLesion || undefined, requiereAtencionMedica,
+      },
+    });
+    mostrarExito('exito-crear', 'Caso reportado correctamente.');
+    document.getElementById('c-lugar').value = '';
+    document.getElementById('c-descripcion').value = '';
+    document.getElementById('c-tipo-lesion').value = '';
+    document.getElementById('c-dias-perdidos').value = '0';
+    document.getElementById('c-atencion-medica').checked = false;
+    await cargarListado();
+  } catch (err) {
+    mostrarError('error-crear', err.message || 'Error al reportar el caso.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Reportar caso';
+  }
+}
+
+async function cargarListado() {
+  const cont = document.getElementById('lista-casos');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando casos…</div>';
+
+  const tipo = document.getElementById('f-tipo').value;
+  const estado = document.getElementById('f-estado').value;
+  const parametros = new URLSearchParams();
+  if (tipo) parametros.set('tipo', tipo);
+  if (estado) parametros.set('estado', estado);
+
+  try {
+    const datos = await sissoFetch(`/accidentes?${parametros.toString()}`);
+    const casos = datos.casos || [];
+    if (casos.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay casos registrados con estos filtros.</div>';
+      return;
+    }
+    cont.innerHTML = casos.map(c => `
+      <div class="caso-item" onclick="abrirDetalle('${c.id}')">
+        <div class="caso-cabecera">
+          <div>${chipDeTipo(c.tipo)} ${chipDeGravedad(c.gravedad)}</div>
+          ${chipDeEstado(c.estado)}
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:6px;">
+          ${c.trabajador_nombre ? escHtml(c.trabajador_nombre) + ' — ' : ''}${escHtml(c.lugar)}
+        </div>
+        <div class="caso-meta">${formatearFecha(c.fecha_ocurrencia)}${c.nombre_puesto ? ' · ' + escHtml(c.nombre_puesto) : ''}</div>
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar los casos: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ======= Detalle =======
+async function abrirDetalle(id) {
+  casoActualId = id;
+  document.getElementById('vista-listado').style.display = 'none';
+  document.getElementById('vista-detalle').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  await cargarDetalle();
+}
+
+function volverAlListado() {
+  casoActualId = null;
+  document.getElementById('vista-listado').style.display = 'block';
+  document.getElementById('vista-detalle').style.display = 'none';
+  cargarListado();
+}
+
+async function cargarDetalle() {
+  ocultarError('error-detalle');
+  try {
+    const datos = await sissoFetch(`/accidentes/${casoActualId}`);
+    const c = datos.caso;
+
+    document.getElementById('resumen-caso').innerHTML = `
+      <div class="caso-cabecera">
+        <div style="display:flex;gap:6px;">${chipDeTipo(c.tipo)} ${chipDeGravedad(c.gravedad)} ${chipDeEstado(c.estado)}</div>
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--t2);line-height:1.6;">
+        ${c.trabajador_nombre ? `<strong>Trabajador:</strong> ${escHtml(c.trabajador_nombre)}<br>` : ''}
+        <strong>Fecha:</strong> ${formatearFecha(c.fecha_ocurrencia)}${c.hora_ocurrencia ? ' · ' + escHtml(c.hora_ocurrencia) : ''}<br>
+        <strong>Lugar:</strong> ${escHtml(c.lugar)}${c.nombre_puesto ? ' · ' + escHtml(c.nombre_puesto) : ''}<br>
+        <strong>Descripción:</strong> ${escHtml(c.descripcion)}<br>
+        ${c.tipo_lesion ? `<strong>Tipo de lesión:</strong> ${escHtml(c.tipo_lesion)}<br>` : ''}
+        <strong>Días perdidos:</strong> ${c.dias_perdidos}<br>
+        ${c.requiere_atencion_medica ? '<span class="sisso-chip ambar">Requiere atención médica</span>' : ''}
+      </div>`;
+    document.getElementById('d-estado').value = c.estado;
+
+    // Investigacion
+    const inv = datos.investigacion;
+    document.getElementById('investigacion-existente').innerHTML = inv ? `
+      <div style="font-size:12.5px;color:var(--t2);line-height:1.6;">
+        ${inv.metodo_investigacion ? `<strong>Método:</strong> ${escHtml(inv.metodo_investigacion)}<br>` : ''}
+        <strong>Causas inmediatas:</strong> ${escHtml(inv.causas_inmediatas)}<br>
+        <strong>Causas básicas:</strong> ${escHtml(inv.causas_basicas)}<br>
+        ${inv.factores_contribuyentes ? `<strong>Factores contribuyentes:</strong> ${escHtml(inv.factores_contribuyentes)}<br>` : ''}
+        <span style="color:var(--t3);">Por ${escHtml(inv.investigador_nombre || '—')} el ${formatearFecha(inv.fecha_investigacion)}</span>
+      </div>` : '<div class="sisso-vacio">Sin investigación registrada.</div>';
+    if (inv && esGestor) {
+      document.getElementById('i-metodo').value = inv.metodo_investigacion || '';
+      document.getElementById('i-causas-inmediatas').value = inv.causas_inmediatas || '';
+      document.getElementById('i-causas-basicas').value = inv.causas_basicas || '';
+      document.getElementById('i-factores').value = inv.factores_contribuyentes || '';
+      document.getElementById('i-fecha').value = (inv.fecha_investigacion || '').slice(0, 10);
+    }
+
+    // Acciones
+    const acciones = datos.acciones || [];
+    document.getElementById('lista-acciones').innerHTML = acciones.length === 0
+      ? '<div class="sisso-vacio">Sin acciones registradas.</div>'
+      : acciones.map(a => `
+          <div class="accion-item">
+            <div class="accion-cabecera">
+              <strong style="font-size:12.5px;">${escHtml(a.descripcion)}</strong>
+              ${chipDeEstadoAccion(a.estado)}
+            </div>
+            <div style="font-size:11.5px;color:var(--t3);margin-top:4px;">
+              Responsable: ${escHtml(a.responsable_nombre || '—')} · Límite: ${formatearFecha(a.fecha_limite)}
+            </div>
+            ${a.nota_verificacion ? `<div style="font-size:11.5px;color:var(--t2);margin-top:4px;">Verificación: ${escHtml(a.nota_verificacion)}</div>` : ''}
+            ${esGestor && a.estado === 'pendiente' || (esGestor && a.estado === 'en_progreso') ? `
+              <div class="accion-botones"><button class="btn-mini" onclick="completarAccion('${a.id}')">✓ Marcar completada</button></div>` : ''}
+            ${esGestor && a.estado === 'completada' ? `
+              <div class="accion-botones"><button class="btn-mini" onclick="verificarAccion('${a.id}')">✓✓ Verificar</button></div>` : ''}
+          </div>`).join('');
+
+    // Evidencias
+    const evidencias = datos.evidencias || [];
+    document.getElementById('lista-evidencias').innerHTML = evidencias.length === 0
+      ? '<div class="sisso-vacio">Sin evidencia todavía.</div>'
+      : evidencias.map(e => `
+          <div class="evidencia-item">
+            <span>${e.tipo_archivo === 'video' ? '🎥' : '🖼️'} ${escHtml(e.descripcion || 'Sin descripción')} — ${formatearFecha(e.creado_en)}</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn-mini" onclick="verEvidencia('${e.id}')">Ver</button>
+              ${esGestor ? `<button class="btn-mini" onclick="eliminarEvidencia('${e.id}')">Eliminar</button>` : ''}
+            </div>
+          </div>`).join('');
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al cargar el caso.');
+  }
+}
+
+async function cambiarEstadoCaso() {
+  ocultarError('error-detalle');
+  ocultarExito('exito-detalle');
+  const estado = document.getElementById('d-estado').value;
+  try {
+    await sissoFetch(`/accidentes/${casoActualId}`, { method: 'PUT', body: { estado } });
+    mostrarExito('exito-detalle', 'Estado actualizado.');
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al cambiar el estado.');
+  }
+}
+
+async function guardarInvestigacion() {
+  ocultarError('error-investigacion');
+  const metodo = document.getElementById('i-metodo').value.trim();
+  const causasInmediatas = document.getElementById('i-causas-inmediatas').value.trim();
+  const causasBasicas = document.getElementById('i-causas-basicas').value.trim();
+  const factores = document.getElementById('i-factores').value.trim();
+  const fecha = document.getElementById('i-fecha').value;
+
+  if (!causasInmediatas || !causasBasicas || !fecha) {
+    mostrarError('error-investigacion', 'Causas inmediatas, causas básicas y fecha son obligatorias.');
+    return;
+  }
+
+  try {
+    await sissoFetch(`/accidentes/${casoActualId}/investigacion`, {
+      method: 'POST',
+      body: { metodoInvestigacion: metodo || undefined, causasInmediatas, causasBasicas, factoresContribuyentes: factores || undefined, fechaInvestigacion: fecha },
+    });
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-investigacion', err.message || 'Error al guardar la investigación.');
+  }
+}
+
+async function crearAccion() {
+  ocultarError('error-accion');
+  const descripcion = document.getElementById('a-descripcion').value.trim();
+  const responsableId = document.getElementById('a-responsable').value;
+  const fechaLimite = document.getElementById('a-fecha-limite').value;
+
+  if (descripcion.length < 5) { mostrarError('error-accion', 'La descripción debe tener al menos 5 caracteres.'); return; }
+  if (!responsableId) { mostrarError('error-accion', 'Selecciona un responsable.'); return; }
+  if (!fechaLimite) { mostrarError('error-accion', 'Indica la fecha límite.'); return; }
+
+  try {
+    await sissoFetch(`/accidentes/${casoActualId}/acciones`, {
+      method: 'POST', body: { descripcion, responsableId, fechaLimite },
+    });
+    document.getElementById('a-descripcion').value = '';
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-accion', err.message || 'Error al crear la acción.');
+  }
+}
+
+async function completarAccion(accionId) {
+  try {
+    await sissoFetch(`/accidentes/acciones/${accionId}/completar`, { method: 'PUT' });
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al completar la acción.');
+  }
+}
+
+async function verificarAccion(accionId) {
+  const nota = prompt('Nota de verificación (opcional):') || '';
+  try {
+    await sissoFetch(`/accidentes/acciones/${accionId}/verificar`, { method: 'PUT', body: { notaVerificacion: nota || undefined } });
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al verificar la acción.');
+  }
+}
+
+// ======= Evidencia =======
+document.addEventListener('change', (evento) => {
+  if (evento.target.id !== 'e-archivo') return;
+  const archivo = evento.target.files[0];
+  archivoEvidenciaPendiente = null;
+  if (!archivo) return;
+  const lector = new FileReader();
+  lector.onload = (e) => { archivoEvidenciaPendiente = e.target.result; };
+  lector.readAsDataURL(archivo);
+});
+
+async function subirEvidencia() {
+  ocultarError('error-evidencia');
+  if (!archivoEvidenciaPendiente) { mostrarError('error-evidencia', 'Selecciona un archivo primero.'); return; }
+  const descripcion = document.getElementById('e-descripcion').value.trim();
+
+  try {
+    await sissoFetch(`/accidentes/${casoActualId}/evidencias`, {
+      method: 'POST', body: { archivoBase64: archivoEvidenciaPendiente, descripcion: descripcion || undefined },
+    });
+    document.getElementById('e-archivo').value = '';
+    document.getElementById('e-descripcion').value = '';
+    archivoEvidenciaPendiente = null;
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-evidencia', err.message || 'Error al subir la evidencia.');
+  }
+}
+
+async function verEvidencia(evidenciaId) {
+  try {
+    const datos = await sissoFetch(`/accidentes/evidencias/${evidenciaId}/url`);
+    window.open(datos.url, '_blank', 'noopener,noreferrer');
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al abrir la evidencia.');
+  }
+}
+
+async function eliminarEvidencia(evidenciaId) {
+  if (!confirm('¿Eliminar esta evidencia? Esta acción no se puede deshacer.')) return;
+  try {
+    await sissoFetch(`/accidentes/evidencias/${evidenciaId}`, { method: 'DELETE' });
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al eliminar la evidencia.');
+  }
+}
+
+// ======= Utilidades =======
+function chipDeTipo(tipo) {
+  const mapa = { accidente: ['rojo', 'Accidente'], incidente: ['ambar', 'Incidente'], casi_accidente: ['teal', 'Casi accidente'] };
+  const [clase, label] = mapa[tipo] || ['gris', tipo];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+function chipDeGravedad(gravedad) {
+  if (gravedad === 'no_aplica') return '';
+  const mapa = { leve: ['verde', 'Leve'], moderada: ['ambar', 'Moderada'], grave: ['rojo', 'Grave'], mortal: ['rojo', 'Mortal'] };
+  const [clase, label] = mapa[gravedad] || ['gris', gravedad];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+function chipDeEstado(estado) {
+  const mapa = {
+    reportado: ['ambar', 'Reportado'], en_investigacion: ['teal', 'En investigación'],
+    con_acciones: ['azul', 'Con acciones'], cerrado: ['verde', 'Cerrado'],
+  };
+  const [clase, label] = mapa[estado] || ['gris', estado];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+function chipDeEstadoAccion(estado) {
+  const mapa = {
+    pendiente: ['gris', 'Pendiente'], en_progreso: ['ambar', 'En progreso'],
+    completada: ['teal', 'Completada'], verificada: ['verde', 'Verificada'],
+  };
+  const [clase, label] = mapa[estado] || ['gris', estado];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>
