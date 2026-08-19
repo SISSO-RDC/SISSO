@@ -70,6 +70,12 @@ const SissoLayout = (() => {
     // laboral (nunca el motivo clinico) — ver restriccionesMedicasController.js.
     { id: 'enfermedad-profesional', label: 'Enfermedad profesional', icono: '🧬', href: '../enfermedad-profesional/index.html', roles: ['medico', 'sso'] },
     { id: 'restricciones', label: 'Restricciones médicas', icono: '🚧', href: '../restricciones-medicas/index.html', roles: ['medico', 'sso', 'th'] },
+    // CORREGIDO tras Auditoria SISSO N.06 (puntos 15 y 16 / CRITICO
+    // 2 y CRITICO 4). Matriz medico-ocupacional: solo medico (decide
+    // que vigilancia clinica recibe cada puesto). Vigilancia de la
+    // salud: medico gestiona, sso solo lee (datos ya agregados).
+    { id: 'matriz-medico-puesto', label: 'Matriz médico-puesto', icono: '🗂️', href: '../matriz-medico-puesto/index.html', roles: ['medico'] },
+    { id: 'vigilancia-salud', label: 'Vigilancia de la salud', icono: '📊', href: '../vigilancia-salud/index.html', roles: ['medico', 'sso'] },
 
     { seccion: 'ERGONOMÍA' },
     { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '../puestos-trabajo/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
