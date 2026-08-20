@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Inspecciones</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .filtros-caja { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+    .filtros-caja .sisso-campo { margin-bottom: 0; min-width: 150px; }
+    .insp-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .insp-item:hover { background: var(--bg); }
+    .insp-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .insp-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .item-fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--bd); border-radius: var(--r); margin-bottom: 6px; font-size: 12.5px; }
+    .hallazgo-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 10px 12px; margin-bottom: 8px; }
+    .panel-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .panel-2col { grid-template-columns: 1fr; } }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- ======= LISTADO ======= -->
+  <div id="vista-listado">
+    <div class="sisso-tarjeta" id="caja-crear" style="display:none;margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Programar nueva inspección</div>
+      <div class="sisso-error" id="error-crear"></div>
+      <div class="sisso-exito" id="exito-crear"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-tipo">Tipo</label>
+          <select id="c-tipo" class="sisso-select">
+            <option value="planeada">Planeada</option>
+            <option value="no_planeada">No planeada</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-fecha">Fecha programada</label>
+          <input id="c-fecha" type="date" class="sisso-input">
+        </div>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-area">Área / lugar *</label>
+        <input id="c-area" class="sisso-input" placeholder="Ej: Bodega, Planta 1, línea de corte">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-inspector">Inspector *</label>
+        <select id="c-inspector" class="sisso-select"><option value="">Cargando…</option></select>
+      </div>
+      <button class="sisso-boton ancho-completo" id="btn-crear" onclick="crearInspeccion()">Programar inspección</button>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Inspecciones</div>
+      <div class="filtros-caja">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-estado">Estado</label>
+          <select id="f-estado" class="sisso-select" onchange="cargarListado()">
+            <option value="">Todos</option>
+            <option value="programada">Programada</option>
+            <option value="en_progreso">En progreso</option>
+            <option value="completada">Completada</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-tipo">Tipo</label>
+          <select id="f-tipo" class="sisso-select" onchange="cargarListado()">
+            <option value="">Todos</option>
+            <option value="planeada">Planeada</option>
+            <option value="no_planeada">No planeada</option>
+          </select>
+        </div>
+      </div>
+      <div id="lista-inspecciones"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <!-- ======= DETALLE ======= -->
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" onclick="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-inspeccion"></div>
+      <div id="cambiar-estado-caja" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);">
+        <label class="sisso-etiqueta">Estado de la inspección</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="d-estado" class="sisso-select" style="max-width:220px;">
+            <option value="programada">Programada</option>
+            <option value="en_progreso">En progreso</option>
+            <option value="completada">Completada</option>
+          </select>
+          <button class="sisso-boton secundario" onclick="cambiarEstado()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-2col">
+      <!-- Checklist -->
+      <div class="sisso-tarjeta">
+        <div class="sisso-tarjeta-titulo">Checklist</div>
+        <div id="form-item-caja" style="display:none;margin-bottom:12px;">
+          <div class="sisso-error" id="error-item"></div>
+          <input type="text" id="i-item" class="sisso-input" placeholder="Ej: Extintores señalizados y accesibles" style="margin-bottom:8px;">
+          <select id="i-cumple" class="sisso-select" style="margin-bottom:8px;">
+            <option value="si">Cumple</option>
+            <option value="no">No cumple</option>
+            <option value="no_aplica">No aplica</option>
+          </select>
+          <input type="text" id="i-observacion" class="sisso-input" placeholder="Observación (opcional)" style="margin-bottom:8px;">
+          <button class="sisso-boton secundario ancho-completo" onclick="agregarItem()">+ Agregar al checklist</button>
+        </div>
+        <div id="lista-items"><div class="sisso-vacio">Sin items todavía.</div></div>
+      </div>
+
+      <!-- Hallazgos -->
+      <div class="sisso-tarjeta">
+        <div class="sisso-tarjeta-titulo">Hallazgos</div>
+        <div id="form-hallazgo-caja" style="display:none;margin-bottom:12px;">
+          <div class="sisso-error" id="error-hallazgo"></div>
+          <textarea id="h-descripcion" class="sisso-textarea" placeholder="Descripción del hallazgo (mínimo 10 caracteres)" style="margin-bottom:8px;"></textarea>
+          <select id="h-gravedad" class="sisso-select" style="margin-bottom:8px;">
+            <option value="baja">Baja</option>
+            <option value="media" selected>Media</option>
+            <option value="alta">Alta</option>
+          </select>
+          <button class="sisso-boton secundario ancho-completo" onclick="agregarHallazgo()">+ Agregar hallazgo</button>
+        </div>
+        <div id="lista-hallazgos"><div class="sisso-vacio">Sin hallazgos todavía.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: generar CAPA desde hallazgo -->
+<div class="modal-fondo" id="modal-fondo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Generar acción CAPA</div>
+    <div class="sisso-error" id="error-modal"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-responsable">Responsable *</label>
+      <select id="m-responsable" class="sisso-select"><option value="">Cargando…</option></select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-fecha-limite">Fecha límite *</label>
+      <input id="m-fecha-limite" type="date" class="sisso-input">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" onclick="confirmarGenerarCapa()">Generar CAPA</button>
+      <button class="sisso-boton secundario" style="flex:1;" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let esGestor = false;
+let usuariosOrganizacion = [];
+let inspeccionActualId = null;
+let hallazgoModalId = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('inspecciones', 'Inspecciones');
+
+  const usuario = SissoSesion.obtenerUsuario();
+  esGestor = ['admin', 'sso'].includes(usuario.rol);
+
+  if (esGestor) {
+    document.getElementById('caja-crear').style.display = 'block';
+    await cargarUsuarios();
+  }
+
+  await cargarListado();
+});
+
+async function cargarUsuarios() {
+  try {
+    const datos = await sissoFetch('/usuarios');
+    usuariosOrganizacion = datos.usuarios || [];
+    const opciones = '<option value="">Selecciona…</option>' +
+      usuariosOrganizacion.map(u => `<option value="${u.id}">${escHtml(u.nombre_completo)} (${escHtml(u.rol)})</option>`).join('');
+    document.getElementById('c-inspector').innerHTML = opciones;
+    document.getElementById('m-responsable').innerHTML = opciones;
+  } catch (err) {
+    document.getElementById('c-inspector').innerHTML = '<option value="">Error al cargar</option>';
+  }
+}
+
+async function crearInspeccion() {
+  ocultarError('error-crear');
+  ocultarExito('exito-crear');
+
+  const tipo = document.getElementById('c-tipo').value;
+  const fecha = document.getElementById('c-fecha').value;
+  const area = document.getElementById('c-area').value.trim();
+  const inspectorId = document.getElementById('c-inspector').value;
+
+  if (!area) { mostrarError('error-crear', 'Indica el área o lugar.'); return; }
+  if (!inspectorId) { mostrarError('error-crear', 'Selecciona un inspector.'); return; }
+
+  const boton = document.getElementById('btn-crear');
+  boton.disabled = true;
+  boton.textContent = 'Programando…';
+
+  try {
+    await sissoFetch('/inspecciones', {
+      method: 'POST', body: { tipo, area, fechaProgramada: fecha || undefined, inspectorId },
+    });
+    mostrarExito('exito-crear', 'Inspección programada.');
+    document.getElementById('c-area').value = '';
+    await cargarListado();
+  } catch (err) {
+    mostrarError('error-crear', err.message || 'Error al programar la inspección.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Programar inspección';
+  }
+}
+
+async function cargarListado() {
+  const cont = document.getElementById('lista-inspecciones');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+
+  const estado = document.getElementById('f-estado').value;
+  const tipo = document.getElementById('f-tipo').value;
+  const parametros = new URLSearchParams();
+  if (estado) parametros.set('estado', estado);
+  if (tipo) parametros.set('tipo', tipo);
+
+  try {
+    const datos = await sissoFetch(`/inspecciones?${parametros.toString()}`);
+    const inspecciones = datos.inspecciones || [];
+    if (inspecciones.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay inspecciones con estos filtros.</div>';
+      return;
+    }
+    cont.innerHTML = inspecciones.map(i => `
+      <div class="insp-item" onclick="abrirDetalle('${i.id}')">
+        <div class="insp-cabecera">
+          <div>${chipDeTipo(i.tipo)}</div>
+          ${chipDeEstado(i.estado)}
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:6px;">${escHtml(i.area)}</div>
+        <div class="insp-meta">Inspector: ${escHtml(i.inspector_nombre || '—')}${i.fecha_programada ? ' · ' + formatearFecha(i.fecha_programada) : ''} · ${i.total_hallazgos} hallazgo(s)</div>
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ======= Detalle =======
+async function abrirDetalle(id) {
+  inspeccionActualId = id;
+  document.getElementById('vista-listado').style.display = 'none';
+  document.getElementById('vista-detalle').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('form-item-caja').style.display = esGestor ? 'block' : 'none';
+  document.getElementById('form-hallazgo-caja').style.display = esGestor ? 'block' : 'none';
+  document.getElementById('cambiar-estado-caja').style.display = esGestor ? 'block' : 'none';
+  await cargarDetalle();
+}
+
+function volverAlListado() {
+  inspeccionActualId = null;
+  document.getElementById('vista-listado').style.display = 'block';
+  document.getElementById('vista-detalle').style.display = 'none';
+  cargarListado();
+}
+
+async function cargarDetalle() {
+  ocultarError('error-detalle');
+  try {
+    const datos = await sissoFetch(`/inspecciones/${inspeccionActualId}`);
+    const i = datos.inspeccion;
+
+    document.getElementById('resumen-inspeccion').innerHTML = `
+      <div class="insp-cabecera">
+        <div style="display:flex;gap:6px;">${chipDeTipo(i.tipo)} ${chipDeEstado(i.estado)}</div>
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--t2);line-height:1.6;">
+        <strong>Área:</strong> ${escHtml(i.area)}${i.nombre_puesto ? ' · ' + escHtml(i.nombre_puesto) : ''}<br>
+        <strong>Inspector:</strong> ${escHtml(i.inspector_nombre || '—')}<br>
+        ${i.fecha_programada ? `<strong>Programada:</strong> ${formatearFecha(i.fecha_programada)}<br>` : ''}
+        ${i.fecha_ejecucion ? `<strong>Ejecutada:</strong> ${formatearFecha(i.fecha_ejecucion)}<br>` : ''}
+        ${i.observaciones_generales ? `<strong>Observaciones:</strong> ${escHtml(i.observaciones_generales)}<br>` : ''}
+      </div>`;
+    document.getElementById('d-estado').value = i.estado;
+
+    const items = datos.items || [];
+    document.getElementById('lista-items').innerHTML = items.length === 0
+      ? '<div class="sisso-vacio">Sin items todavía.</div>'
+      : items.map(it => `
+          <div class="item-fila">
+            <span>${chipDeCumple(it.cumple)} ${escHtml(it.item)}${it.observacion ? ' — ' + escHtml(it.observacion) : ''}</span>
+          </div>`).join('');
+
+    const hallazgos = datos.hallazgos || [];
+    document.getElementById('lista-hallazgos').innerHTML = hallazgos.length === 0
+      ? '<div class="sisso-vacio">Sin hallazgos todavía.</div>'
+      : hallazgos.map(h => `
+          <div class="hallazgo-item">
+            <div class="insp-cabecera">
+              <span class="sisso-chip ${h.gravedad === 'alta' ? 'rojo' : (h.gravedad === 'media' ? 'ambar' : 'gris')}">${etiquetaGravedad(h.gravedad)}</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--t2);margin-top:6px;">${escHtml(h.descripcion)}</div>
+            ${h.capa_id
+              ? '<div style="margin-top:6px;"><span class="sisso-chip verde">CAPA generada</span></div>'
+              : (esGestor ? `<div style="margin-top:6px;"><button class="btn-mini" onclick="abrirModal('${h.id}')">Generar CAPA</button></div>` : '')}
+          </div>`).join('');
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al cargar la inspección.');
+  }
+}
+
+async function cambiarEstado() {
+  ocultarError('error-detalle');
+  ocultarExito('exito-detalle');
+  const estado = document.getElementById('d-estado').value;
+  try {
+    await sissoFetch(`/inspecciones/${inspeccionActualId}`, { method: 'PUT', body: { estado } });
+    mostrarExito('exito-detalle', 'Estado actualizado.');
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al cambiar el estado.');
+  }
+}
+
+async function agregarItem() {
+  ocultarError('error-item');
+  const item = document.getElementById('i-item').value.trim();
+  const cumple = document.getElementById('i-cumple').value;
+  const observacion = document.getElementById('i-observacion').value.trim();
+
+  if (!item) { mostrarError('error-item', 'Escribe el item a verificar.'); return; }
+
+  try {
+    await sissoFetch(`/inspecciones/${inspeccionActualId}/items`, {
+      method: 'POST', body: { item, cumple, observacion: observacion || undefined },
+    });
+    document.getElementById('i-item').value = '';
+    document.getElementById('i-observacion').value = '';
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-item', err.message || 'Error al agregar el item.');
+  }
+}
+
+async function agregarHallazgo() {
+  ocultarError('error-hallazgo');
+  const descripcion = document.getElementById('h-descripcion').value.trim();
+  const gravedad = document.getElementById('h-gravedad').value;
+
+  if (descripcion.length < 10) { mostrarError('error-hallazgo', 'La descripción debe tener al menos 10 caracteres.'); return; }
+
+  try {
+    await sissoFetch(`/inspecciones/${inspeccionActualId}/hallazgos`, {
+      method: 'POST', body: { descripcion, gravedad },
+    });
+    document.getElementById('h-descripcion').value = '';
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-hallazgo', err.message || 'Error al agregar el hallazgo.');
+  }
+}
+
+// ======= Modal generar CAPA =======
+function abrirModal(hallazgoId) {
+  hallazgoModalId = hallazgoId;
+  ocultarError('error-modal');
+  document.getElementById('modal-fondo').classList.add('visible');
+}
+function cerrarModal() {
+  document.getElementById('modal-fondo').classList.remove('visible');
+  hallazgoModalId = null;
+}
+async function confirmarGenerarCapa() {
+  ocultarError('error-modal');
+  const responsableId = document.getElementById('m-responsable').value;
+  const fechaLimite = document.getElementById('m-fecha-limite').value;
+
+  if (!responsableId) { mostrarError('error-modal', 'Selecciona un responsable.'); return; }
+  if (!fechaLimite) { mostrarError('error-modal', 'Indica la fecha límite.'); return; }
+
+  try {
+    await sissoFetch(`/inspecciones/hallazgos/${hallazgoModalId}/generar-capa`, {
+      method: 'POST', body: { responsableId, fechaLimite },
+    });
+    cerrarModal();
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-modal', err.message || 'Error al generar la acción CAPA.');
+  }
+}
+
+// ======= Utilidades =======
+function chipDeTipo(tipo) {
+  return `<span class="sisso-chip ${tipo === 'no_planeada' ? 'ambar' : 'teal'}">${tipo === 'no_planeada' ? 'No planeada' : 'Planeada'}</span>`;
+}
+function chipDeEstado(estado) {
+  const mapa = { programada: 'gris', en_progreso: 'ambar', completada: 'verde' };
+  const etiquetas = { programada: 'Programada', en_progreso: 'En progreso', completada: 'Completada' };
+  return `<span class="sisso-chip ${mapa[estado] || 'gris'}">${etiquetas[estado] || estado}</span>`;
+}
+function chipDeCumple(cumple) {
+  const mapa = { si: ['verde', '✓'], no: ['rojo', '✕'], no_aplica: ['gris', 'N/A'] };
+  const [clase, label] = mapa[cumple] || ['gris', cumple];
+  return `<span class="sisso-chip ${clase}">${label}</span>`;
+}
+function etiquetaGravedad(g) {
+  return { baja: 'Baja', media: 'Media', alta: 'Alta' }[g] || g;
+}
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>

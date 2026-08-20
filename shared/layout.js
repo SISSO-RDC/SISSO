@@ -93,6 +93,7 @@ const SissoLayout = (() => {
     // usuario autenticado puede LEER (mismo criterio que ausentismo).
     { id: 'accidentes',   label: 'Accidentes/Incidentes', icono: '🚨', href: '../accidentes/index.html', roles: [] },
     { id: 'capa',         label: 'CAPA',                icono: '🔁', href: '../capa/index.html', roles: [] },
+    { id: 'inspecciones', label: 'Inspecciones',        icono: '🔎', href: '../inspecciones/index.html', roles: [] },
     { id: 'proximos',     label: 'Próximos exámenes',  icono: '⏰', href: '../calendario-emos/index.html', roles: [] },
     { id: 'matriz',       label: 'Matriz de riesgos',  icono: '🗂️', href: '../matriz-riesgos/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
     { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '../reportes-bi/index.html', roles: [] },
