@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Higiene Industrial</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .filtros-caja { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+    .filtros-caja .sisso-campo { margin-bottom: 0; min-width: 150px; }
+    table.tabla-medic { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.tabla-medic th, table.tabla-medic td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bd); }
+    table.tabla-medic th { color: var(--t3); font-size: 10.5px; text-transform: uppercase; }
+    table.tabla-medic tr { cursor: pointer; }
+    table.tabla-medic tr:hover { background: var(--bg); }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="sisso-tarjeta" id="caja-crear" style="display:none;margin-bottom:16px;">
+    <div class="sisso-tarjeta-titulo">Registrar medición</div>
+    <div class="sisso-error" id="error-crear"></div>
+    <div class="sisso-exito" id="exito-crear"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-tipo">Tipo de medición *</label>
+        <select id="c-tipo" class="sisso-select">
+          <option value="ruido">Ruido</option>
+          <option value="iluminacion">Iluminación</option>
+          <option value="vibracion">Vibración</option>
+          <option value="quimico">Agente químico</option>
+          <option value="estres_termico">Estrés térmico</option>
+          <option value="polvo">Polvo</option>
+          <option value="radiacion">Radiación</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-criterio">Criterio de cumplimiento *</label>
+        <select id="c-criterio" class="sisso-select">
+          <option value="maximo">No superar el límite (ruido, químicos, vibración...)</option>
+          <option value="minimo">No estar por debajo del límite (iluminación...)</option>
+        </select>
+      </div>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="c-area">Área *</label>
+      <input id="c-area" class="sisso-input" placeholder="Ej: Línea de corte, Bodega">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="c-parametro">Parámetro medido *</label>
+      <input id="c-parametro" class="sisso-input" placeholder="Ej: Nivel de presión sonora, Benceno">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-valor">Valor medido *</label>
+        <input id="c-valor" type="number" step="0.001" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-unidad">Unidad *</label>
+        <input id="c-unidad" class="sisso-input" placeholder="dB(A), lux, ppm...">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-limite">Límite permisible *</label>
+        <input id="c-limite" type="number" step="0.001" class="sisso-input">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-equipo">Equipo utilizado</label>
+        <input id="c-equipo" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-norma">Norma / método de referencia</label>
+        <input id="c-norma" class="sisso-input" placeholder="Ej: NTE INEN-ISO 9612">
+      </div>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="c-fecha">Fecha de medición *</label>
+      <input id="c-fecha" type="date" class="sisso-input">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="c-observaciones">Observaciones</label>
+      <textarea id="c-observaciones" class="sisso-textarea"></textarea>
+    </div>
+    <button class="sisso-boton ancho-completo" id="btn-crear" onclick="crearMedicion()">Registrar medición</button>
+  </div>
+
+  <div class="sisso-tarjeta">
+    <div class="sisso-tarjeta-titulo">Mediciones de higiene industrial</div>
+    <div class="filtros-caja">
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="f-tipo">Tipo</label>
+        <select id="f-tipo" class="sisso-select" onchange="cargarListado()">
+          <option value="">Todos</option>
+          <option value="ruido">Ruido</option>
+          <option value="iluminacion">Iluminación</option>
+          <option value="vibracion">Vibración</option>
+          <option value="quimico">Agente químico</option>
+          <option value="estres_termico">Estrés térmico</option>
+          <option value="polvo">Polvo</option>
+          <option value="radiacion">Radiación</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="f-cumple">Cumplimiento</label>
+        <select id="f-cumple" class="sisso-select" onchange="cargarListado()">
+          <option value="">Todos</option>
+          <option value="true">Cumple</option>
+          <option value="false">No cumple</option>
+        </select>
+      </div>
+    </div>
+    <div id="tabla-mediciones"><div class="sisso-cargando">Cargando…</div></div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-fondo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo" id="modal-titulo">Medición</div>
+    <div id="modal-cuerpo"></div>
+    <div id="modal-generar-capa" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);">
+      <div class="sisso-tarjeta-subtitulo" style="margin-bottom:8px;">Esta medición no cumple. Generar acción CAPA:</div>
+      <div class="sisso-error" id="error-modal"></div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-responsable">Responsable *</label>
+        <select id="m-responsable" class="sisso-select"><option value="">Cargando…</option></select>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="m-fecha-limite">Fecha límite *</label>
+        <input id="m-fecha-limite" type="date" class="sisso-input">
+      </div>
+      <button class="sisso-boton ancho-completo" onclick="confirmarGenerarCapa()">Generar CAPA</button>
+    </div>
+    <button class="sisso-boton secundario ancho-completo" style="margin-top:10px;" onclick="cerrarModal()">Cerrar</button>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let esGestor = false;
+let usuariosOrganizacion = [];
+let medicionModalId = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('higiene-industrial', 'Higiene Industrial');
+
+  const usuario = SissoSesion.obtenerUsuario();
+  esGestor = ['admin', 'sso'].includes(usuario.rol);
+
+  if (esGestor) {
+    document.getElementById('caja-crear').style.display = 'block';
+    await cargarUsuarios();
+  }
+
+  await cargarListado();
+});
+
+async function cargarUsuarios() {
+  try {
+    const datos = await sissoFetch('/usuarios');
+    usuariosOrganizacion = datos.usuarios || [];
+    document.getElementById('m-responsable').innerHTML = '<option value="">Selecciona…</option>' +
+      usuariosOrganizacion.map(u => `<option value="${u.id}">${escHtml(u.nombre_completo)} (${escHtml(u.rol)})</option>`).join('');
+  } catch (err) {
+    document.getElementById('m-responsable').innerHTML = '<option value="">Error</option>';
+  }
+}
+
+async function crearMedicion() {
+  ocultarError('error-crear');
+  ocultarExito('exito-crear');
+
+  const tipoMedicion = document.getElementById('c-tipo').value;
+  const criterio = document.getElementById('c-criterio').value;
+  const area = document.getElementById('c-area').value.trim();
+  const parametro = document.getElementById('c-parametro').value.trim();
+  const valorMedido = document.getElementById('c-valor').value;
+  const unidad = document.getElementById('c-unidad').value.trim();
+  const limitePermisible = document.getElementById('c-limite').value;
+  const equipoUtilizado = document.getElementById('c-equipo').value.trim();
+  const metodoReferencia = document.getElementById('c-norma').value.trim();
+  const fechaMedicion = document.getElementById('c-fecha').value;
+  const observaciones = document.getElementById('c-observaciones').value.trim();
+
+  if (!area) { mostrarError('error-crear', 'Indica el área.'); return; }
+  if (!parametro) { mostrarError('error-crear', 'Indica el parámetro medido.'); return; }
+  if (valorMedido === '' || limitePermisible === '') { mostrarError('error-crear', 'Indica el valor medido y el límite permisible.'); return; }
+  if (!unidad) { mostrarError('error-crear', 'Indica la unidad.'); return; }
+  if (!fechaMedicion) { mostrarError('error-crear', 'Indica la fecha de medición.'); return; }
+
+  const boton = document.getElementById('btn-crear');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch('/higiene-industrial/mediciones', {
+      method: 'POST',
+      body: {
+        tipoMedicion, criterio, area, parametro, valorMedido: parseFloat(valorMedido), unidad,
+        limitePermisible: parseFloat(limitePermisible), equipoUtilizado: equipoUtilizado || undefined,
+        metodoReferencia: metodoReferencia || undefined, fechaMedicion, observaciones: observaciones || undefined,
+      },
+    });
+    mostrarExito('exito-crear', 'Medición registrada.');
+    document.getElementById('c-area').value = '';
+    document.getElementById('c-parametro').value = '';
+    document.getElementById('c-valor').value = '';
+    document.getElementById('c-unidad').value = '';
+    document.getElementById('c-limite').value = '';
+    document.getElementById('c-equipo').value = '';
+    document.getElementById('c-norma').value = '';
+    document.getElementById('c-observaciones').value = '';
+    await cargarListado();
+  } catch (err) {
+    mostrarError('error-crear', err.message || 'Error al registrar la medición.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Registrar medición';
+  }
+}
+
+async function cargarListado() {
+  const cont = document.getElementById('tabla-mediciones');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+
+  const tipo = document.getElementById('f-tipo').value;
+  const cumple = document.getElementById('f-cumple').value;
+  const parametros = new URLSearchParams();
+  if (tipo) parametros.set('tipoMedicion', tipo);
+  if (cumple) parametros.set('cumple', cumple);
+
+  try {
+    const datos = await sissoFetch(`/higiene-industrial/mediciones?${parametros.toString()}`);
+    const mediciones = datos.mediciones || [];
+    if (mediciones.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay mediciones con estos filtros.</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <table class="tabla-medic">
+        <thead><tr><th>Tipo</th><th>Área</th><th>Parámetro</th><th>Valor</th><th>Límite</th><th>Estado</th><th>Fecha</th></tr></thead>
+        <tbody>
+          ${mediciones.map(m => `
+            <tr onclick="abrirModal('${m.id}')">
+              <td>${etiquetaTipo(m.tipo_medicion)}</td>
+              <td>${escHtml(m.area)}</td>
+              <td>${escHtml(m.parametro)}</td>
+              <td>${m.valor_medido} ${escHtml(m.unidad)}</td>
+              <td>${m.limite_permisible} ${escHtml(m.unidad)}</td>
+              <td>${m.cumple ? '<span class="sisso-chip verde">Cumple</span>' : '<span class="sisso-chip rojo">No cumple</span>'}${m.capa_id ? ' <span class="sisso-chip teal">CAPA</span>' : ''}</td>
+              <td>${formatearFecha(m.fecha_medicion)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function abrirModal(id) {
+  medicionModalId = id;
+  document.getElementById('error-modal') && ocultarError('error-modal');
+  try {
+    const datos = await sissoFetch(`/higiene-industrial/mediciones/${id}`);
+    const m = datos.medicion;
+    document.getElementById('modal-titulo').textContent = `${etiquetaTipo(m.tipo_medicion)} — ${m.area}`;
+    document.getElementById('modal-cuerpo').innerHTML = `
+      <div style="font-size:13px;color:var(--t2);line-height:1.7;">
+        <strong>Parámetro:</strong> ${escHtml(m.parametro)}<br>
+        <strong>Valor medido:</strong> ${m.valor_medido} ${escHtml(m.unidad)}<br>
+        <strong>Límite permisible:</strong> ${m.limite_permisible} ${escHtml(m.unidad)}<br>
+        <strong>Resultado:</strong> ${m.cumple ? '<span class="sisso-chip verde">Cumple</span>' : '<span class="sisso-chip rojo">No cumple</span>'}<br>
+        ${m.equipo_utilizado ? `<strong>Equipo:</strong> ${escHtml(m.equipo_utilizado)}<br>` : ''}
+        ${m.metodo_referencia ? `<strong>Norma/método:</strong> ${escHtml(m.metodo_referencia)}<br>` : ''}
+        <strong>Fecha:</strong> ${formatearFecha(m.fecha_medicion)}<br>
+        <strong>Responsable:</strong> ${escHtml(m.responsable_nombre || '—')}<br>
+        ${m.observaciones ? `<strong>Observaciones:</strong> ${escHtml(m.observaciones)}` : ''}
+      </div>`;
+
+    const cajaCapa = document.getElementById('modal-generar-capa');
+    cajaCapa.style.display = (esGestor && !m.cumple && !m.capa_id) ? 'block' : 'none';
+    if (m.capa_id) {
+      document.getElementById('modal-cuerpo').innerHTML += '<div style="margin-top:10px;"><span class="sisso-chip verde">Ya tiene una acción CAPA generada</span></div>';
+    }
+
+    document.getElementById('modal-fondo').classList.add('visible');
+  } catch (err) {
+    alert('Error al cargar la medición: ' + (err.message || ''));
+  }
+}
+function cerrarModal() { document.getElementById('modal-fondo').classList.remove('visible'); }
+
+async function confirmarGenerarCapa() {
+  ocultarError('error-modal');
+  const responsableId = document.getElementById('m-responsable').value;
+  const fechaLimite = document.getElementById('m-fecha-limite').value;
+  if (!responsableId) { mostrarError('error-modal', 'Selecciona un responsable.'); return; }
+  if (!fechaLimite) { mostrarError('error-modal', 'Indica la fecha límite.'); return; }
+
+  try {
+    await sissoFetch(`/higiene-industrial/mediciones/${medicionModalId}/generar-capa`, {
+      method: 'POST', body: { responsableId, fechaLimite },
+    });
+    cerrarModal();
+    await cargarListado();
+  } catch (err) {
+    mostrarError('error-modal', err.message || 'Error al generar la acción CAPA.');
+  }
+}
+
+// ======= Utilidades =======
+function etiquetaTipo(tipo) {
+  const mapa = { ruido: 'Ruido', iluminacion: 'Iluminación', vibracion: 'Vibración', quimico: 'Agente químico', estres_termico: 'Estrés térmico', polvo: 'Polvo', radiacion: 'Radiación', otro: 'Otro' };
+  return mapa[tipo] || tipo;
+}
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>

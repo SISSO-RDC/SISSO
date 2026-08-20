@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Riesgo Psicosocial</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .filtros-caja { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+    .filtros-caja .sisso-campo { margin-bottom: 0; min-width: 150px; }
+    .eval-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .eval-item:hover { background: var(--bg); }
+    .eval-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .eval-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .factor-fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--bd); border-radius: var(--r); margin-bottom: 6px; font-size: 12.5px; }
+    .factor-nuevo { display: grid; grid-template-columns: 2fr 1fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+    .aviso-clinico {
+      background: var(--teal3); color: var(--teal2); padding: 12px 14px; border-radius: var(--r);
+      font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
+    }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="aviso-clinico">
+    🔒 Este módulo registra niveles de riesgo psicosocial organizacional (carga mental, liderazgo, compensaciones, etc.).
+    No es un espacio clínico: si una evaluación revela que alguien necesita atención psicológica o psiquiátrica,
+    esa derivación y su seguimiento clínico se registran aparte, en Historia Clínica, exclusivo del Médico Ocupacional.
+  </div>
+
+  <!-- ======= LISTADO ======= -->
+  <div id="vista-listado">
+    <div class="sisso-tarjeta" id="caja-crear" style="display:none;margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Nueva evaluación</div>
+      <div class="sisso-error" id="error-crear"></div>
+      <div class="sisso-exito" id="exito-crear"></div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-tipo">Tipo de evaluación</label>
+        <select id="c-tipo" class="sisso-select" onchange="alCambiarTipo()">
+          <option value="individual">Individual</option>
+          <option value="grupal">Grupal (por área)</option>
+        </select>
+      </div>
+      <div class="sisso-campo" id="campo-trabajador">
+        <label class="sisso-etiqueta" for="c-trabajador">Trabajador *</label>
+        <select id="c-trabajador" class="sisso-select"><option value="">Cargando…</option></select>
+      </div>
+      <div class="sisso-campo" id="campo-area" style="display:none;">
+        <label class="sisso-etiqueta" for="c-area">Área *</label>
+        <input id="c-area" class="sisso-input" placeholder="Ej: Planta de producción">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-metodo">Método *</label>
+          <input id="c-metodo" class="sisso-input" placeholder="Ej: CoPsoQ-Istas21">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-fecha">Fecha *</label>
+          <input id="c-fecha" type="date" class="sisso-input">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-puntaje">Puntaje global</label>
+          <input id="c-puntaje" type="number" step="0.01" class="sisso-input">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-nivel">Nivel de riesgo *</label>
+          <select id="c-nivel" class="sisso-select">
+            <option value="bajo">Bajo</option>
+            <option value="medio">Medio</option>
+            <option value="alto">Alto</option>
+            <option value="muy_alto">Muy alto</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sisso-tarjeta-subtitulo" style="margin:10px 0 6px;">Factores evaluados (opcional)</div>
+      <div id="lista-factores-nuevos"></div>
+      <div class="factor-nuevo">
+        <input type="text" id="nf-factor" class="sisso-input" placeholder="Ej: Carga mental">
+        <select id="nf-nivel" class="sisso-select">
+          <option value="bajo">Bajo</option>
+          <option value="medio">Medio</option>
+          <option value="alto">Alto</option>
+          <option value="muy_alto">Muy alto</option>
+        </select>
+        <button class="btn-mini" onclick="agregarFactorTemporal()">+ Agregar</button>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t2);margin:10px 0 14px;">
+        <input type="checkbox" id="c-derivado"> Requiere derivación a atención médica (sin detalle clínico aquí)
+      </label>
+      <button class="sisso-boton ancho-completo" id="btn-crear" onclick="crearEvaluacion()">Guardar evaluación</button>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Evaluaciones de riesgo psicosocial</div>
+      <div class="filtros-caja">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-nivel">Nivel de riesgo</label>
+          <select id="f-nivel" class="sisso-select" onchange="cargarListado()">
+            <option value="">Todos</option>
+            <option value="bajo">Bajo</option>
+            <option value="medio">Medio</option>
+            <option value="alto">Alto</option>
+            <option value="muy_alto">Muy alto</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-estado">Estado</label>
+          <select id="f-estado" class="sisso-select" onchange="cargarListado()">
+            <option value="">Todos</option>
+            <option value="evaluado">Evaluado</option>
+            <option value="en_intervencion">En intervención</option>
+            <option value="en_seguimiento">En seguimiento</option>
+            <option value="cerrado">Cerrado</option>
+          </select>
+        </div>
+      </div>
+      <div id="lista-evaluaciones"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <!-- ======= DETALLE ======= -->
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" onclick="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-evaluacion"></div>
+      <div id="acciones-caja" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);"></div>
+    </div>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Factores evaluados</div>
+      <div id="lista-factores"><div class="sisso-vacio">Sin factores registrados.</div></div>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Historial de evaluaciones (reevaluación)</div>
+      <div id="lista-historial"><div class="sisso-vacio">Sin historial.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-fondo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Generar acción CAPA (intervención)</div>
+    <div class="sisso-error" id="error-modal"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-responsable">Responsable *</label>
+      <select id="m-responsable" class="sisso-select"><option value="">Cargando…</option></select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-fecha-limite">Fecha límite *</label>
+      <input id="m-fecha-limite" type="date" class="sisso-input">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" onclick="confirmarGenerarCapa()">Generar CAPA</button>
+      <button class="sisso-boton secundario" style="flex:1;" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let esGestor = false;
+let trabajadores = [];
+let usuariosOrganizacion = [];
+let evaluacionActualId = null;
+let factoresTemporales = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('riesgo-psicosocial', 'Riesgo Psicosocial');
+
+  const usuario = SissoSesion.obtenerUsuario();
+  esGestor = ['admin', 'sso'].includes(usuario.rol);
+
+  if (esGestor) {
+    document.getElementById('caja-crear').style.display = 'block';
+    await cargarTrabajadores();
+    await cargarUsuarios();
+  }
+
+  await cargarListado();
+});
+
+async function cargarTrabajadores() {
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    document.getElementById('c-trabajador').innerHTML = '<option value="">Selecciona…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    document.getElementById('c-trabajador').innerHTML = '<option value="">Error al cargar</option>';
+  }
+}
+
+async function cargarUsuarios() {
+  try {
+    const datos = await sissoFetch('/usuarios');
+    usuariosOrganizacion = datos.usuarios || [];
+    document.getElementById('m-responsable').innerHTML = '<option value="">Selecciona…</option>' +
+      usuariosOrganizacion.map(u => `<option value="${u.id}">${escHtml(u.nombre_completo)} (${escHtml(u.rol)})</option>`).join('');
+  } catch (err) {
+    document.getElementById('m-responsable').innerHTML = '<option value="">Error al cargar</option>';
+  }
+}
+
+function alCambiarTipo() {
+  const esGrupal = document.getElementById('c-tipo').value === 'grupal';
+  document.getElementById('campo-trabajador').style.display = esGrupal ? 'none' : 'block';
+  document.getElementById('campo-area').style.display = esGrupal ? 'block' : 'none';
+}
+
+function agregarFactorTemporal() {
+  const factor = document.getElementById('nf-factor').value.trim();
+  const nivel = document.getElementById('nf-nivel').value;
+  if (!factor) return;
+  factoresTemporales.push({ factor, nivelRiesgo: nivel });
+  document.getElementById('nf-factor').value = '';
+  renderizarFactoresTemporales();
+}
+
+function quitarFactorTemporal(indice) {
+  factoresTemporales.splice(indice, 1);
+  renderizarFactoresTemporales();
+}
+
+function renderizarFactoresTemporales() {
+  document.getElementById('lista-factores-nuevos').innerHTML = factoresTemporales.map((f, i) => `
+    <div class="factor-fila">
+      <span>${escHtml(f.factor)} — ${chipDeNivel(f.nivelRiesgo)}</span>
+      <button class="btn-mini" onclick="quitarFactorTemporal(${i})">Quitar</button>
+    </div>`).join('');
+}
+
+async function crearEvaluacion() {
+  ocultarError('error-crear');
+  ocultarExito('exito-crear');
+
+  const tipoEvaluacion = document.getElementById('c-tipo').value;
+  const trabajadorId = document.getElementById('c-trabajador').value;
+  const area = document.getElementById('c-area').value.trim();
+  const metodo = document.getElementById('c-metodo').value.trim();
+  const fecha = document.getElementById('c-fecha').value;
+  const puntaje = document.getElementById('c-puntaje').value;
+  const nivelRiesgo = document.getElementById('c-nivel').value;
+  const derivado = document.getElementById('c-derivado').checked;
+
+  if (tipoEvaluacion === 'individual' && !trabajadorId) { mostrarError('error-crear', 'Selecciona el trabajador.'); return; }
+  if (tipoEvaluacion === 'grupal' && !area) { mostrarError('error-crear', 'Indica el área.'); return; }
+  if (!metodo) { mostrarError('error-crear', 'Indica el método de evaluación.'); return; }
+  if (!fecha) { mostrarError('error-crear', 'Indica la fecha.'); return; }
+
+  const boton = document.getElementById('btn-crear');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch('/riesgo-psicosocial/evaluaciones', {
+      method: 'POST',
+      body: {
+        tipoEvaluacion, trabajadorId: trabajadorId || undefined, area: area || undefined, metodo, fechaEvaluacion: fecha,
+        puntajeGlobal: puntaje ? parseFloat(puntaje) : undefined, nivelRiesgo, derivadoAtencionMedica: derivado,
+        factores: factoresTemporales.length ? factoresTemporales : undefined,
+      },
+    });
+    mostrarExito('exito-crear', 'Evaluación guardada.');
+    document.getElementById('c-area').value = '';
+    document.getElementById('c-metodo').value = '';
+    document.getElementById('c-puntaje').value = '';
+    document.getElementById('c-derivado').checked = false;
+    factoresTemporales = [];
+    renderizarFactoresTemporales();
+    await cargarListado();
+  } catch (err) {
+    mostrarError('error-crear', err.message || 'Error al guardar la evaluación.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar evaluación';
+  }
+}
+
+async function cargarListado() {
+  const cont = document.getElementById('lista-evaluaciones');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+
+  const nivel = document.getElementById('f-nivel').value;
+  const estado = document.getElementById('f-estado').value;
+  const parametros = new URLSearchParams();
+  if (nivel) parametros.set('nivelRiesgo', nivel);
+  if (estado) parametros.set('estado', estado);
+
+  try {
+    const datos = await sissoFetch(`/riesgo-psicosocial/evaluaciones?${parametros.toString()}`);
+    const evaluaciones = datos.evaluaciones || [];
+    if (evaluaciones.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay evaluaciones con estos filtros.</div>';
+      return;
+    }
+    cont.innerHTML = evaluaciones.map(e => `
+      <div class="eval-item" onclick="abrirDetalle('${e.id}')">
+        <div class="eval-cabecera">
+          <div>${chipDeNivel(e.nivel_riesgo)} ${chipDeEstado(e.estado)}</div>
+          ${e.capa_id ? '<span class="sisso-chip verde">CAPA generada</span>' : ''}
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:6px;">
+          ${e.tipo_evaluacion === 'individual' ? escHtml(e.trabajador_nombre || '—') : escHtml(e.area || 'Evaluación grupal')}
+        </div>
+        <div class="eval-meta">${escHtml(e.metodo)} · ${formatearFecha(e.fecha_evaluacion)}${e.derivado_atencion_medica ? ' · <strong style="color:var(--red2);">Derivado a médico</strong>' : ''}</div>
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ======= Detalle =======
+async function abrirDetalle(id) {
+  evaluacionActualId = id;
+  document.getElementById('vista-listado').style.display = 'none';
+  document.getElementById('vista-detalle').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  await cargarDetalle();
+}
+function volverAlListado() {
+  evaluacionActualId = null;
+  document.getElementById('vista-listado').style.display = 'block';
+  document.getElementById('vista-detalle').style.display = 'none';
+  cargarListado();
+}
+
+async function cargarDetalle() {
+  ocultarError('error-detalle');
+  try {
+    const datos = await sissoFetch(`/riesgo-psicosocial/evaluaciones/${evaluacionActualId}`);
+    const e = datos.evaluacion;
+
+    document.getElementById('resumen-evaluacion').innerHTML = `
+      <div class="eval-cabecera">
+        <div style="display:flex;gap:6px;">${chipDeNivel(e.nivel_riesgo)} ${chipDeEstado(e.estado)}</div>
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--t2);line-height:1.6;">
+        ${e.tipo_evaluacion === 'individual' ? `<strong>Trabajador:</strong> ${escHtml(e.trabajador_nombre || '—')}<br>` : `<strong>Área:</strong> ${escHtml(e.area || '—')}<br>`}
+        <strong>Método:</strong> ${escHtml(e.metodo)}<br>
+        <strong>Fecha:</strong> ${formatearFecha(e.fecha_evaluacion)}<br>
+        ${e.puntaje_global != null ? `<strong>Puntaje global:</strong> ${e.puntaje_global}<br>` : ''}
+        <strong>Evaluador:</strong> ${escHtml(e.evaluador_nombre || '—')}<br>
+        ${e.derivado_atencion_medica ? '<span class="sisso-chip ambar">Derivado a atención médica</span><br>' : ''}
+        ${e.observaciones_generales ? `<strong>Observaciones:</strong> ${escHtml(e.observaciones_generales)}` : ''}
+      </div>`;
+
+    const cont = document.getElementById('acciones-caja');
+    if (esGestor && !e.capa_id) {
+      cont.style.display = 'block';
+      cont.innerHTML = `<button class="sisso-boton" onclick="abrirModal()">Generar acción CAPA (intervención)</button>`;
+    } else if (e.capa_id) {
+      cont.style.display = 'block';
+      cont.innerHTML = '<span class="sisso-chip verde">Ya tiene una acción CAPA generada — revísala en el módulo CAPA.</span>';
+    } else {
+      cont.style.display = 'none';
+    }
+
+    const factores = datos.factores || [];
+    document.getElementById('lista-factores').innerHTML = factores.length === 0
+      ? '<div class="sisso-vacio">Sin factores registrados.</div>'
+      : factores.map(f => `
+          <div class="factor-fila">
+            <span>${escHtml(f.factor)}${f.observacion ? ' — ' + escHtml(f.observacion) : ''}</span>
+            ${chipDeNivel(f.nivel_riesgo)}
+          </div>`).join('');
+
+    const historial = (datos.historial || []).filter(h => h.id !== e.id);
+    document.getElementById('lista-historial').innerHTML = historial.length === 0
+      ? '<div class="sisso-vacio">Esta es la única evaluación registrada para este trabajador.</div>'
+      : historial.map(h => `
+          <div class="factor-fila">
+            <span>${formatearFecha(h.fecha_evaluacion)}${h.puntaje_global != null ? ' — Puntaje: ' + h.puntaje_global : ''}</span>
+            ${chipDeNivel(h.nivel_riesgo)}
+          </div>`).join('');
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al cargar la evaluación.');
+  }
+}
+
+function abrirModal() { document.getElementById('modal-fondo').classList.add('visible'); }
+function cerrarModal() { document.getElementById('modal-fondo').classList.remove('visible'); }
+
+async function confirmarGenerarCapa() {
+  ocultarError('error-modal');
+  const responsableId = document.getElementById('m-responsable').value;
+  const fechaLimite = document.getElementById('m-fecha-limite').value;
+  if (!responsableId) { mostrarError('error-modal', 'Selecciona un responsable.'); return; }
+  if (!fechaLimite) { mostrarError('error-modal', 'Indica la fecha límite.'); return; }
+
+  try {
+    await sissoFetch(`/riesgo-psicosocial/evaluaciones/${evaluacionActualId}/generar-capa`, {
+      method: 'POST', body: { responsableId, fechaLimite },
+    });
+    cerrarModal();
+    await cargarDetalle();
+  } catch (err) {
+    mostrarError('error-modal', err.message || 'Error al generar la acción CAPA.');
+  }
+}
+
+// ======= Utilidades =======
+function chipDeNivel(nivel) {
+  const mapa = { bajo: 'verde', medio: 'ambar', alto: 'rojo', muy_alto: 'rojo' };
+  const etiquetas = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', muy_alto: 'Muy alto' };
+  return `<span class="sisso-chip ${mapa[nivel] || 'gris'}">${etiquetas[nivel] || nivel}</span>`;
+}
+function chipDeEstado(estado) {
+  const mapa = { evaluado: 'gris', en_intervencion: 'ambar', en_seguimiento: 'teal', cerrado: 'verde' };
+  const etiquetas = { evaluado: 'Evaluado', en_intervencion: 'En intervención', en_seguimiento: 'En seguimiento', cerrado: 'Cerrado' };
+  return `<span class="sisso-chip ${mapa[estado] || 'gris'}">${etiquetas[estado] || estado}</span>`;
+}
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>
