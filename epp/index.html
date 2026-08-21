@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — EPP</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .filtros-caja { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+    .filtros-caja .sisso-campo { margin-bottom: 0; min-width: 150px; }
+    table.tabla-epp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.tabla-epp th, table.tabla-epp td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bd); }
+    table.tabla-epp th { color: var(--t3); font-size: 10.5px; text-transform: uppercase; }
+    #lienzo-firma-epp { border: 1px solid var(--bd); border-radius: var(--r); width: 100%; height: 140px; touch-action: none; background: #fff; }
+    .tabs-epp { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tab-epp { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; cursor: pointer; background: var(--bg); color: var(--t2); }
+    .tab-epp.activo { background: var(--teal2); color: #fff; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <div class="tabs-epp">
+    <div class="tab-epp activo" id="tab-entregas" onclick="cambiarTab('entregas')">Entregas</div>
+    <div class="tab-epp" id="tab-catalogo" onclick="cambiarTab('catalogo')">Catálogo</div>
+  </div>
+
+  <!-- ======= TAB ENTREGAS ======= -->
+  <div id="vista-entregas">
+    <div class="sisso-tarjeta" id="caja-crear-entrega" style="display:none;margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Registrar entrega de EPP</div>
+      <div class="sisso-error" id="error-entrega"></div>
+      <div class="sisso-exito" id="exito-entrega"></div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-trabajador">Trabajador *</label>
+        <select id="e-trabajador" class="sisso-select"><option value="">Cargando…</option></select>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-epp">EPP *</label>
+        <select id="e-epp" class="sisso-select"><option value="">Cargando…</option></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="e-fecha">Fecha de entrega *</label>
+          <input id="e-fecha" type="date" class="sisso-input">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="e-cantidad">Cantidad</label>
+          <input id="e-cantidad" type="number" min="1" value="1" class="sisso-input">
+        </div>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="e-motivo">Motivo</label>
+        <select id="e-motivo" class="sisso-select">
+          <option value="entrega_inicial">Entrega inicial</option>
+          <option value="reposicion">Reposición</option>
+          <option value="dano">Daño</option>
+          <option value="vencimiento">Vencimiento</option>
+        </select>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta">Firma de recibido (opcional)</label>
+        <canvas id="lienzo-firma-epp"></canvas>
+        <button class="btn-mini" style="margin-top:6px;" onclick="limpiarFirma()">Limpiar firma</button>
+      </div>
+      <button class="sisso-boton ancho-completo" id="btn-crear-entrega" onclick="crearEntrega()">Registrar entrega</button>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Entregas registradas</div>
+      <div class="filtros-caja">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-estado">Estado</label>
+          <select id="f-estado" class="sisso-select" onchange="cargarEntregas()">
+            <option value="">Todos</option>
+            <option value="vigente">Vigente</option>
+            <option value="vencido">Vencido</option>
+            <option value="repuesto">Repuesto</option>
+          </select>
+        </div>
+      </div>
+      <div id="tabla-entregas"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <!-- ======= TAB CATALOGO ======= -->
+  <div id="vista-catalogo" style="display:none;">
+    <div class="sisso-tarjeta" id="caja-crear-catalogo" style="display:none;margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Agregar EPP al catálogo</div>
+      <div class="sisso-error" id="error-catalogo"></div>
+      <div class="sisso-exito" id="exito-catalogo"></div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="k-nombre">Nombre *</label>
+        <input id="k-nombre" class="sisso-input" placeholder="Ej: Casco de seguridad clase B">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="k-tipo">Tipo *</label>
+        <input id="k-tipo" class="sisso-input" placeholder="Ej: Protección craneal">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="k-vida-util">Vida útil (meses)</label>
+          <input id="k-vida-util" type="number" min="1" class="sisso-input">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="k-norma">Norma de referencia</label>
+          <input id="k-norma" class="sisso-input" placeholder="Ej: ANSI Z89.1">
+        </div>
+      </div>
+      <button class="sisso-boton ancho-completo" id="btn-crear-catalogo" onclick="crearItemCatalogo()">Agregar al catálogo</button>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Catálogo de EPP</div>
+      <div id="lista-catalogo"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let esGestor = false;
+let trabajadores = [];
+let catalogo = [];
+let ctxFirma = null;
+let dibujando = false;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('epp', 'EPP');
+
+  const usuario = SissoSesion.obtenerUsuario();
+  esGestor = ['admin', 'sso'].includes(usuario.rol);
+
+  if (esGestor) {
+    document.getElementById('caja-crear-entrega').style.display = 'block';
+    document.getElementById('caja-crear-catalogo').style.display = 'block';
+    await cargarTrabajadores();
+    inicializarCanvasFirma();
+  }
+
+  await cargarCatalogoParaSelect();
+  await cargarEntregas();
+  await cargarCatalogoLista();
+});
+
+function cambiarTab(tab) {
+  document.getElementById('tab-entregas').classList.toggle('activo', tab === 'entregas');
+  document.getElementById('tab-catalogo').classList.toggle('activo', tab === 'catalogo');
+  document.getElementById('vista-entregas').style.display = tab === 'entregas' ? 'block' : 'none';
+  document.getElementById('vista-catalogo').style.display = tab === 'catalogo' ? 'block' : 'none';
+}
+
+// ======= Canvas de firma (simple) =======
+function inicializarCanvasFirma() {
+  const canvas = document.getElementById('lienzo-firma-epp');
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * ratio;
+  canvas.height = rect.height * ratio;
+  ctxFirma = canvas.getContext('2d');
+  ctxFirma.scale(ratio, ratio);
+  ctxFirma.strokeStyle = '#1f2937';
+  ctxFirma.lineWidth = 2;
+  ctxFirma.lineCap = 'round';
+
+  function posicion(evento) {
+    const r = canvas.getBoundingClientRect();
+    const punto = evento.touches ? evento.touches[0] : evento;
+    return { x: punto.clientX - r.left, y: punto.clientY - r.top };
+  }
+  function iniciar(evento) {
+    evento.preventDefault();
+    dibujando = true;
+    const p = posicion(evento);
+    ctxFirma.beginPath();
+    ctxFirma.moveTo(p.x, p.y);
+  }
+  function mover(evento) {
+    if (!dibujando) return;
+    evento.preventDefault();
+    const p = posicion(evento);
+    ctxFirma.lineTo(p.x, p.y);
+    ctxFirma.stroke();
+  }
+  function terminar() { dibujando = false; }
+
+  canvas.addEventListener('mousedown', iniciar);
+  canvas.addEventListener('mousemove', mover);
+  canvas.addEventListener('mouseup', terminar);
+  canvas.addEventListener('mouseleave', terminar);
+  canvas.addEventListener('touchstart', iniciar, { passive: false });
+  canvas.addEventListener('touchmove', mover, { passive: false });
+  canvas.addEventListener('touchend', terminar);
+}
+function limpiarFirma() {
+  const canvas = document.getElementById('lienzo-firma-epp');
+  ctxFirma.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// ======= Trabajadores / catálogo para selects =======
+async function cargarTrabajadores() {
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    document.getElementById('e-trabajador').innerHTML = '<option value="">Selecciona…</option>' +
+      trabajadores.map(t => `<option value="${t.id}">${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}</option>`).join('');
+  } catch (err) {
+    document.getElementById('e-trabajador').innerHTML = '<option value="">Error al cargar</option>';
+  }
+}
+
+async function cargarCatalogoParaSelect() {
+  try {
+    const datos = await sissoFetch('/epp/catalogo');
+    catalogo = datos.catalogo || [];
+    const sel = document.getElementById('e-epp');
+    if (sel) {
+      sel.innerHTML = '<option value="">Selecciona…</option>' +
+        catalogo.map(c => `<option value="${c.id}">${escHtml(c.nombre)} (${escHtml(c.tipo)})</option>`).join('');
+    }
+  } catch (err) { /* silencioso: el catálogo puede estar vacío al inicio */ }
+}
+
+// ======= Entregas =======
+async function crearEntrega() {
+  ocultarError('error-entrega');
+  ocultarExito('exito-entrega');
+
+  const trabajadorId = document.getElementById('e-trabajador').value;
+  const eppId = document.getElementById('e-epp').value;
+  const fechaEntrega = document.getElementById('e-fecha').value;
+  const cantidad = parseInt(document.getElementById('e-cantidad').value, 10) || 1;
+  const motivo = document.getElementById('e-motivo').value;
+
+  if (!trabajadorId) { mostrarError('error-entrega', 'Selecciona un trabajador.'); return; }
+  if (!eppId) { mostrarError('error-entrega', 'Selecciona un EPP del catálogo.'); return; }
+  if (!fechaEntrega) { mostrarError('error-entrega', 'Indica la fecha de entrega.'); return; }
+
+  const canvas = document.getElementById('lienzo-firma-epp');
+  const firmaBase64 = canvas.toDataURL('image/png');
+  // Un canvas vacio tambien genera una imagen valida (transparente);
+  // solo enviamos la firma si el usuario realmente dibujo algo.
+  const contexto = canvas.getContext('2d');
+  const pixeles = contexto.getImageData(0, 0, canvas.width, canvas.height).data;
+  const hayTrazo = pixeles.some((valor, indice) => indice % 4 === 3 && valor !== 0);
+
+  const boton = document.getElementById('btn-crear-entrega');
+  boton.disabled = true;
+  boton.textContent = 'Registrando…';
+
+  try {
+    await sissoFetch('/epp/entregas', {
+      method: 'POST',
+      body: {
+        trabajadorId, eppId, fechaEntrega, cantidad, motivo,
+        firmaBase64: hayTrazo ? firmaBase64 : undefined,
+      },
+    });
+    mostrarExito('exito-entrega', 'Entrega registrada.');
+    limpiarFirma();
+    await cargarEntregas();
+  } catch (err) {
+    mostrarError('error-entrega', err.message || 'Error al registrar la entrega.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Registrar entrega';
+  }
+}
+
+async function cargarEntregas() {
+  const cont = document.getElementById('tabla-entregas');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+
+  const estado = document.getElementById('f-estado').value;
+  const parametros = new URLSearchParams();
+  if (estado) parametros.set('estado', estado);
+
+  try {
+    const datos = await sissoFetch(`/epp/entregas?${parametros.toString()}`);
+    const entregas = datos.entregas || [];
+    if (entregas.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay entregas registradas.</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <table class="tabla-epp">
+        <thead><tr><th>Trabajador</th><th>EPP</th><th>Entrega</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          ${entregas.map(e => `
+            <tr>
+              <td>${escHtml(e.trabajador_nombre || '—')}</td>
+              <td>${escHtml(e.epp_nombre)}</td>
+              <td>${formatearFecha(e.fecha_entrega)}</td>
+              <td>${e.fecha_vencimiento_estimada ? formatearFecha(e.fecha_vencimiento_estimada) : '—'}</td>
+              <td>${chipDeEstado(e.estado)}</td>
+              <td>
+                ${e.tiene_firma ? `<button class="btn-mini" onclick="verFirma('${e.id}')">Ver firma</button>` : ''}
+                ${esGestor && e.estado !== 'repuesto' ? `<button class="btn-mini" onclick="marcarRepuesto('${e.id}')">Marcar repuesto</button>` : ''}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function verFirma(id) {
+  try {
+    const datos = await sissoFetch(`/epp/entregas/${id}/firma`);
+    window.open(datos.url, '_blank', 'noopener,noreferrer');
+  } catch (err) {
+    alert('Error al abrir la firma: ' + (err.message || ''));
+  }
+}
+
+async function marcarRepuesto(id) {
+  if (!confirm('¿Marcar esta entrega como repuesta?')) return;
+  try {
+    await sissoFetch(`/epp/entregas/${id}/marcar-repuesto`, { method: 'PUT' });
+    await cargarEntregas();
+  } catch (err) {
+    alert('Error: ' + (err.message || ''));
+  }
+}
+
+// ======= Catálogo =======
+async function crearItemCatalogo() {
+  ocultarError('error-catalogo');
+  ocultarExito('exito-catalogo');
+
+  const nombre = document.getElementById('k-nombre').value.trim();
+  const tipo = document.getElementById('k-tipo').value.trim();
+  const vidaUtil = document.getElementById('k-vida-util').value;
+  const norma = document.getElementById('k-norma').value.trim();
+
+  if (!nombre) { mostrarError('error-catalogo', 'Indica el nombre.'); return; }
+  if (!tipo) { mostrarError('error-catalogo', 'Indica el tipo.'); return; }
+
+  const boton = document.getElementById('btn-crear-catalogo');
+  boton.disabled = true;
+  boton.textContent = 'Agregando…';
+
+  try {
+    await sissoFetch('/epp/catalogo', {
+      method: 'POST',
+      body: { nombre, tipo, vidaUtilMeses: vidaUtil ? parseInt(vidaUtil, 10) : undefined, normaReferencia: norma || undefined },
+    });
+    mostrarExito('exito-catalogo', 'Agregado al catálogo.');
+    document.getElementById('k-nombre').value = '';
+    document.getElementById('k-tipo').value = '';
+    document.getElementById('k-vida-util').value = '';
+    document.getElementById('k-norma').value = '';
+    await cargarCatalogoParaSelect();
+    await cargarCatalogoLista();
+  } catch (err) {
+    mostrarError('error-catalogo', err.message || 'Error al agregar al catálogo.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Agregar al catálogo';
+  }
+}
+
+async function cargarCatalogoLista() {
+  const cont = document.getElementById('lista-catalogo');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+  try {
+    const datos = await sissoFetch('/epp/catalogo');
+    const items = datos.catalogo || [];
+    if (items.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Catálogo vacío todavía.</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <table class="tabla-epp">
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Vida útil</th><th>Norma</th></tr></thead>
+        <tbody>
+          ${items.map(c => `
+            <tr>
+              <td>${escHtml(c.nombre)}</td>
+              <td>${escHtml(c.tipo)}</td>
+              <td>${c.vida_util_meses ? c.vida_util_meses + ' meses' : '—'}</td>
+              <td>${escHtml(c.norma_referencia || '—')}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ======= Utilidades =======
+function chipDeEstado(estado) {
+  const mapa = { vigente: 'verde', vencido: 'rojo', repuesto: 'gris' };
+  const etiquetas = { vigente: 'Vigente', vencido: 'Vencido', repuesto: 'Repuesto' };
+  return `<span class="sisso-chip ${mapa[estado] || 'gris'}">${etiquetas[estado] || estado}</span>`;
+}
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>

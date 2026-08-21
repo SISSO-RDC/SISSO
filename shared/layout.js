@@ -96,6 +96,8 @@ const SissoLayout = (() => {
     { id: 'inspecciones', label: 'Inspecciones',        icono: '🔎', href: '../inspecciones/index.html', roles: [] },
     { id: 'riesgo-psicosocial', label: 'Riesgo psicosocial', icono: '🧠', href: '../riesgo-psicosocial/index.html', roles: ['admin', 'sso', 'medico'] },
     { id: 'higiene-industrial', label: 'Higiene industrial', icono: '🌡️', href: '../higiene-industrial/index.html', roles: [] },
+    { id: 'epp',           label: 'EPP',                 icono: '🦺', href: '../epp/index.html', roles: [] },
+    { id: 'capacitaciones', label: 'Capacitaciones',      icono: '🎓', href: '../capacitaciones/index.html', roles: [] },
     { id: 'proximos',     label: 'Próximos exámenes',  icono: '⏰', href: '../calendario-emos/index.html', roles: [] },
     { id: 'matriz',       label: 'Matriz de riesgos',  icono: '🗂️', href: '../matriz-riesgos/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
     { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '../reportes-bi/index.html', roles: [] },
