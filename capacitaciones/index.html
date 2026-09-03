@@ -28,6 +28,7 @@
       <div class="sisso-tarjeta-titulo">Registrar capacitación</div>
       <div class="sisso-error" id="error-crear"></div>
       <div class="sisso-exito" id="exito-crear"></div>
+      <div id="nota-instructor" style="display:none;margin-bottom:10px;font-size:12px;color:var(--t3);"></div>
 
       <div class="sisso-campo">
         <label class="sisso-etiqueta" for="c-nombre">Nombre *</label>
@@ -51,7 +52,16 @@
           <input id="c-horas" type="number" min="1" step="0.5" class="sisso-input">
         </div>
       </div>
-      <div class="sisso-tarjeta-subtitulo" style="margin:10px 0 6px;">Asistentes</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;flex-wrap:wrap;gap:6px;">
+        <div class="sisso-tarjeta-subtitulo">Asistentes</div>
+        <div style="display:flex;gap:12px;align-items:center;font-size:12px;">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" id="chk-seleccionar-todos">
+            Seleccionar todos
+          </label>
+          <button type="button" class="btn-mini" id="btn-deseleccionar-todos">Deseleccionar todos</button>
+        </div>
+      </div>
       <div class="checklist-trabajadores" id="checklist-trabajadores"><div class="sisso-cargando">Cargando trabajadores…</div></div>
       <button class="sisso-boton ancho-completo" id="btn-crear" onclick="crearCapacitacion()">Registrar capacitación</button>
     </div>
@@ -86,22 +96,59 @@
 <script>
 
 let esGestor = false;
+let usuarioActual = null;
 let trabajadores = [];
 let capacitacionActualId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   SissoLayout.iniciar('capacitaciones', 'Capacitaciones');
 
-  const usuario = SissoSesion.obtenerUsuario();
-  esGestor = ['admin', 'sso', 'th'].includes(usuario.rol);
+  usuarioActual = SissoSesion.obtenerUsuario();
+  esGestor = ['admin', 'sso', 'th'].includes(usuarioActual.rol);
 
-  if (esGestor) {
-    document.getElementById('caja-crear').style.display = 'block';
-    await cargarTrabajadoresChecklist();
+  // CORREGIDO a pedido de la persona usuaria (02/09/2026): el
+  // backend ya permite que cualquier usuario autenticado registre
+  // una capacitación, siempre que se auto-asigne como instructor
+  // (ver capacitacionesController.crear -- instructorUsuarioId debe
+  // ser su propio usuario si su rol no es admin/sso/th). El
+  // formulario ya no se oculta para el resto de roles; si no es
+  // gestor, se le avisa que la capacitación quedará registrada como
+  // dictada por él mismo.
+  document.getElementById('caja-crear').style.display = 'block';
+  if (!esGestor) {
+    const nota = document.getElementById('nota-instructor');
+    nota.textContent = 'Vas a registrar una capacitación que tú mismo dictaste. Quedará vinculada a tu usuario como instructor.';
+    nota.style.display = 'block';
   }
+  await cargarTrabajadoresChecklist();
+  inicializarSeleccionarTodos();
 
   await cargarListado();
 });
+
+function inicializarSeleccionarTodos() {
+  const checkboxMaestro = document.getElementById('chk-seleccionar-todos');
+  const botonDeseleccionar = document.getElementById('btn-deseleccionar-todos');
+  const contenedor = document.getElementById('checklist-trabajadores');
+
+  checkboxMaestro.addEventListener('change', () => {
+    contenedor.querySelectorAll('.chk-asistente').forEach((cb) => { cb.checked = checkboxMaestro.checked; });
+  });
+
+  botonDeseleccionar.addEventListener('click', () => {
+    checkboxMaestro.checked = false;
+    contenedor.querySelectorAll('.chk-asistente').forEach((cb) => { cb.checked = false; });
+  });
+
+  // Si alguien destilda un asistente a mano, el checkbox maestro
+  // deja de marcarse como "todos seleccionados" (evita el estado
+  // enganoso de decir "todos" cuando en realidad falta uno).
+  contenedor.addEventListener('change', (e) => {
+    if (!e.target.classList.contains('chk-asistente')) return;
+    const todos = Array.from(contenedor.querySelectorAll('.chk-asistente'));
+    checkboxMaestro.checked = todos.length > 0 && todos.every((cb) => cb.checked);
+  });
+}
 
 async function cargarTrabajadoresChecklist() {
   const cont = document.getElementById('checklist-trabajadores');
@@ -147,6 +194,10 @@ async function crearCapacitacion() {
       body: {
         nombre, tema: tema || undefined, instructor: instructor || undefined,
         fecha, horasDuracion: parseFloat(horas), asistentes,
+        // CREADO a pedido de la persona usuaria (02/09/2026): si
+        // quien registra no es admin/sso/th, el backend exige que se
+        // auto-asigne como instructor interno.
+        instructorUsuarioId: esGestor ? undefined : usuarioActual.id,
       },
     });
     mostrarExito('exito-crear', 'Capacitación registrada.');
