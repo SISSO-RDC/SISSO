@@ -40,9 +40,29 @@
 
 // ------------------------------------------------------------
 // URL del backend. Unico lugar de todo el frontend donde esto
-// se escribe. Si el backend cambia de direccion, se edita aqui.
-// ------------------------------------------------------------
-const SISSO_API_BASE = 'https://sissso-backend.onrender.com/api';
+// se escribe. Si el backend cambia de direccion (el dominio de
+// produccion, no localhost), se edita aqui.
+//
+// CORREGIDO en Auditoria N.15 (hallazgo MODERADO M15-04): antes esta
+// constante era un string fijo a la URL de Render sin excepcion,
+// asi que trabajar localmente contra un backend corriendo en la
+// propia maquina (`npm run dev` en SISSO-backend) exigia editar esta
+// linea a mano y tener cuidado de nunca hacer commit de ese cambio
+// por error. Ahora se detecta automaticamente cuando el FRONTEND se
+// esta sirviendo desde localhost (ej. `python3 -m http.server`, Live
+// Server de VSCode, etc.) y en ese caso apunta a un backend local por
+// defecto -- sigue siendo editable aqui mismo si el puerto local es
+// distinto. Esto no resuelve el caso general de "un entorno de
+// staging propio" (este proyecto no tiene, hoy, un paso de build que
+// pueda inyectar una variable por entorno como en un framework con
+// bundler), pero elimina el caso que realmente ocurre a diario:
+// desarrollar localmente sin arriesgar un commit accidental de la
+// URL equivocada.
+const SISSO_API_BASE = (() => {
+  const esLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (esLocal) return 'http://localhost:3000/api';
+  return 'https://sissso-backend.onrender.com/api';
+})();
 
 // Claves usadas en sessionStorage. Prefijadas con "sisso_" para no
 // chocar con nada mas que pueda existir en el navegador. Ya NO hay

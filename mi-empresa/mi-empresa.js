@@ -122,9 +122,11 @@ async function subirLogo(evento) {
 // termina dentro de un atributo HTML entre comillas, no solo en el
 // texto visible), en vez de la copia local que solo cubria &, < y >.
 const escHtml = escaparHtml;
-function escAttr(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-}
+// CORREGIDO en Auditoria N.15 (hallazgo MODERADO M15-10): antes
+// definia aqui su propia copia local de escAttr; ahora usa la
+// version centralizada de shared/layout.js (escaparAtributoHtml),
+// para el caso de un valor dentro de un atributo HTML simple
+// (value="..."), sin JavaScript anidado.
+const escAttr = escaparAtributoHtml;
 function mostrarError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); }
 function mostrarExito(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 4000); }

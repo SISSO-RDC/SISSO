@@ -183,10 +183,16 @@ async function eliminarPuesto(id, nombre) {
 // termina dentro de un atributo HTML entre comillas, no solo en el
 // texto visible), en vez de la copia local que solo cubria &, < y >.
 const escHtml = escaparHtml;
-function escAttr(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
+// CORREGIDO en Auditoria N.15 (hallazgo MODERADO M15-10): antes
+// definia aqui su propia copia local de escAttr; ahora usa la
+// version centralizada de shared/layout.js (escaparValorOnclickJs).
+// Este archivo interpola valores DENTRO de un string de JavaScript
+// de comillas simples anidado en un atributo onclick (ver
+// eliminarPuesto(...) mas abajo), que es un contexto de escape
+// distinto y mas estricto que un atributo HTML simple -- ver el
+// comentario de escaparValorOnclickJs en shared/layout.js para el
+// detalle de por que una entidad HTML (&#39;) NO alcanza aqui.
+const escAttr = escaparValorOnclickJs;
 function mostrarErrorModal(msg) {
   const el = document.getElementById('error-modal');
   el.textContent = msg;

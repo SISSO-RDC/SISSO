@@ -41,6 +41,62 @@ function escaparHtml(valor) {
     .replace(/'/g, '&#39;');
 }
 
+// ------------------------------------------------------------
+// CORREGIDO en Auditoria N.15 (hallazgo MODERADO M15-10): tres
+// modulos (mi-empresa.js, historia-clinica.js, puestos-trabajo.js)
+// definian su propia copia local de una funcion "escAttr", con DOS
+// implementaciones distintas segun el contexto donde se usaba --
+// ninguna de las dos estaba mal para SU caso concreto, pero la
+// duplicacion es exactamente el riesgo que describe el hallazgo: la
+// proxima persona que copie una de las dos versiones al contexto
+// equivocado introduciria una falla de escape real. Se centralizan
+// ambas variantes aqui, con nombres que dejan claro CUANDO usar cada
+// una -- no se puede tener una sola funcion "correcta para todo"
+// porque los dos contextos tienen requisitos de escape distintos e
+// incompatibles entre si (ver el comentario de cada una).
+//
+// escaparAtributoHtml: para un valor que va dentro de un atributo
+// HTML normal (value="...", title="...", data-x="..."), SIN
+// anidarlo ademas en un string de JavaScript. Uso tipico:
+//   `<input value="${escaparAtributoHtml(dato)}">`
+function escaparAtributoHtml(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// escaparValorOnclickJs: para un valor que va DENTRO de un string
+// JavaScript de comillas simples que a su vez esta dentro de un
+// atributo de evento HTML entre comillas dobles, ej:
+//   `<button onclick="hacerAlgo('${escaparValorOnclickJs(dato)}')">`
+// IMPORTANTE: escapar la comilla simple como entidad HTML (&#39;)
+// NO alcanza aqui, a diferencia de escaparAtributoHtml -- el
+// navegador decodifica las entidades HTML del atributo ANTES de que
+// el motor de JavaScript reciba y compile ese codigo como el
+// manejador del evento, asi que &#39; se convertiria de vuelta en un
+// caracter ' literal justo a tiempo para romper el string de
+// JavaScript igual que si nunca se hubiera escapado. Por eso esta
+// funcion escapa la comilla simple con una barra invertida (escape
+// de string de JS), no con una entidad HTML, y ademas escapa la
+// barra invertida misma primero (para que un valor que ya contenga
+// "\'" no pueda forjar una comilla sin escapar).
+//
+// Este patron (datos dinamicos interpolados dentro de un atributo
+// onclick) es fragil por naturaleza -- ver el hallazgo MODERADO
+// M15-03, que recomienda migrar estos casos a addEventListener() de
+// forma gradual. Mientras esa migracion no se haga, todo caso nuevo
+// de este patron DEBE usar esta funcion, nunca una copia local.
+function escaparValorOnclickJs(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor)
+    .replace(/\\/g, '\\\\')
+    .replace(/&/g, '&amp;')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;');
+}
+
 const SissoLayout = (() => {
 
   // Definicion completa del menu lateral, en el mismo orden que

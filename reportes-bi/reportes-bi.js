@@ -151,27 +151,38 @@ function renderizarReporte(r) {
        </div>`
     : '';
 
-  cont.innerHTML = `
-    ${avisoGrupoPequeno}
-    <div class="kpi-grid" id="kpi-grid-bi"></div>
+  // CORREGIDO en Auditoria N.15: el backend (reportesController.js)
+  // ahora OMITE por completo la clave de cada seccion que el rol
+  // actual no debe ver (ver proyectarResumenSegunRol), en vez de
+  // enviar un objeto vacio "_restringido:true" que dejaba la clave
+  // presente. Cada bloque de abajo se arma condicionalmente segun
+  // que claves llegaron en `r`, para no asumir nunca su presencia.
+  // `r._seccionesNoDisponibles` (solo nombres) se usa para el aviso.
+  const seccionesHtml = [];
 
+  seccionesHtml.push(`
     <div class="seccion-bi">
-      <div class="seccion-bi-titulo">1–2. Cobertura EMO y aptitud médica</div>
+      <div class="seccion-bi-titulo">1–2. Cobertura EMO${r.aptitudMedica ? ' y aptitud médica' : ''}</div>
       <div class="grid-graficos">
         <div class="caja-grafico"><div class="caja-grafico-titulo">Cobertura EMO</div><canvas id="c-emo"></canvas></div>
-        <div class="caja-grafico"><div class="caja-grafico-titulo">Distribución de aptitud médica</div><canvas id="c-aptitud"></canvas></div>
+        ${r.aptitudMedica ? '<div class="caja-grafico"><div class="caja-grafico-titulo">Distribución de aptitud médica</div><canvas id="c-aptitud"></canvas></div>' : ''}
       </div>
-      ${r.grupoPequenoRedactado ? '<p style="color:var(--t3);font-size:12.5px;margin-top:8px;">Distribución de aptitud oculta (grupo pequeño).</p>' : ''}
-    </div>
+      ${r.grupoPequenoRedactado && r.aptitudMedica ? '<p style="color:var(--t3);font-size:12.5px;margin-top:8px;">Distribución de aptitud oculta (grupo pequeño).</p>' : ''}
+    </div>`);
 
+  if (r.examenesComplementarios) {
+    seccionesHtml.push(`
     <div class="seccion-bi">
       <div class="seccion-bi-titulo">3. Exámenes complementarios</div>
       <div class="grid-graficos">
         <div class="caja-grafico"><div class="caja-grafico-titulo">Cobertura por examen</div><canvas id="c-cobertura-examenes"></canvas></div>
         <div class="caja-grafico"><div class="caja-grafico-titulo">% hallazgos anormales</div><canvas id="c-anormales-examenes"></canvas></div>
       </div>
-    </div>
+    </div>`);
+  }
 
+  if (r.ausentismo) {
+    seccionesHtml.push(`
     <div class="seccion-bi">
       <div class="seccion-bi-titulo">4. Ausentismo laboral</div>
       <div class="grid-graficos">
@@ -184,8 +195,11 @@ function renderizarReporte(r) {
           </div>
         </div>
       </div>
-    </div>
+    </div>`);
+  }
 
+  if (r.matrizRiesgos) {
+    seccionesHtml.push(`
     <div class="seccion-bi">
       <div class="seccion-bi-titulo">5. Matriz de riesgos (IPER)</div>
       <div class="grid-graficos">
@@ -196,19 +210,25 @@ function renderizarReporte(r) {
             <div class="kpi-tarjeta"><div class="kpi-numero">${r.matrizRiesgos.total}</div><div class="kpi-etiqueta">Peligros identificados (activos)</div></div>
             <div class="kpi-tarjeta"><div class="kpi-numero">${r.matrizRiesgos.porcentajeAltoRiesgo}%</div><div class="kpi-etiqueta">Importante / intolerable</div></div>
           </div>
-          <div class="nota-metodologica">${escHtmlBI(r.matrizRiesgos.nota)}</div>
+          ${r.matrizRiesgos.nota ? `<div class="nota-metodologica">${escHtmlBI(r.matrizRiesgos.nota)}</div>` : ''}
         </div>
       </div>
-    </div>
+    </div>`);
+  }
 
+  if (r.ergonomia) {
+    seccionesHtml.push(`
     <div class="seccion-bi">
       <div class="seccion-bi-titulo">6. Ergonomía (Nórdico y NIOSH)</div>
       <div class="grid-graficos">
         <div class="caja-grafico"><div class="caja-grafico-titulo">Cuestionario Nórdico</div><canvas id="c-nordico"></canvas></div>
         <div class="caja-grafico"><div class="caja-grafico-titulo">Ecuación NIOSH</div><canvas id="c-niosh"></canvas></div>
       </div>
-    </div>
+    </div>`);
+  }
 
+  if (r.consentimientos) {
+    seccionesHtml.push(`
     <div class="seccion-bi">
       <div class="seccion-bi-titulo">7. Consentimientos informados</div>
       <div class="grid-graficos">
@@ -221,28 +241,48 @@ function renderizarReporte(r) {
           </div>
         </div>
       </div>
-    </div>
+    </div>`);
+  }
+
+  const avisoRolHtml = (Array.isArray(r._seccionesNoDisponibles) && r._seccionesNoDisponibles.length > 0)
+    ? `<div style="color:var(--t3);font-size:12.5px;margin:8px 0 16px;">Algunas secciones de este reporte no se muestran porque no corresponden a tu rol.</div>`
+    : '';
+
+  cont.innerHTML = `
+    ${avisoGrupoPequeno}
+    <div class="kpi-grid" id="kpi-grid-bi"></div>
+    ${seccionesHtml.join('\n')}
+    ${avisoRolHtml}
   `;
 
-  document.getElementById('kpi-grid-bi').innerHTML = `
-    <div class="kpi-tarjeta"><div class="kpi-numero">${r.trabajadores.total}</div><div class="kpi-etiqueta">Trabajadores activos</div></div>
-    <div class="kpi-tarjeta"><div class="kpi-numero">${r.coberturaEmo.porcentajeVigente}%</div><div class="kpi-etiqueta">EMO vigente</div></div>
-    <div class="kpi-tarjeta"><div class="kpi-numero">${r.grupoPequenoRedactado ? '—' : r.aptitudMedica.porcentajeApto + '%'}</div><div class="kpi-etiqueta">Aptitud: apto</div></div>
-    <div class="kpi-tarjeta"><div class="kpi-numero">${r.ausentismo.totalDias}</div><div class="kpi-etiqueta">Días de ausentismo</div></div>
-    <div class="kpi-tarjeta"><div class="kpi-numero">${r.matrizRiesgos.porcentajeAltoRiesgo}%</div><div class="kpi-etiqueta">Riesgos alto/muy alto</div></div>
-  `;
+  const kpisTop = [
+    `<div class="kpi-tarjeta"><div class="kpi-numero">${r.trabajadores.total}</div><div class="kpi-etiqueta">Trabajadores activos</div></div>`,
+    `<div class="kpi-tarjeta"><div class="kpi-numero">${r.coberturaEmo.porcentajeVigente}%</div><div class="kpi-etiqueta">EMO vigente</div></div>`,
+  ];
+  if (r.aptitudMedica) {
+    kpisTop.push(`<div class="kpi-tarjeta"><div class="kpi-numero">${r.grupoPequenoRedactado ? '—' : r.aptitudMedica.porcentajeApto + '%'}</div><div class="kpi-etiqueta">Aptitud: apto</div></div>`);
+  }
+  if (r.ausentismo) {
+    kpisTop.push(`<div class="kpi-tarjeta"><div class="kpi-numero">${r.ausentismo.totalDias}</div><div class="kpi-etiqueta">Días de ausentismo</div></div>`);
+  }
+  if (r.matrizRiesgos) {
+    kpisTop.push(`<div class="kpi-tarjeta"><div class="kpi-numero">${r.matrizRiesgos.porcentajeAltoRiesgo}%</div><div class="kpi-etiqueta">Riesgos alto/muy alto</div></div>`);
+  }
+  document.getElementById('kpi-grid-bi').innerHTML = kpisTop.join('\n');
 
   renderGraficoEmo(r.coberturaEmo);
-  if (!r.grupoPequenoRedactado) {
-    renderGraficoAptitud(r.aptitudMedica);
+  if (r.aptitudMedica && !r.grupoPequenoRedactado) renderGraficoAptitud(r.aptitudMedica);
+  if (r.examenesComplementarios && !r.grupoPequenoRedactado) {
     renderGraficoCoberturaExamenes(r.examenesComplementarios);
     renderGraficoAnormalesExamenes(r.examenesComplementarios);
+  }
+  if (r.ergonomia && !r.grupoPequenoRedactado) {
     renderGraficoNordico(r.ergonomia.nordico);
     renderGraficoNiosh(r.ergonomia.niosh);
   }
-  renderGraficoAusentismo(r.ausentismo);
-  renderGraficoMatriz(r.matrizRiesgos);
-  renderGraficoConsentimientos(r.consentimientos);
+  if (r.ausentismo) renderGraficoAusentismo(r.ausentismo);
+  if (r.matrizRiesgos) renderGraficoMatriz(r.matrizRiesgos);
+  if (r.consentimientos) renderGraficoConsentimientos(r.consentimientos);
 }
 
 function crearDona(idCanvas, etiquetas, datos, colores) {
@@ -338,58 +378,79 @@ function descargarExcel() {
     ['EMO sin fecha', r.coberturaEmo.sinFecha],
     [],
   ];
-  if (redactado) {
-    hojaResumen.push(['Aptitud médica', 'Oculto: área con menos del mínimo de trabajadores requerido para proteger la confidencialidad.']);
+  // CORREGIDO en Auditoria N.15: cada hoja ahora se arma segun la
+  // PRESENCIA de la clave en el JSON, no solo segun `redactado`. El
+  // backend (proyectarResumenSegunRol) omite por completo secciones
+  // que el rol de quien exporta no debe ver (ej. 'th' nunca recibe
+  // aptitudMedica) -- antes este archivo asumia que esas claves
+  // siempre existian y el Excel fallaba (o, peor, un cambio futuro
+  // que las agregara vacias podria haber expuesto ceros enganosos).
+  if (r.aptitudMedica) {
+    if (redactado) {
+      hojaResumen.push(['Aptitud médica', 'Oculto: área con menos del mínimo de trabajadores requerido para proteger la confidencialidad.']);
+    } else {
+      hojaResumen.push(
+        ['Aptitud: apto', r.aptitudMedica.apto, `${r.aptitudMedica.porcentajeApto}%`],
+        ['Aptitud: con restricciones', r.aptitudMedica.conRestricciones],
+        ['Aptitud: no apto', r.aptitudMedica.noApto],
+        ['Aptitud: pendiente', r.aptitudMedica.pendiente],
+      );
+    }
   } else {
-    hojaResumen.push(
-      ['Aptitud: apto', r.aptitudMedica.apto, `${r.aptitudMedica.porcentajeApto}%`],
-      ['Aptitud: con restricciones', r.aptitudMedica.conRestricciones],
-      ['Aptitud: no apto', r.aptitudMedica.noApto],
-      ['Aptitud: pendiente', r.aptitudMedica.pendiente],
-    );
+    hojaResumen.push(['Aptitud médica', 'No disponible para tu rol.']);
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaResumen), 'Resumen');
 
-  const hojaExamenes = redactado
-    ? [['Exámenes complementarios'], ['Oculto: área con menos del mínimo de trabajadores requerido para proteger la confidencialidad.']]
-    : [
-        ['Examen', 'Trabajadores cubiertos', '% cobertura', 'Total exámenes', 'Anormales', '% anormales'],
-        ['Audiometría', r.examenesComplementarios.audiometria.trabajadoresCubiertos, r.examenesComplementarios.audiometria.porcentajeCobertura, r.examenesComplementarios.audiometria.total, r.examenesComplementarios.audiometria.anormales, r.examenesComplementarios.audiometria.porcentajeAnormales],
-        ['Espirometría', r.examenesComplementarios.espirometria.trabajadoresCubiertos, r.examenesComplementarios.espirometria.porcentajeCobertura, r.examenesComplementarios.espirometria.total, r.examenesComplementarios.espirometria.anormales, r.examenesComplementarios.espirometria.porcentajeAnormales],
-        ['Visiometría', r.examenesComplementarios.visiometria.trabajadoresCubiertos, r.examenesComplementarios.visiometria.porcentajeCobertura, r.examenesComplementarios.visiometria.total, r.examenesComplementarios.visiometria.anormales, r.examenesComplementarios.visiometria.porcentajeAnormales],
-      ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaExamenes), 'Examenes');
+  if (r.examenesComplementarios) {
+    const hojaExamenes = redactado
+      ? [['Exámenes complementarios'], ['Oculto: área con menos del mínimo de trabajadores requerido para proteger la confidencialidad.']]
+      : [
+          ['Examen', 'Trabajadores cubiertos', '% cobertura', 'Total exámenes', 'Anormales', '% anormales'],
+          ['Audiometría', r.examenesComplementarios.audiometria.trabajadoresCubiertos, r.examenesComplementarios.audiometria.porcentajeCobertura, r.examenesComplementarios.audiometria.total, r.examenesComplementarios.audiometria.anormales, r.examenesComplementarios.audiometria.porcentajeAnormales],
+          ['Espirometría', r.examenesComplementarios.espirometria.trabajadoresCubiertos, r.examenesComplementarios.espirometria.porcentajeCobertura, r.examenesComplementarios.espirometria.total, r.examenesComplementarios.espirometria.anormales, r.examenesComplementarios.espirometria.porcentajeAnormales],
+          ['Visiometría', r.examenesComplementarios.visiometria.trabajadoresCubiertos, r.examenesComplementarios.visiometria.porcentajeCobertura, r.examenesComplementarios.visiometria.total, r.examenesComplementarios.visiometria.anormales, r.examenesComplementarios.visiometria.porcentajeAnormales],
+        ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaExamenes), 'Examenes');
+  }
 
-  const hojaAusentismo = [
-    ['Tipo de ausencia', 'Ausencias', 'Días'],
-    ...r.ausentismo.porTipo.map(t => [t.etiqueta, t.ausencias, t.dias]),
-    [],
-    ['TOTAL', r.ausentismo.totalAusencias, r.ausentismo.totalDias],
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaAusentismo), 'Ausentismo');
+  if (r.ausentismo) {
+    const hojaAusentismo = [
+      ['Tipo de ausencia', 'Ausencias', 'Días'],
+      ...r.ausentismo.porTipo.map(t => [t.etiqueta, t.ausencias, t.dias]),
+      [],
+      ['TOTAL', r.ausentismo.totalAusencias, r.ausentismo.totalDias],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaAusentismo), 'Ausentismo');
+  }
 
-  const hojaMatriz = [
-    ['Clasificación', 'Cantidad'],
-    ...Object.entries(r.matrizRiesgos.porClasificacion).map(([k, v]) => [k, v]),
-    [],
-    ['Nota', r.matrizRiesgos.nota],
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaMatriz), 'Matriz de riesgos');
+  if (r.matrizRiesgos) {
+    const hojaMatriz = [
+      ['Clasificación', 'Cantidad'],
+      ...Object.entries(r.matrizRiesgos.porClasificacion).map(([k, v]) => [k, v]),
+      [],
+      ['Nota', r.matrizRiesgos.nota || ''],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaMatriz), 'Matriz de riesgos');
+  }
 
-  const hojaErgonomia = redactado
-    ? [['Ergonomía'], ['Oculto: área con menos del mínimo de trabajadores requerido para proteger la confidencialidad.']]
-    : [
-        ['Herramienta', 'Total evaluaciones', 'Casos de atención prioritaria/alto riesgo', '%'],
-        ['Cuestionario Nórdico', r.ergonomia.nordico.total, r.ergonomia.nordico.prioritarios, r.ergonomia.nordico.porcentaje],
-        ['Ecuación NIOSH', r.ergonomia.niosh.total, r.ergonomia.niosh.altoRiesgo, r.ergonomia.niosh.porcentaje],
-      ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaErgonomia), 'Ergonomia');
+  if (r.ergonomia) {
+    const hojaErgonomia = redactado
+      ? [['Ergonomía'], ['Oculto: área con menos del mínimo de trabajadores requerido para proteger la confidencialidad.']]
+      : [
+          ['Herramienta', 'Total evaluaciones', 'Casos de atención prioritaria/alto riesgo', '%'],
+          ['Cuestionario Nórdico', r.ergonomia.nordico.total, r.ergonomia.nordico.prioritarios, r.ergonomia.nordico.porcentaje],
+          ['Ecuación NIOSH', r.ergonomia.niosh.total, r.ergonomia.niosh.altoRiesgo, r.ergonomia.niosh.porcentaje],
+        ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaErgonomia), 'Ergonomia');
+  }
 
-  const hojaConsentimientos = [
-    ['Total', 'Electrónica', 'Física escaneada', 'Revocados', '% revocados'],
-    [r.consentimientos.total, r.consentimientos.electronica, r.consentimientos.fisica, r.consentimientos.revocados, r.consentimientos.porcentajeRevocados],
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaConsentimientos), 'Consentimientos');
+  if (r.consentimientos) {
+    const hojaConsentimientos = [
+      ['Total', 'Electrónica', 'Física escaneada', 'Revocados', '% revocados'],
+      [r.consentimientos.total, r.consentimientos.electronica, r.consentimientos.fisica, r.consentimientos.revocados, r.consentimientos.porcentajeRevocados],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaConsentimientos), 'Consentimientos');
+  }
 
   const nombreArchivo = `reporte-bi-sso_${ultimosFiltros.desde || 'inicio'}_${ultimosFiltros.hasta || 'hoy'}.xlsx`;
   XLSX.writeFile(wb, nombreArchivo);
