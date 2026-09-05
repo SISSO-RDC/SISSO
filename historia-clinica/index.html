@@ -175,13 +175,24 @@
           <div class="sisso-campo"><label class="sisso-etiqueta" id="etiqueta-actividades-relevantes">Actividades relevantes del puesto</label><textarea id="a-actividades-relevantes" class="sisso-textarea"></textarea></div>
 
           <div data-solo="preocupacional_inicio">
+            <!-- CORREGIDO en Auditoria N.15 (bug real de produccion reportado
+                 por el usuario: "Error al cargar catálogos: Cannot read
+                 properties of undefined (reading 'map')"). Los campos
+                 "Orientación sexual" e "Identidad de género" se retiraron de
+                 aqui: el backend ya NO expone estos catalogos desde la
+                 Auditoria N.10 (Sentencia 59-19-IN/24 de la Corte
+                 Constitucional, que declaro inconstitucional el Acuerdo
+                 0341-2019 en esta parte y ordeno dejar de solicitar esta
+                 informacion). El frontend nunca se habia actualizado para
+                 reflejar ese cambio, asi que intentaba popular un select con
+                 un catalogo que ya no existe (undefined.map(...)), lo cual
+                 rompia la carga de TODOS los catalogos de la pagina, no solo
+                 estos dos selects. -->
             <div class="fila-campos" style="margin:12px 0;">
               <div class="sisso-campo"><label class="sisso-etiqueta">N° de archivo (opcional)</label><input id="a-numero-archivo" class="sisso-input"></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Religión</label><select id="a-religion" class="sisso-select"></select></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Grupo sanguíneo</label><input id="a-grupo-sanguineo" class="sisso-input" placeholder="Ej: O+"></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Lateralidad</label><select id="a-lateralidad" class="sisso-select"></select></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Orientación sexual</label><select id="a-orientacion-sexual" class="sisso-select"></select></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Identidad de género</label><select id="a-identidad-genero" class="sisso-select"></select></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de ingreso al trabajo</label><input id="a-fecha-ingreso" type="date" class="sisso-input"></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Área de trabajo</label><input id="a-area-trabajo" class="sisso-input"></div>
             </div>
@@ -221,7 +232,34 @@
       <details class="bloque">
         <summary><span class="bloque-letra">C</span> Antecedentes personales</summary>
         <div class="bloque-cuerpo">
-          <div class="sisso-campo"><label class="sisso-etiqueta">Antecedentes clínico-quirúrgicos</label><textarea id="c-clinicos-quirurgicos" class="sisso-textarea" placeholder="Cirugías, enfermedades diagnosticadas, hospitalizaciones previas…"></textarea></div>
+          <!-- CORREGIDO en Auditoria N.15 (pedido del usuario): antes solo
+               habia un campo de texto libre para "Antecedentes
+               clínico-quirúrgicos", obligando a escribir a mano incluso los
+               antecedentes mas comunes. Se agrega un checklist de los
+               antecedentes personales patologicos mas frecuentes en una
+               evaluacion ocupacional, MAS el espacio de texto libre para
+               cualquier antecedente que no este en la lista o que necesite
+               detalle adicional. Al guardar, ambos se combinan en un solo
+               texto (el campo que el backend espera no cambio: sigue siendo
+               un unico texto en antecedentesClinicosQuirurgicos). -->
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta">Antecedentes personales patológicos (marcar los que apliquen)</label>
+            <div id="c-antecedentes-checklist" class="fila-campos" style="flex-wrap:wrap;gap:8px 16px;margin-bottom:10px;">
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Diabetes mellitus"> Diabetes mellitus</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Hipertensión arterial"> Hipertensión arterial</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Asma"> Asma</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Alergias"> Alergias</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Cardiopatía"> Cardiopatía</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Enfermedad renal"> Enfermedad renal</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Enfermedad tiroidea"> Enfermedad tiroidea</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Convulsiones / epilepsia"> Convulsiones / epilepsia</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Tuberculosis"> Tuberculosis</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Cáncer"> Cáncer</label>
+              <label class="chip-checkbox"><input type="checkbox" class="c-antecedente-check" value="Cirugías previas"> Cirugías previas</label>
+              <label class="chip-checkbox"><input type="checkbox" id="c-antecedente-ninguno" value="Ninguno conocido"> Ninguno conocido</label>
+            </div>
+          </div>
+          <div class="sisso-campo"><label class="sisso-etiqueta">Otros antecedentes / detalle adicional</label><textarea id="c-clinicos-quirurgicos" class="sisso-textarea" placeholder="Detalle cualquier antecedente marcado arriba (fecha, tratamiento, etc.) y cualquier otro que no esté en la lista…"></textarea></div>
 
           <div data-solo="preocupacional_inicio">
           <div id="caja-c-femenino" style="display:none;">
