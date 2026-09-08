@@ -40,9 +40,29 @@
 
 // ------------------------------------------------------------
 // URL del backend. Unico lugar de todo el frontend donde esto
-// se escribe. Si el backend cambia de direccion, se edita aqui.
-// ------------------------------------------------------------
-const SISSO_API_BASE = 'https://sissso-backend.onrender.com/api';
+// se escribe. Si el backend cambia de direccion (el dominio de
+// produccion, no localhost), se edita aqui.
+//
+// CORREGIDO en Auditoria N.15 (hallazgo MODERADO M15-04): antes esta
+// constante era un string fijo a la URL de Render sin excepcion,
+// asi que trabajar localmente contra un backend corriendo en la
+// propia maquina (`npm run dev` en SISSO-backend) exigia editar esta
+// linea a mano y tener cuidado de nunca hacer commit de ese cambio
+// por error. Ahora se detecta automaticamente cuando el FRONTEND se
+// esta sirviendo desde localhost (ej. `python3 -m http.server`, Live
+// Server de VSCode, etc.) y en ese caso apunta a un backend local por
+// defecto -- sigue siendo editable aqui mismo si el puerto local es
+// distinto. Esto no resuelve el caso general de "un entorno de
+// staging propio" (este proyecto no tiene, hoy, un paso de build que
+// pueda inyectar una variable por entorno como en un framework con
+// bundler), pero elimina el caso que realmente ocurre a diario:
+// desarrollar localmente sin arriesgar un commit accidental de la
+// URL equivocada.
+const SISSO_API_BASE = (() => {
+  const esLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (esLocal) return 'http://localhost:3000/api';
+  return 'https://sissso-backend.onrender.com/api';
+})();
 
 // Claves usadas en sessionStorage. Prefijadas con "sisso_" para no
 // chocar con nada mas que pueda existir en el navegador. Ya NO hay
@@ -87,6 +107,20 @@ const SissoSesion = {
     return !!this.obtenerAccessToken();
   },
 
+  /**
+   * Actualiza solo el logo de la organizacion en la sesion en cache,
+   * para que el sidebar lo refleje de inmediato tras subir/cambiar
+   * el logo desde Mi Empresa, sin tener que cerrar sesion y volver
+   * a entrar para verlo.
+   */
+  actualizarLogoOrganizacion(nuevoLogoUrl) {
+    const usuario = this.obtenerUsuario();
+    if (!usuario) return;
+    usuario.organizacion = usuario.organizacion || {};
+    usuario.organizacion.logoUrl = nuevoLogoUrl;
+    sessionStorage.setItem(CLAVE_USUARIO, JSON.stringify(usuario));
+  },
+
   limpiar() {
     sessionStorage.removeItem(CLAVE_ACCESS_TOKEN);
     sessionStorage.removeItem(CLAVE_USUARIO);
@@ -103,7 +137,7 @@ const SissoSesion = {
  * 'include'`. Ya no se lee ni se manda ningun token a mano aqui.
  * @returns {Promise<boolean>} true si se renovo con exito.
  */
-async function intentarRefrescarToken() {
+async function _refrescarTokenSinDeduplicar() {
   try {
     const respuesta = await fetch(`${SISSO_API_BASE}/auth/refrescar`, {
       method: 'POST',
@@ -117,6 +151,47 @@ async function intentarRefrescarToken() {
   } catch (err) {
     return false;
   }
+}
+
+// CORREGIDO en Auditoria N.15 (bug real reportado por el usuario:
+// "al dejar de trabajar en la plataforma unos minutos esta se
+// cierra"). Causa raiz confirmada reproduciendo el escenario real
+// contra un servidor real: varias paginas de SISSO disparan mas de
+// una peticion en paralelo al cargar (ej. historia-clinica.js hace
+// `Promise.all([cargarTrabajadores(), cargarCatalogos()])`). Si el
+// access token ya expiro cuando eso ocurre, AMBAS peticiones reciben
+// 401 casi al mismo tiempo, y cada una llamaba a
+// intentarRefrescarToken() por su cuenta -- es decir, dos peticiones
+// de refresco concurrentes usando el MISMO refresh token (todavia no
+// rotado por ninguna de las dos).
+//
+// El backend usa refresh tokens rotativos con deteccion de reuso
+// (ver refrescar() en authController.js): la PRIMERA peticion de
+// refresco rota el token con exito, pero la SEGUNDA, al llegar con
+// el mismo token ya marcado como usado, es indistinguible de un
+// intento real de robo de sesion -- y el backend responde
+// correctamente a esa señal revocando TODA la familia de tokens,
+// incluido el token nuevo que la primera peticion acababa de
+// recibir. Resultado: la sesion completa queda muerta, de forma
+// inmediata e irrecuperable, por dos peticiones legitimas de la
+// propia aplicacion. Confirmado reproduciendo exactamente este
+// escenario contra un servidor real antes de corregir.
+//
+// La correccion pertenece al FRONTEND, no al backend: el backend
+// esta hacienda lo correcto ante una señal de reuso genuina (no se
+// debe debilitar esa deteccion). Lo que hay que evitar es que la
+// app dispare mas de una peticion de refresco a la vez. Esta
+// variable module-level guarda la promesa del refresco EN CURSO (si
+// hay uno): toda llamada concurrente espera esa MISMA promesa en vez
+// de iniciar un segundo refresco por su cuenta.
+let _promesaRefrescoEnCurso = null;
+
+async function intentarRefrescarToken() {
+  if (_promesaRefrescoEnCurso) return _promesaRefrescoEnCurso;
+  _promesaRefrescoEnCurso = _refrescarTokenSinDeduplicar().finally(() => {
+    _promesaRefrescoEnCurso = null;
+  });
+  return _promesaRefrescoEnCurso;
 }
 
 /**

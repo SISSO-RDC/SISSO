@@ -32,7 +32,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   cambiarTipoEvaluacion('preocupacional_inicio');
 
   agregarResultadoExamen(); // arranca con una fila vacia, es comun tener al menos un examen
+  inicializarChecklistAntecedentes();
 });
+
+// CORREGIDO en Auditoria N.15 (pedido del usuario): comportamiento del
+// checklist de antecedentes personales agregado en index.html. "Ninguno
+// conocido" es mutuamente excluyente con el resto (marcar cualquier
+// antecedente especifico desmarca "Ninguno conocido" y viceversa), para
+// evitar una combinacion contradictoria como "Diabetes" + "Ninguno conocido"
+// marcados a la vez.
+function inicializarChecklistAntecedentes() {
+  const checksEspecificos = Array.from(document.querySelectorAll('.c-antecedente-check'));
+  const checkNinguno = document.getElementById('c-antecedente-ninguno');
+  if (!checkNinguno) return;
+
+  checksEspecificos.forEach((chk) => {
+    chk.addEventListener('change', () => {
+      if (chk.checked) checkNinguno.checked = false;
+    });
+  });
+  checkNinguno.addEventListener('change', () => {
+    if (checkNinguno.checked) checksEspecificos.forEach((chk) => { chk.checked = false; });
+  });
+}
+
+// Combina el checklist de antecedentes personales con el texto libre en
+// un unico string, que es lo que el backend espera en
+// antecedentesClinicosQuirurgicos (no se modifico el esquema de la base
+// de datos para este cambio).
+function obtenerAntecedentesClinicosCombinado() {
+  const marcados = Array.from(document.querySelectorAll('.c-antecedente-check'))
+    .filter((chk) => chk.checked)
+    .map((chk) => chk.value);
+  const ninguno = document.getElementById('c-antecedente-ninguno')?.checked;
+  const detalle = document.getElementById('c-clinicos-quirurgicos').value.trim() || null;
+
+  const partes = [];
+  if (ninguno) partes.push('Ninguno conocido.');
+  else if (marcados.length > 0) partes.push(`Antecedentes marcados: ${marcados.join(', ')}.`);
+  if (detalle) partes.push(detalle);
+
+  return partes.length > 0 ? partes.join(' ') : null;
+}
 
 async function cargarTrabajadores() {
   const sel = document.getElementById('sel-trabajador');
@@ -65,8 +106,11 @@ function poblarSelectsCatalogo() {
   };
   llenar('a-religion', catalogos.RELIGIONES);
   llenar('a-lateralidad', catalogos.LATERALIDADES);
-  llenar('a-orientacion-sexual', catalogos.ORIENTACIONES_SEXUALES, { no_sabe_no_responde: 'Prefiere no responder' });
-  llenar('a-identidad-genero', catalogos.IDENTIDADES_GENERO, { no_sabe_no_responde: 'Prefiere no responder' });
+  // CORREGIDO en Auditoria N.15: ORIENTACIONES_SEXUALES/IDENTIDADES_GENERO
+  // ya no existen en los catalogos del backend (ver comentario en
+  // index.html); llamarlas aqui rompia esta funcion con
+  // "Cannot read properties of undefined (reading 'map')" y por lo
+  // tanto ningun catalogo posterior llegaba a poblarse tampoco.
 }
 
 // ------- Selector de trabajador -------
@@ -689,8 +733,11 @@ async function guardarPreocupacional() {
     religion: val('a-religion'),
     grupoSanguineo: val('a-grupo-sanguineo'),
     lateralidad: val('a-lateralidad'),
-    orientacionSexual: val('a-orientacion-sexual'),
-    identidadGenero: val('a-identidad-genero'),
+    // CORREGIDO en Auditoria N.15: los campos "a-orientacion-sexual" y
+    // "a-identidad-genero" ya no existen en el HTML (ver index.html);
+    // leerlos aqui habria lanzado "Cannot read properties of null
+    // (reading 'value')" al intentar guardar. El backend tampoco los
+    // acepta desde el body de todos modos (Sentencia 59-19-IN/24).
     discapacidadTiene: document.getElementById('a-discapacidad-tiene').checked,
     discapacidadTipo: val('a-discapacidad-tipo'),
     discapacidadPorcentaje: num('a-discapacidad-porcentaje'),
@@ -704,7 +751,7 @@ async function guardarPreocupacional() {
 
     motivoConsulta: val('b-motivo-consulta'),
 
-    antecedentesClinicosQuirurgicos: val('c-clinicos-quirurgicos'),
+    antecedentesClinicosQuirurgicos: obtenerAntecedentesClinicosCombinado(),
     antecedentesGinecologicosExamenes: sexo === 'F' ? {
       gestas: num('c-gestas'), partos: num('c-partos'), cesareas: num('c-cesareas'), abortos: num('c-abortos'),
       hijosVivos: num('c-hijos-vivos'), hijosMuertos: num('c-hijos-muertos'),
@@ -818,7 +865,7 @@ async function guardarRetiro() {
     actividadesDesempenadas: val('a-actividades-relevantes'),
     factoresRiesgoTextoLibre: val('r-factores-riesgo-texto'),
 
-    antecedentesClinicosQuirurgicos: val('c-clinicos-quirurgicos'),
+    antecedentesClinicosQuirurgicos: obtenerAntecedentesClinicosCombinado(),
     accidentesTrabajoPrevios: {
       fueCalificado: val('d-accidente-calificado') === 'si', especificarEntidad: val('d-accidente-entidad'),
       fecha: val('d-accidente-fecha'), observaciones: val('d-accidente-observaciones'),
@@ -882,7 +929,7 @@ async function guardarPeriodica() {
 
     puestoTrabajoCiuo: val('a-ciuo'),
 
-    antecedentesClinicosQuirurgicos: val('c-clinicos-quirurgicos'),
+    antecedentesClinicosQuirurgicos: obtenerAntecedentesClinicosCombinado(),
     habitosToxicos: {
       tabaco: { consume: val('c-tabaco-consume'), detalle: val('c-tabaco-detalle') },
       alcohol: { consume: val('c-alcohol-consume'), detalle: val('c-alcohol-detalle') },
@@ -1029,13 +1076,19 @@ function camelizar(texto) {
 // termina dentro de un atributo HTML entre comillas, no solo en el
 // texto visible), en vez de la copia local que solo cubria &, < y >.
 const escHtml = escaparHtml;
-function escAttr(str) {
-  if (str === null || str === undefined) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-}
+// CORREGIDO en Auditoria N.15 (hallazgo MODERADO M15-10): antes
+// definia aqui su propia copia local de escAttr; ahora usa la
+// version centralizada de shared/layout.js (escaparAtributoHtml),
+// para el caso de un valor dentro de un atributo HTML simple
+// (value="..."), sin JavaScript anidado.
+const escAttr = escaparAtributoHtml;
 function formatearFecha(fecha) {
   if (!fecha) return '';
-  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+  // CORREGIDO en Auditoria N.15 (bug real: node-postgres serializa una
+  // columna DATE como timestamp ISO completo, ej. "...T00:00:00.000Z",
+  // no como "YYYY-MM-DD" simple -- concatenar 'T00:00:00' a eso producia
+  // "Invalid Date". Se toma solo la parte de fecha antes de agregar la hora.
+  return new Date(fecha.split('T')[0] + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 function mostrarError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); }
 function ocultarError(id) { document.getElementById(id).classList.remove('visible'); }

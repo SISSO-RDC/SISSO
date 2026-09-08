@@ -101,9 +101,22 @@ function renderizarTabla(lista) {
 }
 
 // ------- Utilidades -------
+// CORREGIDO en Auditoria N.15 (bug real reportado por el usuario:
+// "Última EMO" y "Vence" mostraban "Invalid Date"). Causa raiz
+// confirmada: node-postgres devuelve una columna DATE como un objeto
+// Date de JavaScript, y al pasar por JSON.stringify() (res.json en
+// el backend) eso se serializa como timestamp ISO COMPLETO, ej.
+// "2026-09-04T00:00:00.000Z" -- NO como el string simple "2026-09-04"
+// que esta funcion asumia. Concatenar "T00:00:00" a un string que ya
+// termina en "Z" produce "...000ZT00:00:00", que Date() no puede
+// interpretar (Invalid Date). Se toma solo la parte de fecha
+// (primeros 10 caracteres, "YYYY-MM-DD") antes de agregar la hora,
+// asi que funciona igual con un string simple o con un timestamp ISO
+// completo.
 function formatearFecha(fecha) {
   if (!fecha) return '—';
-  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+  const soloFecha = String(fecha).slice(0, 10);
+  return new Date(soloFecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 // CORREGIDO tras auditoria de seguridad (hallazgo G9): se usa la
 // funcion de escape compartida (shared/layout.js), que tambien

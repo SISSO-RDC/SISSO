@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SISSO — Configuración</title>
   <link rel="stylesheet" href="../shared/estilos.css">
@@ -126,6 +126,25 @@
   </div>
 </div>
 
+<!-- Modal: corregir nombre (Auditoria N.15, pedido de la persona usuaria:
+     "no hay opcion de correccion del nombre de los usuarios") -->
+<div class="sisso-modal-fondo" id="modal-corregir-nombre" style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100;">
+  <div style="background:#fff;border-radius:var(--r2);padding:24px;width:420px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <div style="font-size:16px;font-weight:800;margin-bottom:18px;">Corregir nombre</div>
+    <div class="sisso-error" id="error-corregir-nombre"></div>
+
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="corregir-nombre-input">Nombre completo *</label>
+      <input id="corregir-nombre-input" class="sisso-input">
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+      <button class="sisso-boton secundario" onclick="cerrarModalCorregirNombre()">Cancelar</button>
+      <button class="sisso-boton" id="btn-corregir-nombre" onclick="confirmarCorregirNombre()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
 <script>
@@ -166,7 +185,10 @@ function renderizarTabla(usuarios) {
         ${u.requiere_cambio_password ? '<div style="font-size:11px;color:var(--amb2);margin-top:2px;">Pendiente cambio de contraseña</div>' : ''}
       </td>
       <td style="color:var(--t3);font-size:12px;">${u.ultimo_login ? formatearFechaHora(u.ultimo_login) : 'Nunca ha ingresado'}</td>
-      <td><button class="btn-mini" onclick="abrirModalReset('${u.id}', '${escHtml(u.nombre_completo).replace(/'/g, "\\'")}')">Resetear contraseña</button></td>
+      <td>
+        <button class="btn-mini" onclick="abrirModalReset('${u.id}', '${escaparValorOnclickJs(u.nombre_completo)}')">Resetear contraseña</button>
+        <button class="btn-mini" onclick="abrirModalCorregirNombre('${u.id}', '${escaparValorOnclickJs(u.nombre_completo)}')">Corregir nombre</button>
+      </td>
     </tr>`).join('');
 }
 
@@ -243,6 +265,50 @@ function abrirModalReset(usuarioId, nombreUsuario) {
 function cerrarModalReset() {
   document.getElementById('modal-reset').style.display = 'none';
   usuarioIdParaReset = null;
+}
+
+// ------- Corregir nombre (Auditoria N.15) -------
+let usuarioIdParaCorregirNombre = null;
+
+function abrirModalCorregirNombre(usuarioId, nombreActual) {
+  usuarioIdParaCorregirNombre = usuarioId;
+  document.getElementById('corregir-nombre-input').value = nombreActual;
+  ocultarError('error-corregir-nombre');
+  document.getElementById('modal-corregir-nombre').style.display = 'flex';
+  document.getElementById('corregir-nombre-input').focus();
+}
+
+function cerrarModalCorregirNombre() {
+  document.getElementById('modal-corregir-nombre').style.display = 'none';
+  usuarioIdParaCorregirNombre = null;
+}
+
+async function confirmarCorregirNombre() {
+  ocultarError('error-corregir-nombre');
+  const nombreCompleto = document.getElementById('corregir-nombre-input').value.trim();
+
+  if (nombreCompleto.length < 2) {
+    mostrarError('error-corregir-nombre', 'El nombre debe tener al menos 2 caracteres.');
+    return;
+  }
+
+  const boton = document.getElementById('btn-corregir-nombre');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch(`/auth/usuarios/${usuarioIdParaCorregirNombre}/nombre`, {
+      method: 'PATCH',
+      body: { nombreCompleto },
+    });
+    cerrarModalCorregirNombre();
+    await cargarUsuarios();
+  } catch (err) {
+    mostrarError('error-corregir-nombre', err.message || 'No se pudo corregir el nombre.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Guardar';
+  }
 }
 
 async function confirmarReset() {

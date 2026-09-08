@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SISSO — Aptitud Médica</title>
   <link rel="stylesheet" href="../shared/estilos.css">
@@ -376,7 +376,7 @@ function elegirAptitud(valor) {
 }
 
 // ------- Registrar aptitud -------
-async function registrarAptitud() {
+async function registrarAptitud(confirmarEvaluacionIncompleta) {
   ocultarError('error-registro');
   ocultarExito('exito-registro');
 
@@ -404,6 +404,13 @@ async function registrarAptitud() {
         justificacionClinica: justificacion,
         restricciones: restricciones || undefined,
         vigenciaHasta: vigencia || undefined,
+        // CORREGIDO en Auditoria N.15 (bug real reportado por el
+        // usuario: "tremendo bug", quedaba imposible registrar la
+        // aptitud de un trabajador sin puesto asignado). El backend
+        // SI contempla este caso (exige una confirmacion explicita,
+        // ver mas abajo en el catch) pero esta pantalla nunca ofrecia
+        // forma de darla -- el medico quedaba bloqueado sin salida.
+        ...(confirmarEvaluacionIncompleta ? { confirmarEvaluacionIncompleta: true } : {}),
       }
     });
 
@@ -413,7 +420,25 @@ async function registrarAptitud() {
     await cargarHistorial();
 
   } catch (err) {
-    mostrarError('error-registro', err.message || 'Error al registrar la aptitud.');
+    // CORREGIDO en Auditoria N.15: err.datos ya traia el cuerpo
+    // completo del error (evaluacionIncompleta, solucion) desde hace
+    // tiempo (ver shared/api.js) -- esta pantalla simplemente nunca
+    // lo leia, solo mostraba err.message y dejaba al medico sin
+    // ninguna forma de continuar. Si el backend ofrece una salida
+    // explicita (confirmarEvaluacionIncompleta), se le pregunta al
+    // medico y, si acepta, se reenvia automaticamente con esa
+    // confirmacion -- sin repetir el llenado del formulario.
+    if (err.datos && err.datos.evaluacionIncompleta && !confirmarEvaluacionIncompleta) {
+      const mensaje = `${err.datos.error}\n\n${err.datos.solucion || ''}\n\n¿Deseas continuar de todas formas? Esta decisión quedará registrada en el historial.`;
+      if (confirm(mensaje)) {
+        boton.disabled = false;
+        boton.textContent = 'Registrar aptitud';
+        return registrarAptitud(true);
+      }
+      mostrarError('error-registro', 'Registro cancelado: la evaluación quedó incompleta y no se confirmó continuar.');
+    } else {
+      mostrarError('error-registro', err.message || 'Error al registrar la aptitud.');
+    }
   } finally {
     boton.disabled = false;
     boton.textContent = 'Registrar aptitud';

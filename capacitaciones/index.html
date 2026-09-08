@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Capacitaciones</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .cap-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .cap-item:hover { background: var(--bg); }
+    .cap-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .cap-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .checklist-trabajadores { max-height: 260px; overflow-y: auto; border: 1px solid var(--bd); border-radius: var(--r); padding: 8px; margin-bottom: 12px; }
+    .checklist-fila { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 12.5px; }
+    table.tabla-asist { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.tabla-asist th, table.tabla-asist td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bd); }
+    table.tabla-asist th { color: var(--t3); font-size: 10.5px; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- ======= LISTADO ======= -->
+  <div id="vista-listado">
+    <div class="sisso-tarjeta" id="caja-crear" style="display:none;margin-bottom:16px;">
+      <div class="sisso-tarjeta-titulo">Registrar capacitación</div>
+      <div class="sisso-error" id="error-crear"></div>
+      <div class="sisso-exito" id="exito-crear"></div>
+      <div id="nota-instructor" style="display:none;margin-bottom:10px;font-size:12px;color:var(--t3);"></div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-nombre">Nombre *</label>
+        <input id="c-nombre" class="sisso-input" placeholder="Ej: Inducción en seguridad y salud ocupacional">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-tema">Tema</label>
+        <input id="c-tema" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="c-instructor">Instructor</label>
+        <input id="c-instructor" class="sisso-input">
+      </div>
+      <!-- CREADO en Auditoria N.15 (pedido de la persona usuaria: "los
+           certificados deben ser firmados además por la persona que
+           capacitó al personal sea el médico o el sso"). El backend ya
+           aceptaba instructorUsuarioId de un gestor (admin/sso/th) si lo
+           enviaba explícitamente -- lo que faltaba era la forma de
+           enviarlo desde este formulario. Solo se ofrece a médico/sso
+           (los 2 roles que el pedido menciona como quienes firman); admin
+           y th siguen siendo gestores puros que no firman certificados. -->
+      <div class="sisso-campo" id="caja-autoinstructor" style="display:none;">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--t2);cursor:pointer;">
+          <input type="checkbox" id="c-yo-dicte" style="margin-top:2px;">
+          <span>Yo dicté esta capacitación (quedaré vinculado como instructor y mi firma/registro SENESCYT aparecerán en el certificado)</span>
+        </label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-fecha">Fecha *</label>
+          <input id="c-fecha" type="date" class="sisso-input">
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="c-horas">Horas de duración *</label>
+          <input id="c-horas" type="number" min="1" step="0.5" class="sisso-input">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;flex-wrap:wrap;gap:6px;">
+        <div class="sisso-tarjeta-subtitulo">Asistentes</div>
+        <div style="display:flex;gap:12px;align-items:center;font-size:12px;">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" id="chk-seleccionar-todos">
+            Seleccionar todos
+          </label>
+          <button type="button" class="btn-mini" id="btn-deseleccionar-todos">Deseleccionar todos</button>
+        </div>
+      </div>
+      <div class="checklist-trabajadores" id="checklist-trabajadores"><div class="sisso-cargando">Cargando trabajadores…</div></div>
+      <button class="sisso-boton ancho-completo" id="btn-crear" onclick="crearCapacitacion()">Registrar capacitación</button>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Capacitaciones</div>
+      <div id="lista-capacitaciones"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <!-- ======= DETALLE ======= -->
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" onclick="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+
+    <div class="sisso-tarjeta" style="margin-bottom:16px;">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div id="resumen-capacitacion"></div>
+      <div id="boton-eliminar" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);">
+        <button class="sisso-boton secundario" onclick="eliminarCapacitacion()">🗑 Eliminar capacitación</button>
+      </div>
+    </div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Asistentes y certificados</div>
+      <div id="tabla-asistentes"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+let esGestor = false;
+let usuarioActual = null;
+let trabajadores = [];
+let capacitacionActualId = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('capacitaciones', 'Capacitaciones');
+
+  usuarioActual = SissoSesion.obtenerUsuario();
+  esGestor = ['admin', 'sso', 'th'].includes(usuarioActual.rol);
+
+  // CORREGIDO a pedido de la persona usuaria (02/09/2026): el
+  // backend ya permite que cualquier usuario autenticado registre
+  // una capacitación, siempre que se auto-asigne como instructor
+  // (ver capacitacionesController.crear -- instructorUsuarioId debe
+  // ser su propio usuario si su rol no es admin/sso/th). El
+  // formulario ya no se oculta para el resto de roles; si no es
+  // gestor, se le avisa que la capacitación quedará registrada como
+  // dictada por él mismo.
+  document.getElementById('caja-crear').style.display = 'block';
+  if (!esGestor) {
+    const nota = document.getElementById('nota-instructor');
+    nota.textContent = 'Vas a registrar una capacitación que tú mismo dictaste. Quedará vinculada a tu usuario como instructor.';
+    nota.style.display = 'block';
+  } else if (['medico', 'sso'].includes(usuarioActual.rol)) {
+    // CREADO en Auditoria N.15: medico/sso SI son "gestores" (pueden
+    // registrar capacitaciones dictadas por terceros), pero tambien
+    // pueden haber sido ellos mismos quienes la dictaron -- se les
+    // ofrece la opcion explicita en vez de asumir ninguno de los dos casos.
+    document.getElementById('caja-autoinstructor').style.display = 'block';
+  }
+  await cargarTrabajadoresChecklist();
+  inicializarSeleccionarTodos();
+
+  await cargarListado();
+});
+
+function inicializarSeleccionarTodos() {
+  const checkboxMaestro = document.getElementById('chk-seleccionar-todos');
+  const botonDeseleccionar = document.getElementById('btn-deseleccionar-todos');
+  const contenedor = document.getElementById('checklist-trabajadores');
+
+  checkboxMaestro.addEventListener('change', () => {
+    contenedor.querySelectorAll('.chk-asistente').forEach((cb) => { cb.checked = checkboxMaestro.checked; });
+  });
+
+  botonDeseleccionar.addEventListener('click', () => {
+    checkboxMaestro.checked = false;
+    contenedor.querySelectorAll('.chk-asistente').forEach((cb) => { cb.checked = false; });
+  });
+
+  // Si alguien destilda un asistente a mano, el checkbox maestro
+  // deja de marcarse como "todos seleccionados" (evita el estado
+  // enganoso de decir "todos" cuando en realidad falta uno).
+  contenedor.addEventListener('change', (e) => {
+    if (!e.target.classList.contains('chk-asistente')) return;
+    const todos = Array.from(contenedor.querySelectorAll('.chk-asistente'));
+    checkboxMaestro.checked = todos.length > 0 && todos.every((cb) => cb.checked);
+  });
+}
+
+async function cargarTrabajadoresChecklist() {
+  const cont = document.getElementById('checklist-trabajadores');
+  try {
+    const datos = await sissoFetch('/trabajadores');
+    trabajadores = datos.trabajadores || [];
+    if (trabajadores.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay trabajadores registrados.</div>';
+      return;
+    }
+    cont.innerHTML = trabajadores.map(t => `
+      <label class="checklist-fila">
+        <input type="checkbox" class="chk-asistente" value="${t.id}">
+        ${escHtml(t.nombre_completo)} — ${escHtml(t.documento)}
+      </label>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar trabajadores: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function crearCapacitacion() {
+  ocultarError('error-crear');
+  ocultarExito('exito-crear');
+
+  const nombre = document.getElementById('c-nombre').value.trim();
+  const tema = document.getElementById('c-tema').value.trim();
+  const instructor = document.getElementById('c-instructor').value.trim();
+  const fecha = document.getElementById('c-fecha').value;
+  const horas = document.getElementById('c-horas').value;
+  const asistentes = Array.from(document.querySelectorAll('.chk-asistente:checked')).map(el => el.value);
+
+  if (!nombre) { mostrarError('error-crear', 'Indica el nombre de la capacitación.'); return; }
+  if (!fecha) { mostrarError('error-crear', 'Indica la fecha.'); return; }
+  if (!horas) { mostrarError('error-crear', 'Indica las horas de duración.'); return; }
+
+  const boton = document.getElementById('btn-crear');
+  boton.disabled = true;
+  boton.textContent = 'Registrando…';
+
+  try {
+    await sissoFetch('/capacitaciones', {
+      method: 'POST',
+      body: {
+        nombre, tema: tema || undefined, instructor: instructor || undefined,
+        fecha, horasDuracion: parseFloat(horas), asistentes,
+        // CORREGIDO en Auditoria N.15: un gestor (admin/sso/th) tambien
+        // puede auto-asignarse como instructor si marco el checkbox "Yo
+        // dicté esta capacitación" -- antes solo se auto-asignaba un
+        // no-gestor de forma obligatoria; un medico/sso que SI es
+        // "gestor" no tenia como indicarlo.
+        instructorUsuarioId: !esGestor
+          ? usuarioActual.id
+          : (document.getElementById('c-yo-dicte')?.checked ? usuarioActual.id : undefined),
+      },
+    });
+    mostrarExito('exito-crear', 'Capacitación registrada.');
+    document.getElementById('c-nombre').value = '';
+    document.getElementById('c-tema').value = '';
+    document.getElementById('c-instructor').value = '';
+    document.getElementById('c-horas').value = '';
+    document.querySelectorAll('.chk-asistente:checked').forEach(el => { el.checked = false; });
+    await cargarListado();
+  } catch (err) {
+    mostrarError('error-crear', err.message || 'Error al registrar la capacitación.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Registrar capacitación';
+  }
+}
+
+async function cargarListado() {
+  const cont = document.getElementById('lista-capacitaciones');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+  try {
+    const datos = await sissoFetch('/capacitaciones');
+    const capacitaciones = datos.capacitaciones || [];
+    if (capacitaciones.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">No hay capacitaciones registradas.</div>';
+      return;
+    }
+    cont.innerHTML = capacitaciones.map(c => `
+      <div class="cap-item" onclick="abrirDetalle('${c.id}')">
+        <div class="cap-cabecera">
+          <strong>${escHtml(c.nombre)}</strong>
+          <span class="sisso-chip teal">${c.total_asistentes} asistente(s)</span>
+        </div>
+        <div class="cap-meta">${c.tema ? escHtml(c.tema) + ' · ' : ''}${formatearFecha(c.fecha)} · ${c.horas_duracion}h${c.instructor ? ' · ' + escHtml(c.instructor) : ''}</div>
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ======= Detalle =======
+async function abrirDetalle(id) {
+  capacitacionActualId = id;
+  document.getElementById('vista-listado').style.display = 'none';
+  document.getElementById('vista-detalle').style.display = 'block';
+  document.getElementById('boton-eliminar').style.display = esGestor ? 'block' : 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  await cargarDetalle();
+}
+function volverAlListado() {
+  capacitacionActualId = null;
+  document.getElementById('vista-listado').style.display = 'block';
+  document.getElementById('vista-detalle').style.display = 'none';
+  cargarListado();
+}
+
+async function cargarDetalle() {
+  ocultarError('error-detalle');
+  try {
+    const datos = await sissoFetch(`/capacitaciones/${capacitacionActualId}`);
+    const c = datos.capacitacion;
+
+    document.getElementById('resumen-capacitacion').innerHTML = `
+      <div class="sisso-tarjeta-titulo" style="margin-bottom:6px;">${escHtml(c.nombre)}</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.6;">
+        ${c.tema ? `<strong>Tema:</strong> ${escHtml(c.tema)}<br>` : ''}
+        ${c.instructor ? `<strong>Instructor:</strong> ${escHtml(c.instructor)}<br>` : ''}
+        <strong>Fecha:</strong> ${formatearFecha(c.fecha)}<br>
+        <strong>Duración:</strong> ${c.horas_duracion} horas
+      </div>`;
+
+    const asistentes = datos.asistentes || [];
+    document.getElementById('tabla-asistentes').innerHTML = asistentes.length === 0
+      ? '<div class="sisso-vacio">Sin asistentes registrados.</div>'
+      : `<table class="tabla-asist">
+          <thead><tr><th>Nombre</th><th>Documento</th><th>Área</th><th></th></tr></thead>
+          <tbody>
+            ${asistentes.map(a => `
+              <tr>
+                <td>${escHtml(a.nombre_completo)}</td>
+                <td>${escHtml(a.documento)}</td>
+                <td>${escHtml(a.area || '—')}</td>
+                <td><button class="btn-mini" onclick="verCertificado('${a.trabajador_id}')">📄 Certificado</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al cargar la capacitación.');
+  }
+}
+
+async function verCertificado(trabajadorId) {
+  try {
+    const blob = await sissoDescargarArchivo(`/certificados/capacitacion/${capacitacionActualId}/trabajador/${trabajadorId}`);
+    sissoAbrirBlobEnNuevaPestana(blob);
+  } catch (err) {
+    alert('Error al abrir el certificado: ' + (err.message || ''));
+  }
+}
+
+async function eliminarCapacitacion() {
+  if (!confirm('¿Eliminar esta capacitación? Esta acción no se puede deshacer.')) return;
+  try {
+    await sissoFetch(`/capacitaciones/${capacitacionActualId}`, { method: 'DELETE' });
+    volverAlListado();
+  } catch (err) {
+    mostrarError('error-detalle', err.message || 'Error al eliminar la capacitación.');
+  }
+}
+
+// ======= Utilidades =======
+function formatearFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const escHtml = escaparHtml;
+function mostrarError(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+function mostrarExito(idEl, msg) {
+  const el = document.getElementById(idEl);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 5000);
+}
+function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+</script>
+</body>
+</html>

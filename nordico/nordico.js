@@ -255,7 +255,11 @@ async function cargarHistorial() {
 // ------- Utilidades -------
 function formatearFecha(fecha) {
   if (!fecha) return '';
-  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+  // CORREGIDO en Auditoria N.15 (bug real: node-postgres serializa una
+  // columna DATE como timestamp ISO completo, ej. "...T00:00:00.000Z",
+  // no como "YYYY-MM-DD" simple -- concatenar 'T00:00:00' a eso producia
+  // "Invalid Date". Se toma solo la parte de fecha antes de agregar la hora.
+  return new Date(fecha.split('T')[0] + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 // CORREGIDO tras auditoria de seguridad (hallazgo G9): se usa la
 // funcion de escape compartida (shared/layout.js), que tambien
