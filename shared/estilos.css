@@ -424,3 +424,45 @@ a { color: inherit; }
   padding: 40px 20px;
   text-align: center;
 }
+
+/* ============================================================
+   Lote E: Modo privado (Fase 9 del plan "Perfil inteligente de
+   empresa"). Capa UNICAMENTE visual: difumina el contenido de la
+   pagina y bloquea la interaccion con un overlay clicable para
+   reactivar rapido. NO sustituye RBAC ni RLS del backend -- ver
+   shared/layout.js (sissoAlternarModoPrivado) para el detalle de
+   por que el contenido real nunca deja de estar protegido por el
+   backend mientras este activo.
+   ============================================================ */
+.sisso-boton-modo-privado {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 1.5px solid var(--bd2); border-radius: 20px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--t2);
+  cursor: pointer; font-family: inherit;
+}
+.sisso-boton-modo-privado:hover { border-color: var(--teal); color: var(--teal2); }
+.sisso-boton-modo-privado.activo { background: var(--amb3); border-color: var(--amb2); color: var(--amb2); }
+
+.sisso-contenido.modo-privado-activo {
+  filter: blur(9px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.sisso-modo-privado-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(15, 23, 42, .08);
+  cursor: pointer;
+  align-items: flex-start; justify-content: center;
+}
+.sisso-modo-privado-overlay.visible { display: flex; }
+.sisso-modo-privado-banner {
+  margin-top: 22px;
+  background: #1a2332; color: #fff;
+  border-radius: 30px; padding: 12px 22px;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.sisso-modo-privado-banner span.punto { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; }

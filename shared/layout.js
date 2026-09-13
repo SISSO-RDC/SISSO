@@ -302,6 +302,9 @@ const SissoLayout = (() => {
       <div class="sisso-topbar">
         <span class="sisso-topbar-titulo">${tituloModulo}</span>
         <div class="sisso-topbar-derecha" id="sisso-topbar-acciones">
+          <button type="button" class="sisso-boton-modo-privado" id="sisso-boton-modo-privado" onclick="sissoAlternarModoPrivado()" title="Difumina el contenido en pantalla sin cerrar sesión. No reemplaza los permisos del sistema.">
+            👁️ Modo privado
+          </button>
           <!-- Las paginas individuales pueden inyectar botones aqui con SissoLayout.agregarAccionTopbar() -->
         </div>
       </div>`;
@@ -347,6 +350,17 @@ const SissoLayout = (() => {
       if (usuario.requiereCambioPassword) {
         sissoMostrarModalCambioPassword(true);
       }
+
+      // Lote E (Fase 9): overlay del modo privado, inyectado una vez
+      // por pagina fuera de .sisso-contenido para que NUNCA quede
+      // difuminado ni bloqueado por su propio filtro/pointer-events.
+      if (!document.getElementById('sisso-modo-privado-overlay')) {
+        document.body.insertAdjacentHTML('beforeend', `
+          <div class="sisso-modo-privado-overlay" id="sisso-modo-privado-overlay" onclick="sissoAlternarModoPrivado()">
+            <div class="sisso-modo-privado-banner"><span class="punto"></span> Modo privado activo — toca para reactivar la pantalla</div>
+          </div>`);
+      }
+      sissoAplicarEstadoModoPrivado();
     },
 
     /**
@@ -360,6 +374,42 @@ const SissoLayout = (() => {
     },
   };
 })();
+
+/**
+ * Lote E (Fase 9 del plan "Perfil inteligente de empresa"): Modo
+ * privado. Es UNICAMENTE una capa visual -- difumina el contenido
+ * de la pagina actual y bloquea los clics dentro de el mientras
+ * esta activo (overlay encima, con pointer-events:none en el
+ * contenido real). NO sustituye el RBAC ni el RLS del backend: los
+ * datos siguen llegando al navegador igual que siempre (por eso
+ * "impedir interaccion accidental" se resuelve con pointer-events,
+ * no dejando de pedirlos); esto solo evita que alguien mirando la
+ * pantalla por encima del hombro los vea.
+ *
+ * Se guarda en sessionStorage (no localStorage, y no es un dato
+ * clinico -- es una preferencia de interfaz) para que se mantenga
+ * activo al navegar entre paginas del mismo pestana/sesion de
+ * navegador, pero SIEMPRE arranque apagado en una pestana nueva:
+ * eso evita el riesgo de que quede "pegado" activado en un equipo
+ * compartido despues de cerrar y reabrir el navegador.
+ */
+const SISSO_CLAVE_MODO_PRIVADO = 'sisso_modo_privado_activo';
+
+function sissoAplicarEstadoModoPrivado() {
+  const activo = sessionStorage.getItem(SISSO_CLAVE_MODO_PRIVADO) === 'true';
+  const contenido = document.querySelector('.sisso-contenido');
+  const overlay = document.getElementById('sisso-modo-privado-overlay');
+  const boton = document.getElementById('sisso-boton-modo-privado');
+  if (contenido) contenido.classList.toggle('modo-privado-activo', activo);
+  if (overlay) overlay.classList.toggle('visible', activo);
+  if (boton) boton.classList.toggle('activo', activo);
+}
+
+function sissoAlternarModoPrivado() {
+  const activoActual = sessionStorage.getItem(SISSO_CLAVE_MODO_PRIVADO) === 'true';
+  sessionStorage.setItem(SISSO_CLAVE_MODO_PRIVADO, String(!activoActual));
+  sissoAplicarEstadoModoPrivado();
+}
 
 /**
  * Pide confirmacion antes de cerrar la sesion.

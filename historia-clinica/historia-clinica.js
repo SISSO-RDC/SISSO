@@ -33,6 +33,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   agregarResultadoExamen(); // arranca con una fila vacia, es comun tener al menos un examen
   inicializarChecklistAntecedentes();
+
+  // Lote D (Fase 6, orquestador "+ Nueva evaluación"): si se llega
+  // aqui desde el dashboard con ?trabajador=<id>&tipo=<tipo>, se
+  // preselecciona el trabajador y el tipo de evaluacion en vez de
+  // obligar a repetir la busqueda. No duplica logica clinica: usa
+  // exactamente el mismo selector y las mismas funciones
+  // (elegirTrabajador/cambiarTipoEvaluacion) que ya existian.
+  const parametros = new URLSearchParams(window.location.search);
+  const trabajadorIdPreseleccionado = parametros.get('trabajador');
+  const tipoPreseleccionado = parametros.get('tipo');
+  if (trabajadorIdPreseleccionado) {
+    const select = document.getElementById('sel-trabajador');
+    const existe = Array.from(select.options).some((o) => o.value === trabajadorIdPreseleccionado);
+    if (existe) {
+      select.value = trabajadorIdPreseleccionado;
+      if (['preocupacional_inicio', 'periodica', 'reintegro', 'retiro'].includes(tipoPreseleccionado)) {
+        cambiarTipoEvaluacion(tipoPreseleccionado);
+      }
+      elegirTrabajador();
+    }
+  }
 });
 
 // CORREGIDO en Auditoria N.15 (pedido del usuario): comportamiento del

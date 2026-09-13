@@ -3,6 +3,7 @@
 // ============================================================
 
 let organizacionActual = null;
+let resumenActual = null; // usado por configurador-sectorial.js como sugerencia inicial de numero de trabajadores
 
 document.addEventListener('DOMContentLoaded', async () => {
   SissoLayout.iniciar('empresa', 'Mi Empresa');
@@ -22,6 +23,7 @@ async function cargarPerfil() {
       sissoFetch('/auth/usuarios'),
     ]);
     organizacionActual = datos.organizacion;
+    resumenActual = datos.resumen;
     renderizar(datos.organizacion, datos.resumen, datosUsuarios.usuarios || []);
   } catch (err) {
     document.getElementById('contenido-empresa').innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
@@ -70,6 +72,22 @@ function renderizar(org, resumen, usuarios) {
       <div class="resumen-item"><div class="numero">${resumen.trabajadores_activos}</div><div class="etiqueta">Trabajadores activos</div></div>
       <div class="resumen-item"><div class="numero">${resumen.usuarios_activos}</div><div class="etiqueta">Usuarios del sistema</div></div>
       <div class="resumen-item"><div class="numero">${resumen.puestos_trabajo}</div><div class="etiqueta">Puestos de trabajo</div></div>
+    </div>
+
+    <div class="sector-caja">
+      ${org.sector_empresarial_clave ? `
+        <div class="sector-caja-info">
+          <div class="sector-icono-grande">${escHtml(org.sector_icono || '🏢')}</div>
+          <div>
+            <div style="font-weight:700; font-size:13.5px;">${escHtml(org.sector_etiqueta || org.sector_empresarial_clave)}</div>
+            <div style="font-size:11.5px; color:var(--t3);">${org.numero_trabajadores_declarado != null ? `${org.numero_trabajadores_declarado} trabajadores declarados · ` : ''}Perfil sectorial configurado</div>
+          </div>
+        </div>
+        <button class="sisso-boton secundario" onclick="abrirConfiguradorSectorial()">🧭 Editar configuración</button>
+      ` : `
+        <div class="sector-sin-configurar">Todavía no configuraste el perfil sectorial de tu empresa (riesgos, exámenes y EPP sugeridos según tu sector).</div>
+        <button class="sisso-boton" onclick="abrirConfiguradorSectorial()">🧭 Configurar perfil sectorial</button>
+      `}
     </div>
 
     <div class="logo-caja">
