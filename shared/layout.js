@@ -168,6 +168,12 @@ const SissoLayout = (() => {
     // del admin. TH no la ve porque no firma documentos clinicos.
     { id: 'mi-perfil', label: 'Mi Perfil', icono: '🖊️', href: '../mi-perfil/index.html', roles: ['medico', 'sso'] },
     { id: 'configuracion', label: 'Configuración',     icono: '⚙️', href: '../configuracion/index.html', roles: ['admin'] },
+    // CREADO a pedido de la persona usuaria: pestana "Acerca de"
+    // dentro de la plataforma (distinta del panel de superadmin),
+    // visible para TODOS los roles (roles: [] = sin restriccion).
+    // Muestra el dueno de la aplicacion, la version desplegada y un
+    // boton para enviar sugerencias/correcciones por correo.
+    { id: 'acerca-de', label: 'Acerca de', icono: 'ℹ️', href: '../acerca-de/index.html', roles: [] },
   ];
 
   function puedeVerItem(item, rol) {

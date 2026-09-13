@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Acerca de</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- CREADO a pedido de la persona usuaria: pestana "Acerca de"
+       dentro de la plataforma (no en el panel de superadmin),
+       visible para cualquier usuario de cualquier empresa. Muestra
+       quien es el dueno de la aplicacion (RonnDu Corp) y la version
+       real desplegada (misma fuente que /api/salud, ver
+       versionServidor.js), ademas de un canal para enviar
+       sugerencias y correcciones directamente al correo de la
+       plataforma. -->
+  <div class="sisso-tarjeta">
+    <div class="sisso-tarjeta-titulo">Acerca de SISSO</div>
+    <div class="sisso-tarjeta-subtitulo">Información de la plataforma y canal de contacto directo con el equipo de desarrollo.</div>
+
+    <div id="datos-acerca-de" style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+      <div class="empty" id="acerca-de-cargando">Cargando información…</div>
+    </div>
+  </div>
+
+  <div class="sisso-tarjeta" style="margin-top:16px;">
+    <div class="sisso-tarjeta-titulo">Enviar sugerencia o corrección</div>
+    <div class="sisso-tarjeta-subtitulo">Tu mensaje llega directamente al correo del equipo de SISSO. Este servicio es gratuito y no tiene costo para tu empresa.</div>
+
+    <div class="sisso-error" id="error-sugerencia"></div>
+    <div class="sisso-exito" id="exito-sugerencia"></div>
+
+    <div style="margin-top:14px;">
+      <label class="sisso-etiqueta">Sugerencia</label>
+      <textarea id="input-sugerencia" class="sisso-textarea" maxlength="3000" placeholder="Cuéntanos qué te gustaría que la plataforma tuviera o mejorara…"></textarea>
+    </div>
+
+    <div style="margin-top:14px;">
+      <label class="sisso-etiqueta">Corrección</label>
+      <textarea id="input-correccion" class="sisso-textarea" maxlength="3000" placeholder="Cuéntanos si encontraste un error o algo que no funciona como debería…"></textarea>
+    </div>
+
+    <div style="margin-top:16px;">
+      <button class="sisso-boton" id="btn-enviar-sugerencia" onclick="enviarSugerenciaCorreccion()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script>
+
+document.addEventListener('DOMContentLoaded', async () => {
+  SissoLayout.iniciar('acerca-de', 'Acerca de');
+  await cargarAcercaDe();
+});
+
+async function cargarAcercaDe() {
+  const contenedor = document.getElementById('datos-acerca-de');
+  try {
+    const datos = await sissoFetch('/plataforma/acerca-de');
+    contenedor.innerHTML =
+      '<div class="sisso-info-fila"><span class="sisso-info-etiqueta">Aplicación</span><span class="sisso-info-valor">' + escaparTexto(datos.aplicacion) + '</span></div>' +
+      '<div class="sisso-info-fila"><span class="sisso-info-etiqueta">Propietario</span><span class="sisso-info-valor">' + escaparTexto(datos.dueno) + '</span></div>' +
+      '<div class="sisso-info-fila"><span class="sisso-info-etiqueta">Versión</span><span class="sisso-info-valor" style="font-family:var(--mono, monospace);">' + escaparTexto(datos.version) + '</span></div>' +
+      '<div class="sisso-info-fila"><span class="sisso-info-etiqueta">Contacto</span><span class="sisso-info-valor">' + escaparTexto(datos.correoContacto) + '</span></div>';
+  } catch (err) {
+    contenedor.innerHTML = '<div class="empty">No se pudo cargar la información de la plataforma: ' + escaparTexto(err.message) + '</div>';
+  }
+}
+
+function escaparTexto(valor) {
+  const div = document.createElement('div');
+  div.textContent = valor == null ? '' : String(valor);
+  return div.innerHTML;
+}
+
+async function enviarSugerenciaCorreccion() {
+  const sugerencia = document.getElementById('input-sugerencia').value.trim();
+  const correccion = document.getElementById('input-correccion').value.trim();
+  const boton = document.getElementById('btn-enviar-sugerencia');
+
+  document.getElementById('error-sugerencia').classList.remove('visible');
+  document.getElementById('exito-sugerencia').classList.remove('visible');
+
+  if (!sugerencia && !correccion) {
+    mostrarError('error-sugerencia', 'Escribe una sugerencia o una corrección antes de enviar.');
+    return;
+  }
+
+  boton.disabled = true;
+  boton.textContent = 'Enviando…';
+  try {
+    const resp = await sissoFetch('/plataforma/sugerencias', {
+      method: 'POST',
+      body: JSON.stringify({ sugerencia, correccion }),
+    });
+    mostrarExito('exito-sugerencia', resp.mensaje || 'Enviado. Gracias por tu sugerencia.');
+    document.getElementById('input-sugerencia').value = '';
+    document.getElementById('input-correccion').value = '';
+  } catch (err) {
+    mostrarError('error-sugerencia', 'No se pudo enviar: ' + err.message);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Enviar';
+  }
+}
+
+function mostrarError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); }
+function mostrarExito(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 5000); }
+
+</script>
+</body>
+</html>

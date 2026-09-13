@@ -377,6 +377,14 @@ a { color: inherit; }
 .sisso-tarjeta-titulo { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .sisso-tarjeta-subtitulo { font-size: 12px; color: var(--t3); margin-bottom: 14px; }
 
+/* CREADO para la pestana "Acerca de": filas simples etiqueta/valor,
+   y un aviso de "sin datos" reutilizable (mismo patron ya usado en
+   el panel de superadmin bajo el nombre .empty). */
+.sisso-info-fila { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+.sisso-info-etiqueta { color: var(--t3); min-width: 110px; font-size: 12px; }
+.sisso-info-valor { font-weight: 600; }
+.empty { font-size: 12.5px; color: var(--t3); font-style: italic; }
+
 .sisso-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
 .sisso-tabla th {
   text-align: left;
