@@ -116,6 +116,11 @@ function mostrarResultado(e) {
         </div>
       </div>
       <div style="font-size:12px;color:var(--t3);margin-top:10px;">${info.descripcion}</div>
+      <div style="margin-top:14px;">
+        <div style="font-size:11.5px;font-weight:700;color:var(--t3);margin-bottom:4px;">Recomendaciones:</div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--t2);">${(info.recomendaciones || []).map(r => `<li>${r}</li>`).join('')}</ul>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--t2);"><strong>Acción requerida:</strong> ${info.accion}</div>
     </div>`;
 }
 
@@ -151,12 +156,20 @@ async function cargarHistorial() {
 
 function infoClasificacion(clasificacion) {
   const mapa = {
-    aceptable:          { etiqueta: 'Aceptable',        bg: 'var(--grn3)', fg: 'var(--grn2)', descripcion: 'La carga está dentro del límite recomendado. Riesgo mínimo para la mayoría de los trabajadores.' },
-    riesgo_moderado:    { etiqueta: 'Riesgo moderado',  bg: 'var(--amb3)', fg: 'var(--amb2)', descripcion: 'La carga supera el límite recomendado. Algunos trabajadores podrían estar en riesgo; se recomienda rediseñar la tarea.' },
-    riesgo_alto:        { etiqueta: 'Riesgo alto',      bg: 'var(--red3)', fg: 'var(--red2)', descripcion: 'La carga supera significativamente el límite recomendado. Se recomienda rediseñar la tarea de forma prioritaria.' },
-    riesgo_muy_alto:    { etiqueta: 'Riesgo muy alto',  bg: 'var(--red3)', fg: 'var(--red2)', descripcion: 'Riesgo muy elevado para la gran mayoría de los trabajadores. Rediseño urgente de la tarea.' },
+    aceptable:          { etiqueta: 'Aceptable',        bg: 'var(--grn3)', fg: 'var(--grn2)', descripcion: 'La carga está dentro del límite recomendado. Riesgo mínimo para la mayoría de los trabajadores.',
+      recomendaciones: ['Mantener seguimiento periódico de la tarea.', 'Reforzar buenas prácticas de levantamiento con el trabajador.'],
+      accion: 'Ninguna acción inmediata — mantener seguimiento de rutina.' },
+    riesgo_moderado:    { etiqueta: 'Riesgo moderado',  bg: 'var(--amb3)', fg: 'var(--amb2)', descripcion: 'La carga supera el límite recomendado. Algunos trabajadores podrían estar en riesgo; se recomienda rediseñar la tarea.',
+      recomendaciones: ['Investigar la tarea con más detalle (frecuencia, distancia, agarre).', 'Evaluar reducir el peso o mejorar el agarre/postura de levantamiento.', 'Dar seguimiento en la próxima inspección.'],
+      accion: 'Planificar mejoras a mediano plazo — no es una prioridad inmediata, pero no debe quedar sin seguimiento.' },
+    riesgo_alto:        { etiqueta: 'Riesgo alto',      bg: 'var(--red3)', fg: 'var(--red2)', descripcion: 'La carga supera significativamente el límite recomendado. Se recomienda rediseñar la tarea de forma prioritaria.',
+      recomendaciones: ['Rediseñar la tarea (reducir peso, usar ayuda mecánica, cambiar altura de manipulación).', 'Considerar rotación de tareas o trabajo en equipo.', 'Registrar la acción correctiva en el sistema de CAPA.'],
+      accion: 'Actuar pronto — priorizar el rediseño de la tarea, no dejarlo para la próxima revisión.' },
+    riesgo_muy_alto:    { etiqueta: 'Riesgo muy alto',  bg: 'var(--red3)', fg: 'var(--red2)', descripcion: 'Riesgo muy elevado para la gran mayoría de los trabajadores. Rediseño urgente de la tarea.',
+      recomendaciones: ['Suspender o modificar la tarea de inmediato si es viable.', 'Usar ayuda mecánica obligatoriamente mientras se rediseña.', 'Escalar a CAPA con prioridad alta y notificar al responsable de SSO.'],
+      accion: 'Actuar de inmediato — no postergar la intervención.' },
   };
-  return mapa[clasificacion] || { etiqueta: 'Sin calcular', bg: 'var(--bg3)', fg: 'var(--t2)', descripcion: '' };
+  return mapa[clasificacion] || { etiqueta: 'Sin calcular', bg: 'var(--bg3)', fg: 'var(--t2)', descripcion: '', recomendaciones: [], accion: '—' };
 }
 
 function formatearFecha(fecha) {

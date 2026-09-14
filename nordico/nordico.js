@@ -219,7 +219,12 @@ function mostrarResultado(c) {
     ${c.regiones_prioritarias && c.regiones_prioritarias.length ? `
       <div style="margin-top:10px;font-size:13px;">
         <strong>Zonas prioritarias:</strong> ${c.regiones_prioritarias.map(r => catalogos.ETIQUETAS_REGIONES[r] || r).join(', ')}
-      </div>` : ''}`;
+      </div>` : ''}
+    <div style="margin-top:14px;padding:10px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--t2);">
+      ${c.requiere_atencion_prioritaria
+        ? `<strong>Interpretación:</strong> El trabajador reporta molestias recientes y persistentes en una o más zonas priorizadas — esto amerita evaluación más allá del autorreporte.<br><strong>Recomendación:</strong> Coordinar una evaluación ergonómica específica de esas zonas (REBA/RULA según la tarea) y considerar derivación médica si la molestia interfiere con el trabajo.<br><strong>Acción requerida:</strong> Dar seguimiento pronto — no esperar al próximo cuestionario periódico.`
+        : `<strong>Interpretación:</strong> No se identificaron zonas con molestia reciente y persistente que requieran atención prioritaria en este cuestionario.<br><strong>Recomendación:</strong> Continuar con la aplicación periódica del cuestionario como parte de la vigilancia habitual.<br><strong>Acción requerida:</strong> Ninguna acción inmediata.`}
+    </div>`;
 }
 
 // ------- Historial -------
