@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sisso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SISSO — Iniciar sesión</title>
   <link rel="stylesheet" href="../shared/estilos.css">
@@ -260,7 +260,7 @@
       const cuerpoPeticion = { email, password: contrasena };
       if (codigoOrganizacion) cuerpoPeticion.codigoOrganizacion = codigoOrganizacion;
 
-      const datos = await fetch('https://sisso-backend.onrender.com/api/auth/login', {
+      const datos = await fetch('https://sissso-backend.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -318,7 +318,7 @@
   async function iniciarConfiguracionMfaObligatoria() {
     ocultarError();
     try {
-      const datos = await fetch('https://sisso-backend.onrender.com/api/auth/mfa/iniciar-configuracion', {
+      const datos = await fetch('https://sissso-backend.onrender.com/api/auth/mfa/iniciar-configuracion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mfaToken: mfaTokenPendiente }),
@@ -357,7 +357,7 @@
     boton.textContent = 'Activando…';
 
     try {
-      await fetch('https://sisso-backend.onrender.com/api/auth/mfa/confirmar', {
+      await fetch('https://sissso-backend.onrender.com/api/auth/mfa/confirmar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mfaToken: mfaTokenPendiente, codigo }),
@@ -409,7 +409,7 @@
     boton.textContent = 'Verificando…';
 
     try {
-      const datos = await fetch('https://sisso-backend.onrender.com/api/auth/mfa/verificar-login', {
+      const datos = await fetch('https://sissso-backend.onrender.com/api/auth/mfa/verificar-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

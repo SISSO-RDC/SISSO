@@ -61,7 +61,7 @@
 const SISSO_API_BASE = (() => {
   const esLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   if (esLocal) return 'http://localhost:3000/api';
-  return 'https://sisso-backend.onrender.com/api';
+  return 'https://sissso-backend.onrender.com/api';
 })();
 
 // Claves usadas en sessionStorage. Prefijadas con "sisso_" para no
