@@ -277,9 +277,9 @@ const SissoLayout = (() => {
         ${franjaEmpresa}
         ${seccionesHtml}
         <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.06);">
-          <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px;padding:0 4px;">
+          <div style="font-size:11px;color:#2dd4bf;font-weight:700;margin-bottom:8px;padding:0 4px;">
             ${escaparHtml(usuario.nombreCompleto)}
-            <span style="display:block;font-size:10px;margin-top:1px;">${escaparHtml(usuario.rol?.toUpperCase())}</span>
+            <span style="display:block;font-size:10px;margin-top:1px;color:rgba(255,255,255,.4);font-weight:600;">${escaparHtml(usuario.rol?.toUpperCase())}</span>
           </div>
           <button onclick="sissoAbrirCambioPassword()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
             Cambiar mi contraseña
