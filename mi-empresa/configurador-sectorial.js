@@ -30,6 +30,8 @@ let configEstado = {
   ciiuDesc: '',
   numeroTrabajadores: null,
   riesgosSeleccionados: [], // nombres de riesgo confirmados como presentes
+  paises: [], // Lote C
+  paisNormativoClave: null, // Lote C
 };
 
 async function abrirConfiguradorSectorial() {
@@ -42,6 +44,8 @@ async function abrirConfiguradorSectorial() {
     ciiuDesc: organizacionActual?.actividad_economica_desc || '',
     numeroTrabajadores: organizacionActual?.numero_trabajadores_declarado ?? (resumenActual ? resumenActual.trabajadores_activos : null),
     riesgosSeleccionados: Array.isArray(organizacionActual?.riesgos_presentes) ? [...organizacionActual.riesgos_presentes] : [],
+    paises: [],
+    paisNormativoClave: organizacionActual?.pais_normativo_clave || 'ecuador',
   };
 
   document.getElementById('modal-config-sectorial').classList.add('visible');
@@ -58,6 +62,19 @@ async function abrirConfiguradorSectorial() {
     mostrarErrorConfigurador('No se pudo cargar el catálogo de sectores: ' + err.message);
   }
 
+  // Lote C (Fase 4): catalogo de paises / perfiles normativos.
+  try {
+    const datosPaises = await sissoFetch('/catalogo-paises');
+    configEstado.paises = datosPaises.paises || [];
+  } catch (err) {
+    mostrarErrorConfigurador('No se pudo cargar el catálogo de países: ' + err.message);
+  }
+
+  renderizarPasoConfigurador();
+}
+
+function cambiarPaisConfigurador(clave) {
+  configEstado.paisNormativoClave = clave;
   renderizarPasoConfigurador();
 }
 
@@ -137,18 +154,27 @@ function renderizarPasoConfigurador() {
       <div style="font-size:11.5px; color:var(--t3); margin-top:8px;">${resumenActual ? `Tu organización tiene actualmente ${resumenActual.trabajadores_activos} trabajador(es) activo(s) registrados en el sistema. Este número es el que declaras para fines de configuración inicial (por ejemplo, si todavía no los has cargado a todos).` : ''}</div>
     `;
   } else if (configEstado.paso === 4) {
-    contenedor.innerHTML = `
-      <div class="fila-campos" style="margin-bottom:12px;">
-        <div class="sisso-campo">
-          <label class="sisso-etiqueta">País</label>
-          <select class="sisso-select" disabled><option>Ecuador</option></select>
+    if (configEstado.paises.length === 0) {
+      contenedor.innerHTML = `<div class="sisso-cargando">Cargando catálogo de países…</div>`;
+    } else {
+      const paisElegido = configEstado.paises.find(p => p.clave === configEstado.paisNormativoClave);
+      contenedor.innerHTML = `
+        <div class="fila-campos" style="margin-bottom:12px;">
+          <div class="sisso-campo">
+            <label class="sisso-etiqueta">País</label>
+            <select class="sisso-select" id="cfg-pais" onchange="cambiarPaisConfigurador(this.value)">
+              ${configEstado.paises.map(p => `<option value="${p.clave}" ${p.clave === configEstado.paisNormativoClave ? 'selected' : ''}>${p.bandera_emoji || ''} ${escSector(p.nombre)}${p.estado === 'en_desarrollo' ? ' — en desarrollo' : ''}</option>`).join('')}
+            </select>
+          </div>
         </div>
-      </div>
-      <div class="normativa-aviso">
-        <strong>Perfil normativo: Ecuador (completamente desarrollado).</strong><br>
-        SISSO opera actualmente solo para Ecuador (Decreto Ejecutivo 255 y normativa relacionada). El soporte para otros países (Perú, Colombia, México, Chile, Argentina) está identificado en el plan de desarrollo como <em>"perfil normativo disponible / en desarrollo"</em> y todavía no determina ninguna configuración en el sistema.
-      </div>
-    `;
+        <div class="normativa-aviso">
+          <strong>Perfil normativo: ${escSector(paisElegido?.nombre || '')} ${paisElegido?.estado === 'completo' ? '(completamente desarrollado)' : '(disponible / en desarrollo)'}.</strong><br>
+          ${escSector(paisElegido?.descripcion_estado || '')}
+          ${paisElegido?.normativa_principal ? `<div style="margin-top:6px;font-size:11.5px;">Referencia normativa: ${escSector(paisElegido.normativa_principal)}</div>` : ''}
+          ${paisElegido?.estado === 'en_desarrollo' ? `<div style="margin-top:8px;font-weight:700;">⚠ Seleccionar este país NO activa reglas, formatos ni cumplimiento legal específico — solo registra tu preferencia para cuando ese perfil normativo esté desarrollado.</div>` : ''}
+        </div>
+      `;
+    }
   } else if (configEstado.paso === 5) {
     const riesgos = configEstado.sectorDetalle?.riesgos || [];
     if (riesgos.length === 0) {
@@ -174,7 +200,7 @@ function renderizarPasoConfigurador() {
         <div class="previsualizacion-lista">
           <span>${escSector(s?.icono || '🏢')} ${escSector(s?.etiqueta || configEstado.sectorClave || '—')}</span>
           <span>👥 ${configEstado.numeroTrabajadores ?? '—'} trabajadores declarados</span>
-          <span>🇪🇨 Ecuador</span>
+          <span>${escSector(configEstado.paises.find(p => p.clave === configEstado.paisNormativoClave)?.bandera_emoji || '')} ${escSector(configEstado.paises.find(p => p.clave === configEstado.paisNormativoClave)?.nombre || configEstado.paisNormativoClave || '—')}</span>
         </div>
       </div>
       <div class="previsualizacion-grupo">
@@ -263,6 +289,7 @@ async function pasoSiguienteConfigurador() {
       method: 'PUT',
       body: {
         sectorClave: configEstado.sectorClave,
+        paisNormativoClave: configEstado.paisNormativoClave || undefined,
         numeroTrabajadoresDeclarado: configEstado.numeroTrabajadores,
         riesgosPresentes: configEstado.riesgosSeleccionados,
         actividadEconomicaCiiu: configEstado.ciiu || undefined,

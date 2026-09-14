@@ -80,7 +80,7 @@ function renderizar(org, resumen, usuarios) {
           <div class="sector-icono-grande">${escHtml(org.sector_icono || '🏢')}</div>
           <div>
             <div style="font-weight:700; font-size:13.5px;">${escHtml(org.sector_etiqueta || org.sector_empresarial_clave)}</div>
-            <div style="font-size:11.5px; color:var(--t3);">${org.numero_trabajadores_declarado != null ? `${org.numero_trabajadores_declarado} trabajadores declarados · ` : ''}Perfil sectorial configurado</div>
+            <div style="font-size:11.5px; color:var(--t3);">${org.numero_trabajadores_declarado != null ? `${org.numero_trabajadores_declarado} trabajadores declarados · ` : ''}${org.pais_bandera ? `${org.pais_bandera} ${escHtml(org.pais_nombre || '')}${org.pais_estado === 'en_desarrollo' ? ' (normativa en desarrollo)' : ''} · ` : ''}Perfil sectorial configurado</div>
           </div>
         </div>
         <button class="sisso-boton secundario" onclick="abrirConfiguradorSectorial()">🧭 Editar configuración</button>
