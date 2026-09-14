@@ -231,7 +231,9 @@
               <div class="score-detalle-fila"><span>Grupo A (izquierdo)</span><strong id="d-a-izq">—</strong></div>
               <div class="score-detalle-fila"><span>Grupo B</span><strong id="d-b">—</strong></div>
               <div class="score-detalle-fila"><span>Lado más desfavorable</span><strong id="d-lado">—</strong></div>
-              <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--t2);" id="d-accion"></div>
+              <div style="margin-top:10px;font-size:12px;color:var(--t2);" id="d-interpretacion"></div>
+              <div style="margin-top:8px;" id="d-recomendaciones"></div>
+              <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--t2);"><strong>Acción requerida:</strong> <span id="d-accion"></span></div>
             </div>
           </div>
         </div>
@@ -512,7 +514,35 @@ function mostrarResultado(evaluacion) {
     evaluacion.lado_evaluado === 'ambos_iguales' ? 'Ambos iguales' :
     evaluacion.lado_evaluado === 'derecho' ? 'Derecho' : 'Izquierdo';
   document.getElementById('d-accion').textContent = evaluacion.accion_requerida;
+
+  // Lote F (Fase 13): mismo criterio que en REBA -- texto de apoyo
+  // por nivel, no reemplaza el calculo ni el juicio profesional.
+  const guia = GUIA_INTERPRETACION_RULA[evaluacion.nivel_riesgo] || null;
+  document.getElementById('d-interpretacion').textContent = guia ? guia.interpretacion : '';
+  document.getElementById('d-recomendaciones').innerHTML = guia
+    ? `<div style="font-size:11.5px;font-weight:700;color:var(--t3);margin-bottom:4px;">Recomendaciones:</div>` +
+      `<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--t2);">${guia.recomendaciones.map(r => `<li>${r}</li>`).join('')}</ul>`
+    : '';
 }
+
+const GUIA_INTERPRETACION_RULA = {
+  aceptable: {
+    interpretacion: 'La postura evaluada tiene un riesgo aceptable. No requiere intervención inmediata.',
+    recomendaciones: ['Mantener seguimiento periódico del puesto.', 'Reforzar buenas prácticas posturales.'],
+  },
+  puede_requerir_cambios: {
+    interpretacion: 'La postura puede requerir cambios. Conviene seguir observando y evaluar ajustes menores.',
+    recomendaciones: ['Observar la tarea en más ocasiones.', 'Evaluar pequeños ajustes de puesto o herramienta.'],
+  },
+  requiere_cambios_pronto: {
+    interpretacion: 'La postura requiere cambios pronto. La intervención debe planificarse a corto plazo.',
+    recomendaciones: ['Investigar la tarea con mayor detalle.', 'Planificar rediseño o rotación de tareas.', 'Registrar seguimiento en CAPA si corresponde.'],
+  },
+  requiere_cambios_ya: {
+    interpretacion: 'La postura requiere cambios urgentes. Se recomienda intervenir de inmediato.',
+    recomendaciones: ['Actuar de inmediato sobre la tarea o el puesto.', 'Escalar a CAPA con prioridad alta.', 'Notificar al responsable de SSO.'],
+  },
+};
 
 // CORREGIDO tras auditoria de seguridad (hallazgo G12): ver nota
 // completa en reba/index.html (mismo patron, endpoint bajo

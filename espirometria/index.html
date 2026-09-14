@@ -410,12 +410,30 @@ async function cargarHistorial() {
             <div>FEV1: ${e.fev1_pre} L (${e.fev1_pct_predicho ?? '—'}%)</div>
             <div>FEV1/FVC: ${e.fev1_fvc_medido ?? '—'}%</div>
           </div>
+          ${construirFilaPostBD(e)}
           ${e.observaciones ? `<div style="font-size:12px;color:var(--t3);margin-top:6px;">${escHtml(e.observaciones)}</div>` : ''}
         </div>`;
     }).join('');
   } catch (err) {
     cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
   }
+}
+
+// Lote F (Fase 12): "presentacion pre/post broncodilatador" -- solo
+// visualizacion, el calculo de reversibilidad_positiva ya lo hace el
+// backend (motor de espirometria, no tocado).
+function construirFilaPostBD(e) {
+  if (e.fev1_post == null && e.fvc_post == null) return '';
+  const flechaFev1 = (e.fev1_post != null && e.fev1_pre != null)
+    ? (e.fev1_post > e.fev1_pre ? '↑' : e.fev1_post < e.fev1_pre ? '↓' : '=')
+    : '';
+  return `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11.5px;color:var(--t3);margin-top:4px;background:var(--bg3);border-radius:6px;padding:5px 8px;">
+      <strong style="color:var(--t2);">Post-BD${e.minutos_post_broncodilatador ? ` (${e.minutos_post_broncodilatador} min)` : ''}:</strong>
+      <div>FVC: ${e.fvc_post ?? '—'} L</div>
+      <div>FEV1: ${e.fev1_post ?? '—'} L ${flechaFev1}</div>
+      ${e.cambio_fev1_pct != null ? `<div>Δ FEV1: ${e.cambio_fev1_pct > 0 ? '+' : ''}${e.cambio_fev1_pct}%</div>` : ''}
+    </div>`;
 }
 
 function infoPatron(patron) {

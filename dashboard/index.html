@@ -36,11 +36,39 @@
 
     .sin-datos { text-align: center; padding: 30px 10px; color: var(--t3); font-size: 12.5px; }
     .sin-datos-icono { font-size: 28px; margin-bottom: 8px; }
+
+    /* ---- Lote D: cabecera con "+ Nueva evaluación" + accesos rápidos por rol ---- */
+    .dashboard-cabecera { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+
+    .accesos-rapidos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .acceso-rapido { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+      border: 1px solid var(--bd); border-radius: var(--r2); padding: 14px 8px; text-decoration: none; color: inherit; background: var(--bg2); }
+    .acceso-rapido:hover { border-color: var(--teal); }
+    .acceso-rapido .icono { font-size: 22px; }
+    .acceso-rapido .etiqueta { font-size: 11.5px; font-weight: 600; }
+
+    .sisso-modal-fondo { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+    .sisso-modal-fondo.visible { display: flex; }
+    .sisso-modal-caja { background: #fff; border-radius: 14px; padding: 24px; width: 520px; max-width: 100%; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+
+    .lista-trabajadores-buscador { max-height: 220px; overflow-y: auto; border: 1px solid var(--bd); border-radius: var(--r); margin-top: 8px; }
+    .trabajador-opcion { padding: 9px 12px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid var(--bd); }
+    .trabajador-opcion:last-child { border-bottom: none; }
+    .trabajador-opcion:hover { background: var(--bg3); }
+    .trabajador-opcion.seleccionado { background: var(--teal3); font-weight: 600; }
+
+    .tipo-evaluacion-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
+    .tipo-evaluacion-opcion { border: 1.5px solid var(--bd); border-radius: var(--r); padding: 10px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .tipo-evaluacion-opcion.seleccionada { border-color: var(--teal); background: var(--teal3); color: var(--teal2); }
   </style>
 </head>
 <body>
 
 <div id="sisso-app">
+
+  <div class="dashboard-cabecera" id="cabecera-nueva-evaluacion"></div>
+
+  <div class="accesos-rapidos-grid" id="accesos-rapidos"></div>
 
   <!-- KPIs principales -->
   <div class="kpi-grid" id="kpi-grid">
@@ -101,6 +129,32 @@
 
 </div>
 
+<!-- Lote D (Fase 6): orquestador "+ Nueva evaluación" -->
+<div class="sisso-modal-fondo" id="modal-nueva-evaluacion">
+  <div class="sisso-modal-caja">
+    <div class="sisso-tarjeta-titulo">+ Nueva evaluación</div>
+    <div class="sisso-tarjeta-subtitulo">Busca al trabajador y elige el tipo de evaluación. Se abrirá directamente en Historia Clínica con esos datos ya cargados.</div>
+    <div class="sisso-error" id="ne-error"></div>
+
+    <label class="sisso-etiqueta">Trabajador</label>
+    <input id="ne-buscador" class="sisso-input" placeholder="Buscar por nombre o documento…" oninput="filtrarTrabajadoresNuevaEvaluacion()">
+    <div class="lista-trabajadores-buscador" id="ne-lista-trabajadores"></div>
+
+    <label class="sisso-etiqueta" style="margin-top:14px; display:block;">Tipo de evaluación</label>
+    <div class="tipo-evaluacion-grid" id="ne-tipos">
+      <div class="tipo-evaluacion-opcion seleccionada" data-tipo="preocupacional_inicio" onclick="elegirTipoNuevaEvaluacion(this,'preocupacional_inicio')">Preocupacional / ingreso</div>
+      <div class="tipo-evaluacion-opcion" data-tipo="periodica" onclick="elegirTipoNuevaEvaluacion(this,'periodica')">Periódica</div>
+      <div class="tipo-evaluacion-opcion" data-tipo="reintegro" onclick="elegirTipoNuevaEvaluacion(this,'reintegro')">Reintegro</div>
+      <div class="tipo-evaluacion-opcion" data-tipo="retiro" onclick="elegirTipoNuevaEvaluacion(this,'retiro')">Retiro</div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+      <button class="sisso-boton secundario" onclick="cerrarModalNuevaEvaluacion()">Cancelar</button>
+      <button class="sisso-boton" onclick="continuarNuevaEvaluacion()">Continuar →</button>
+    </div>
+  </div>
+</div>
+
 <script src="../lib/chart.umd.min.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
@@ -108,8 +162,140 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   SissoLayout.iniciar('dashboard', 'Dashboard');
+  renderizarAccesosRapidos();
+  renderizarCabeceraNuevaEvaluacion();
   await cargarDashboard();
 });
+
+// ------- Lote D (Fase 5): accesos rápidos diferenciados por rol -------
+// Nota: no se agregan aqui datos clinicos nuevos ni consultas nuevas al
+// backend -- son solo enlaces de navegacion hacia paginas que YA existen
+// y que YA tienen su propio RBAC (ver shared/layout.js, arreglo MENU).
+// Los KPIs/graficos de arriba siguen siendo los mismos para todos los
+// roles, ya filtrados correctamente por dashboardController.js.
+const ACCESOS_RAPIDOS_POR_ROL = {
+  medico: [
+    { icono: '📋', etiqueta: 'Historia clínica', href: '../historia-clinica/index.html' },
+    { icono: '🩺', etiqueta: 'EMOs / Aptitud', href: '../aptitud/index.html' },
+    { icono: '🔊', etiqueta: 'Audiometría', href: '../audiometria/index.html' },
+    { icono: '💨', etiqueta: 'Espirometría', href: '../espirometria/index.html' },
+    { icono: '📊', etiqueta: 'Vigilancia de la salud', href: '../vigilancia-salud/index.html' },
+    { icono: '🧬', etiqueta: 'Enfermedad profesional', href: '../enfermedad-profesional/index.html' },
+  ],
+  sso: [
+    { icono: '🗂️', etiqueta: 'Matriz de riesgos', href: '../matriz-riesgos/index.html' },
+    { icono: '🚨', etiqueta: 'Accidentes/Incidentes', href: '../accidentes/index.html' },
+    { icono: '🔁', etiqueta: 'CAPA', href: '../capa/index.html' },
+    { icono: '🔎', etiqueta: 'Inspecciones', href: '../inspecciones/index.html' },
+    { icono: '🌡️', etiqueta: 'Higiene industrial', href: '../higiene-industrial/index.html' },
+    { icono: '🦺', etiqueta: 'EPP', href: '../epp/index.html' },
+  ],
+  th: [
+    { icono: '👥', etiqueta: 'Trabajadores', href: '../trabajadores/index.html' },
+    { icono: '📉', etiqueta: 'Ausentismo', href: '../ausentismo/index.html' },
+    { icono: '🎓', etiqueta: 'Capacitaciones', href: '../capacitaciones/index.html' },
+    { icono: '📅', etiqueta: 'Calendario EMOs', href: '../calendario-emos/index.html' },
+    { icono: '📄', etiqueta: 'Certificados PDF', href: '../certificados-pdf/index.html' },
+  ],
+  admin: [
+    { icono: '🏢', etiqueta: 'Mi Empresa', href: '../mi-empresa/index.html' },
+    { icono: '⚙️', etiqueta: 'Configuración', href: '../configuracion/index.html' },
+    { icono: '📈', etiqueta: 'Indicadores SSO', href: '../indicadores/index.html' },
+    { icono: '📊', etiqueta: 'Reportes BI', href: '../reportes-bi/index.html' },
+  ],
+};
+
+function renderizarAccesosRapidos() {
+  const usuario = SissoSesion.obtenerUsuario();
+  const accesos = ACCESOS_RAPIDOS_POR_ROL[usuario?.rol] || [];
+  const cont = document.getElementById('accesos-rapidos');
+  if (!cont || accesos.length === 0) return;
+  cont.innerHTML = accesos.map(a => `
+    <a class="acceso-rapido" href="${a.href}">
+      <span class="icono">${a.icono}</span>
+      <span class="etiqueta">${escHtml(a.etiqueta)}</span>
+    </a>`).join('');
+}
+
+// ------- Lote D (Fase 6): "+ Nueva evaluación" -------
+// Solo visible para medico: historia-clinica.js (destino final del
+// orquestador) ya esta restringido a ese rol en shared/layout.js, asi
+// que mostrar el boton a otros roles solo generaria un enlace que el
+// RBAC del backend rechazaria igual -- mejor no ofrecerlo.
+let neTrabajadores = [];
+let neTrabajadorSeleccionado = null;
+let neTipoSeleccionado = 'preocupacional_inicio';
+
+function renderizarCabeceraNuevaEvaluacion() {
+  const usuario = SissoSesion.obtenerUsuario();
+  const cont = document.getElementById('cabecera-nueva-evaluacion');
+  if (!cont) return;
+  if (usuario?.rol === 'medico') {
+    cont.innerHTML = `<button class="sisso-boton" onclick="abrirModalNuevaEvaluacion()">+ Nueva evaluación</button>`;
+  }
+}
+
+async function abrirModalNuevaEvaluacion() {
+  neTrabajadorSeleccionado = null;
+  neTipoSeleccionado = 'preocupacional_inicio';
+  document.getElementById('ne-buscador').value = '';
+  document.getElementById('ne-error').classList.remove('visible');
+  document.querySelectorAll('.tipo-evaluacion-opcion').forEach(el => el.classList.toggle('seleccionada', el.dataset.tipo === neTipoSeleccionado));
+  document.getElementById('modal-nueva-evaluacion').classList.add('visible');
+
+  if (neTrabajadores.length === 0) {
+    try {
+      const datos = await sissoFetch('/trabajadores');
+      neTrabajadores = datos.trabajadores || [];
+    } catch (err) {
+      document.getElementById('ne-error').textContent = 'No se pudo cargar la lista de trabajadores: ' + err.message;
+      document.getElementById('ne-error').classList.add('visible');
+    }
+  }
+  filtrarTrabajadoresNuevaEvaluacion();
+}
+
+function cerrarModalNuevaEvaluacion() {
+  document.getElementById('modal-nueva-evaluacion').classList.remove('visible');
+}
+
+function filtrarTrabajadoresNuevaEvaluacion() {
+  const termino = document.getElementById('ne-buscador').value.trim().toLowerCase();
+  const filtrados = termino
+    ? neTrabajadores.filter(t => t.nombre_completo?.toLowerCase().includes(termino) || t.documento?.toLowerCase().includes(termino))
+    : neTrabajadores;
+
+  const cont = document.getElementById('ne-lista-trabajadores');
+  if (filtrados.length === 0) {
+    cont.innerHTML = `<div class="trabajador-opcion" style="cursor:default;color:var(--t3);">Sin resultados.</div>`;
+    return;
+  }
+  cont.innerHTML = filtrados.slice(0, 50).map(t => `
+    <div class="trabajador-opcion ${neTrabajadorSeleccionado === t.id ? 'seleccionado' : ''}" onclick="seleccionarTrabajadorNuevaEvaluacion('${t.id}')">
+      ${escHtml(t.nombre_completo)} — ${escHtml(t.documento || '')}
+    </div>`).join('');
+}
+
+function seleccionarTrabajadorNuevaEvaluacion(id) {
+  neTrabajadorSeleccionado = id;
+  filtrarTrabajadoresNuevaEvaluacion();
+}
+
+function elegirTipoNuevaEvaluacion(el, tipo) {
+  neTipoSeleccionado = tipo;
+  document.querySelectorAll('.tipo-evaluacion-opcion').forEach(o => o.classList.remove('seleccionada'));
+  el.classList.add('seleccionada');
+}
+
+function continuarNuevaEvaluacion() {
+  if (!neTrabajadorSeleccionado) {
+    const err = document.getElementById('ne-error');
+    err.textContent = 'Selecciona un trabajador para continuar.';
+    err.classList.add('visible');
+    return;
+  }
+  window.location.href = `../historia-clinica/index.html?trabajador=${encodeURIComponent(neTrabajadorSeleccionado)}&tipo=${encodeURIComponent(neTipoSeleccionado)}`;
+}
 
 async function cargarDashboard() {
   try {

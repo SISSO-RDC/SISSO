@@ -158,7 +158,56 @@
             <textarea id="observaciones" class="sisso-textarea" placeholder="Condiciones del examen, observaciones clínicas…" style="min-height:60px;"></textarea>
           </div>
 
-          <button class="sisso-boton ancho-completo" id="btn-guardar" onclick="guardarExamen()">Guardar examen audiométrico</button>
+          <!-- Lote F (Fase 11): calibracion de equipo y condiciones del
+               ambiente. Estos campos YA existian en el backend desde la
+               Auditoria N.14 (migration_071) pero el formulario nunca los
+               pedia -- se agregan aqui, opcionales, sin tocar el motor de
+               calculo de PTA/STS/patron (audiometria/audiometria.js no se
+               modifico). -->
+          <details style="margin-top:14px; border:1px solid var(--bd); border-radius:var(--r); padding:10px 14px;">
+            <summary style="cursor:pointer; font-weight:700; font-size:12.5px; color:var(--t2);">🔧 Calibración del equipo y condiciones del examen (opcional)</summary>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:12px;">
+              <div class="sisso-campo" style="flex:1; min-width:140px; margin-bottom:0;">
+                <label class="sisso-etiqueta" for="eq-marca">Marca del audiómetro</label>
+                <input id="eq-marca" class="sisso-input">
+              </div>
+              <div class="sisso-campo" style="flex:1; min-width:140px; margin-bottom:0;">
+                <label class="sisso-etiqueta" for="eq-modelo">Modelo</label>
+                <input id="eq-modelo" class="sisso-input">
+              </div>
+              <div class="sisso-campo" style="flex:1; min-width:140px; margin-bottom:0;">
+                <label class="sisso-etiqueta" for="eq-serie">N° de serie</label>
+                <input id="eq-serie" class="sisso-input">
+              </div>
+              <div class="sisso-campo" style="flex:1; min-width:140px; margin-bottom:0;">
+                <label class="sisso-etiqueta" for="eq-fecha-cal">Fecha última calibración</label>
+                <input id="eq-fecha-cal" type="date" class="sisso-input">
+              </div>
+              <div class="sisso-campo" style="flex:1; min-width:180px; margin-bottom:0;">
+                <label class="sisso-etiqueta" for="eq-verif-bio">Verificación biológica diaria</label>
+                <select id="eq-verif-bio" class="sisso-select">
+                  <option value="">No registrada</option>
+                  <option value="conforme">Conforme</option>
+                  <option value="no_conforme">No conforme</option>
+                  <option value="no_realizada">No realizada</option>
+                </select>
+              </div>
+              <div class="sisso-campo" style="flex:1; min-width:180px; margin-bottom:0;">
+                <label class="sisso-etiqueta" for="amb-ruido">Ruido de fondo (dBA)</label>
+                <input id="amb-ruido" type="number" step="0.1" class="sisso-input">
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; margin-top:18px;">
+                <input type="checkbox" id="amb-cabina" style="width:16px;height:16px;">
+                <label for="amb-cabina" style="font-size:12.5px; cursor:pointer;">Cabina sonoamortiguada</label>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; margin-top:18px;">
+                <input type="checkbox" id="amb-ansi" style="width:16px;height:16px;">
+                <label for="amb-ansi" style="font-size:12.5px; cursor:pointer;">Cumple ANSI S3.1</label>
+              </div>
+            </div>
+          </details>
+
+          <button class="sisso-boton ancho-completo" id="btn-guardar" style="margin-top:14px;" onclick="guardarExamen()">Guardar examen audiométrico</button>
         </div>
 
         <!-- Columna derecha: audiograma en vivo -->
@@ -331,6 +380,26 @@ async function guardarExamen() {
     observaciones: document.getElementById('observaciones').value.trim() || undefined,
   };
 
+  // Lote F (Fase 11): equipo/ambiente -- se envian solo si el usuario
+  // completo algo, para no forzar el paso en examenes donde todavia no
+  // se tiene ese dato (mismo criterio opcional que ya definio N.14 en
+  // el backend).
+  const equipo = {
+    marca: document.getElementById('eq-marca').value.trim() || undefined,
+    modelo: document.getElementById('eq-modelo').value.trim() || undefined,
+    numeroSerie: document.getElementById('eq-serie').value.trim() || undefined,
+    fechaCalibracion: document.getElementById('eq-fecha-cal').value || undefined,
+    resultadoVerificacionBiologica: document.getElementById('eq-verif-bio').value || undefined,
+  };
+  if (Object.values(equipo).some(v => v !== undefined)) cuerpo.equipo = equipo;
+
+  const ambiente = {
+    cabinaSonoamortiguada: document.getElementById('amb-cabina').checked || undefined,
+    nivelRuidoFondoDba: document.getElementById('amb-ruido').value !== '' ? parseFloat(document.getElementById('amb-ruido').value) : undefined,
+    cumpleAnsiS31: document.getElementById('amb-ansi').checked || undefined,
+  };
+  if (Object.values(ambiente).some(v => v !== undefined)) cuerpo.ambiente = ambiente;
+
   // Recoger todos los umbrales
   ['ca_od','ca_oi'].forEach(prefijo => {
     [500,1000,2000,3000,4000,6000,8000].forEach(f => {
@@ -365,6 +434,10 @@ async function guardarExamen() {
     document.querySelectorAll('.input-db').forEach(el => el.value = '');
     document.getElementById('es-basal').checked = false;
     document.getElementById('observaciones').value = '';
+    ['eq-marca','eq-modelo','eq-serie','eq-fecha-cal','amb-ruido'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('eq-verif-bio').value = '';
+    document.getElementById('amb-cabina').checked = false;
+    document.getElementById('amb-ansi').checked = false;
     actualizarAudiograma();
     await cargarHistorial();
 
@@ -409,11 +482,58 @@ async function cargarHistorial() {
             ${chipPatron('OD', e.patron_od)}
             ${chipPatron('OI', e.patron_oi)}
           </div>
+          ${construirResumenInterpretativo(e, stsAlerta)}
+          ${construirLineaCalibracion(e)}
         </div>`;
     }).join('');
   } catch (err) {
     cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
   }
+}
+
+// Lote F (Fase 11): "mejor... resumen de resultado" -- una linea en
+// lenguaje llano antes de los chips tecnicos, para que no haya que
+// interpretar PTA/patron manualmente cada vez. No reemplaza ni
+// recalcula nada: solo redacta en palabras lo que el backend ya
+// determino (patron_od/oi, sts_*_positivo).
+function construirResumenInterpretativo(e, stsAlerta) {
+  const patrones = [e.patron_od, e.patron_oi].filter(Boolean);
+  const normalAmbos = patrones.length === 2 && patrones.every(p => p === 'normal');
+  let texto;
+  if (stsAlerta) {
+    texto = '⚠ Se detectó un cambio significativo (STS) respecto a la basal — requiere evaluación médica y posible retest confirmatorio.';
+  } else if (normalAmbos) {
+    texto = '✓ Umbrales dentro de rango normal en ambos oídos, sin cambio significativo respecto a la basal.';
+  } else if (patrones.length > 0) {
+    texto = 'Se identificó un patrón audiométrico que amerita seguimiento — ver clasificación por oído abajo.';
+  } else {
+    texto = 'Examen registrado sin clasificación de patrón disponible.';
+  }
+  const color = stsAlerta ? 'var(--red2)' : (normalAmbos ? 'var(--grn2)' : 'var(--amb2)');
+  return `<div style="font-size:12px;color:${color};font-weight:600;margin:6px 0;">${texto}</div>`;
+}
+
+// Lote F (Fase 11): "informacion de calibracion" + "identificacion de
+// tipo de audiometria" -- muestra lo que se cargo en el formulario
+// opcional de equipo/ambiente (ver guardarExamen). Si el examen es
+// anterior a esta mejora, estos campos vienen NULL y la linea no se
+// muestra -- no se inventa informacion que no fue registrada.
+function construirLineaCalibracion(e) {
+  const partes = [];
+  if (e.equipo_marca || e.equipo_modelo) {
+    partes.push(`🔧 ${[e.equipo_marca, e.equipo_modelo].filter(Boolean).map(escHtml).join(' ')}`);
+  }
+  if (e.equipo_fecha_calibracion) {
+    partes.push(`Calibrado: ${formatearFecha(e.equipo_fecha_calibracion)}`);
+  }
+  if (e.ambiente_cabina_sonoamortiguada) {
+    partes.push('Cabina sonoamortiguada');
+  }
+  if (e.ambiente_nivel_ruido_fondo_dba != null) {
+    partes.push(`Ruido de fondo: ${e.ambiente_nivel_ruido_fondo_dba} dBA`);
+  }
+  if (partes.length === 0) return '';
+  return `<div style="font-size:11px;color:var(--t3);margin-top:6px;border-top:1px dashed var(--bd);padding-top:6px;">${partes.join(' · ')}</div>`;
 }
 
 function chipPatron(lado, patron) {
