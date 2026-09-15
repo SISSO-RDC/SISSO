@@ -153,7 +153,7 @@ let usuariosOrganizacion = [];
 let medicionModalId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('higiene-industrial', 'Higiene Industrial');
+  await SissoLayout.iniciar('higiene-industrial', 'Higiene Industrial');
 
   const usuario = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso'].includes(usuario.rol);

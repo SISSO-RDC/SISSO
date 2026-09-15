@@ -35,7 +35,7 @@ let usuariosOrganizacion = [];
 let alertaAbiertaId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('alertas', 'Alertas');
+  await SissoLayout.iniciar('alertas', 'Alertas');
   await cargarUsuarios();
   await cargarAlertas();
 });

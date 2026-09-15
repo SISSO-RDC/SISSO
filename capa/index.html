@@ -143,7 +143,7 @@ let usuariosOrganizacion = [];
 let capaActualId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('capa', 'CAPA');
+  await SissoLayout.iniciar('capa', 'CAPA');
 
   const usuario = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso', 'medico'].includes(usuario.rol);

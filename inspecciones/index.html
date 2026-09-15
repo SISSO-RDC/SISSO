@@ -170,7 +170,7 @@ let inspeccionActualId = null;
 let hallazgoModalId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('inspecciones', 'Inspecciones');
+  await SissoLayout.iniciar('inspecciones', 'Inspecciones');
 
   const usuario = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso'].includes(usuario.rol);

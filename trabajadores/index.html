@@ -230,7 +230,7 @@ const esMedico = SissoSesion.obtenerUsuario()?.rol === 'medico';
 
 // ------- INICIALIZACION -------
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('trabajadores', 'Registro de Trabajadores');
+  await SissoLayout.iniciar('trabajadores', 'Registro de Trabajadores');
 
   // Mostrar columna "Aptitud" solo si es medico
   if (esMedico) {

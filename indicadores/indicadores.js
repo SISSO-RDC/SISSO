@@ -3,7 +3,7 @@
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('indicadores', 'Indicadores SSO');
+  await SissoLayout.iniciar('indicadores', 'Indicadores SSO');
   await cargar();
 });
 

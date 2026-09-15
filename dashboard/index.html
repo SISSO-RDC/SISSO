@@ -161,7 +161,7 @@
 <script>
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('dashboard', 'Dashboard');
+  await SissoLayout.iniciar('dashboard', 'Dashboard');
   renderizarAccesosRapidos();
   renderizarCabeceraNuevaEvaluacion();
   await cargarDashboard();

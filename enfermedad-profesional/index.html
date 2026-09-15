@@ -182,7 +182,7 @@ let trabajadorActualId = null;
 let casoActualId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('enfermedad-profesional', 'Enfermedad Profesional');
+  await SissoLayout.iniciar('enfermedad-profesional', 'Enfermedad Profesional');
 
   const usuario = SissoSesion.obtenerUsuario();
   if (usuario.rol === 'sso') {

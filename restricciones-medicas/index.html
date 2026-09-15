@@ -128,7 +128,7 @@ let accionModal = null; // 'prorrogar' | 'modificar' | 'levantar'
 let restriccionModalId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('restricciones', 'Restricciones Médicas');
+  await SissoLayout.iniciar('restricciones', 'Restricciones Médicas');
 
   const usuario = SissoSesion.obtenerUsuario();
   esMedico = usuario.rol === 'medico';

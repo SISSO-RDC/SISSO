@@ -184,7 +184,7 @@ let trabajadorActualId = null;
 let trabajadorActual = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('espirometria', 'Espirometría Ocupacional');
+  await SissoLayout.iniciar('espirometria', 'Espirometría Ocupacional');
   document.getElementById('fecha-examen').value = new Date().toISOString().split('T')[0];
   await cargarTrabajadores();
   const presel = localStorage.getItem('sisso_trabajador_id');

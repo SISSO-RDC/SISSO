@@ -6,7 +6,7 @@ let organizacionActual = null;
 let resumenActual = null; // usado por configurador-sectorial.js como sugerencia inicial de numero de trabajadores
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('empresa', 'Mi Empresa');
+  await SissoLayout.iniciar('empresa', 'Mi Empresa');
   await cargarPerfil();
 });
 

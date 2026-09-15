@@ -218,7 +218,7 @@ let casoActualId = null;
 let archivoEvidenciaPendiente = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('accidentes', 'Accidentes / Incidentes');
+  await SissoLayout.iniciar('accidentes', 'Accidentes / Incidentes');
 
   const usuario = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso'].includes(usuario.rol);

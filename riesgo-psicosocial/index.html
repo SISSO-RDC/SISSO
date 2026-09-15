@@ -182,7 +182,7 @@ let evaluacionActualId = null;
 let factoresTemporales = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('riesgo-psicosocial', 'Riesgo Psicosocial');
+  await SissoLayout.iniciar('riesgo-psicosocial', 'Riesgo Psicosocial');
 
   const usuario = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso'].includes(usuario.rol);

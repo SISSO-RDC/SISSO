@@ -152,7 +152,7 @@
 let rolElegido = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('configuracion', 'Configuración');
+  await SissoLayout.iniciar('configuracion', 'Configuración');
   await cargarUsuarios();
 });
 

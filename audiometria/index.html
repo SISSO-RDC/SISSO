@@ -247,7 +247,7 @@ const FRECUENCIAS = [500, 1000, 2000, 3000, 4000, 6000, 8000];
 const FREC_LABELS = ['500', '1k', '2k', '3k', '4k', '6k', '8k'];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('audiometria', 'Audiometría Ocupacional');
+  await SissoLayout.iniciar('audiometria', 'Audiometría Ocupacional');
   inicializarAudiograma();
 
   // Fecha de hoy por defecto

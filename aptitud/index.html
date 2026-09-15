@@ -185,7 +185,7 @@ let aptitudElegida = null;
 let timeoutBusqueda = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('emos', 'Aptitud Médica');
+  await SissoLayout.iniciar('emos', 'Aptitud Médica');
   await cargarTrabajadores();
   await cargarExposiciones();
 

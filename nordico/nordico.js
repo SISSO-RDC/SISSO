@@ -8,7 +8,7 @@ let trabajadorActual = null;
 let catalogos = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('nordico', 'Cuestionario Nórdico');
+  await SissoLayout.iniciar('nordico', 'Cuestionario Nórdico');
   document.getElementById('fecha-aplicacion').value = new Date().toISOString().split('T')[0];
   await Promise.all([cargarTrabajadores(), cargarCatalogos()]);
   renderizarRegiones();

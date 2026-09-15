@@ -305,7 +305,7 @@ let sesionActualId = null;
 let trabajadores = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('reba', 'Calculadora REBA');
+  await SissoLayout.iniciar('reba', 'Calculadora REBA');
   await cargarTrabajadores();
 
   // Si venimos desde "Ver" en la pantalla de Trabajadores, preseleccionar

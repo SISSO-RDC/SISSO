@@ -250,7 +250,7 @@ let sesionActualId = null;
 let trabajadores = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('rula', 'Calculadora RULA');
+  await SissoLayout.iniciar('rula', 'Calculadora RULA');
   await cargarTrabajadores();
   const trabajadorPreseleccionado = localStorage.getItem('sisso_trabajador_id');
   if (trabajadorPreseleccionado) {

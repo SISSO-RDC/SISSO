@@ -7,7 +7,7 @@ let trabajadorActualId = null;
 let trabajadorActual = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('niosh', 'Ecuación NIOSH');
+  await SissoLayout.iniciar('niosh', 'Ecuación NIOSH');
   document.getElementById('fecha-evaluacion').value = new Date().toISOString().split('T')[0];
   await cargarTrabajadores();
 });

@@ -93,6 +93,15 @@ const SissoSesion = {
     sessionStorage.setItem(CLAVE_ACCESS_TOKEN, nuevoAccessToken);
   },
 
+  /**
+   * Reemplaza el usuario en cache por uno nuevo (usado al restaurar
+   * la sesion via /auth/perfil cuando sessionStorage se perdio en
+   * el celular pero el refresh token seguia siendo valido).
+   */
+  actualizarUsuario(usuario) {
+    sessionStorage.setItem(CLAVE_USUARIO, JSON.stringify(usuario));
+  },
+
   obtenerAccessToken() {
     return sessionStorage.getItem(CLAVE_ACCESS_TOKEN);
   },
@@ -336,9 +345,61 @@ async function sissoCerrarSesion() {
  * Protege una pagina: si no hay sesion activa, redirige al login
  * inmediatamente. Se llama al inicio de cada pagina que requiera
  * estar autenticado.
+ *
+ * CORREGIDO (reporte del usuario: "al cambiar de pestaña en el
+ * celular se cierra la app y hay que volver a loguearse, solo pasa
+ * en el movil"). Causa raiz: el access token vive en sessionStorage
+ * a proposito (ver comentario al inicio de este archivo), pero los
+ * navegadores moviles frecuentemente descargan de memoria (y con
+ * eso, sessionStorage) una pestaña puesta en segundo plano cuando el
+ * sistema operativo necesita RAM -- algo que practicamente no pasa
+ * en escritorio. Al volver a la app, la pagina se recarga desde
+ * cero, sessionStorage aparece vacio, y esta funcion mandaba
+ * directo al login SIN intentar lo que la cookie HttpOnly del
+ * refresh token esta pensada para resolver: esa cookie no vive en
+ * sessionStorage, no se pierde con la pagina, y sigue siendo valida.
+ * Ahora, antes de rendirse, se intenta un refresco silencioso con
+ * esa cookie (la misma funcion que ya usa sissoFetch cuando un
+ * access token expira en medio de una sesion activa) -- si funciona,
+ * la sesion se restaura sin pedir contraseña de nuevo.
+ *
+ * @returns {Promise<void>}
  */
-function sissoRequerirSesion() {
-  if (!SissoSesion.haySesion()) {
+async function sissoRequerirSesion() {
+  if (SissoSesion.haySesion()) return;
+
+  // Intencionalmente NO se revisa primero si hay un "usuario" en
+  // cache para decidir si vale la pena intentar el refresco: cuando
+  // el sistema operativo del celular libera la pestaña en segundo
+  // plano, se lleva sessionStorage COMPLETO (access token Y usuario
+  // guardado) -- si solo se intentara cuando "usuario" sigue en
+  // cache, este arreglo nunca se activaria en el caso real que lo
+  // motivo. La cookie HttpOnly del refresh token es la unica fuente
+  // de verdad que sobrevive a eso, asi que siempre se intenta contra
+  // ella; si no hay sesion real (nunca hubo login, o se cerro
+  // sesion, o el refresh token ya expiro), simplemente falla y se
+  // redirige al login como antes.
+  const renovado = await intentarRefrescarToken();
+  if (!renovado) {
+    SissoSesion.limpiar();
     window.location.href = '../login/index.html';
+    return;
+  }
+
+  // El access token ya se restauro (intentarRefrescarToken lo guarda
+  // en sessionStorage). Si el usuario tambien se perdio, se
+  // reconstruye con /auth/perfil -- que devuelve exactamente la
+  // misma forma que completarLogin() para que el sidebar y el resto
+  // del layout no noten la diferencia.
+  if (!SissoSesion.obtenerUsuario()) {
+    try {
+      const datos = await sissoFetch('/auth/perfil');
+      SissoSesion.actualizarUsuario(datos.usuario);
+    } catch (err) {
+      // Si ni siquiera esto funciona, es mas seguro mandar al login
+      // que dejar el layout a medias sin datos de usuario.
+      SissoSesion.limpiar();
+      window.location.href = '../login/index.html';
+    }
   }
 }

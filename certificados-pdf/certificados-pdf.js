@@ -13,7 +13,7 @@ let trabajadoresCache = [];
 let capacitacionAbiertaId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('certificados', 'Certificados PDF');
+  await SissoLayout.iniciar('certificados', 'Certificados PDF');
   await cargarTrabajadores();
   await cargarCapacitaciones();
 });

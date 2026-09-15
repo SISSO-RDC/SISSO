@@ -6,7 +6,7 @@ let catalogos = null;
 let puestoEditandoId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('puestos', 'Puestos de Trabajo');
+  await SissoLayout.iniciar('puestos', 'Puestos de Trabajo');
   await cargarCatalogos();
   renderizarMatricesRiesgo();
   await cargarPuestos();

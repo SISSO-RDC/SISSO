@@ -21,7 +21,7 @@ const ETIQUETAS_RESUMEN = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('calendario', 'Calendario EMOs');
+  await SissoLayout.iniciar('calendario', 'Calendario EMOs');
   await cargarDatos();
 });
 

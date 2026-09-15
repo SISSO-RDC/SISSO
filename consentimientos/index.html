@@ -149,7 +149,7 @@ let ctx, dibujando = false, hayTrazo = false;
 let fotoFirmaBase64 = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('consentimientos', 'Consentimientos Informados');
+  await SissoLayout.iniciar('consentimientos', 'Consentimientos Informados');
   await cargarTrabajadores();
   await cargarTipos();
   inicializarCanvas();

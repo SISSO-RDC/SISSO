@@ -96,7 +96,7 @@ let puestos = [];
 let puestoActualId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('matriz-medico-puesto', 'Matriz Médico-Ocupacional');
+  await SissoLayout.iniciar('matriz-medico-puesto', 'Matriz Médico-Ocupacional');
   await cargarPuestos();
 });
 

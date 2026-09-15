@@ -131,7 +131,7 @@ let ctxFirma = null;
 let dibujando = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('epp', 'EPP');
+  await SissoLayout.iniciar('epp', 'EPP');
 
   const usuario = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso'].includes(usuario.rol);

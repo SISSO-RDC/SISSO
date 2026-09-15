@@ -130,7 +130,7 @@ let esMedico = false;
 let programaActualId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('vigilancia-salud', 'Vigilancia de la Salud');
+  await SissoLayout.iniciar('vigilancia-salud', 'Vigilancia de la Salud');
 
   const usuario = SissoSesion.obtenerUsuario();
   esMedico = usuario.rol === 'medico';

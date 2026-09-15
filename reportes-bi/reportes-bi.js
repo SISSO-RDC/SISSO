@@ -17,7 +17,7 @@ let ultimosFiltros = { desde: null, hasta: null, area: null };
 const graficosActivos = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('reportes', 'Reportes BI');
+  await SissoLayout.iniciar('reportes', 'Reportes BI');
   poblarSelectorAnio();
   await cargarAreas();
   await aplicarFiltrosBI();

@@ -320,9 +320,12 @@ const SissoLayout = (() => {
      * @param {string} tituloModulo - texto a mostrar en el topbar (ej: 'Calculadora REBA')
      * @param {string} [contenedorId='sisso-app'] - id del div raiz donde se inyecta el layout
      */
-    iniciar(moduloActivo, tituloModulo, contenedorId = 'sisso-app') {
-      // Verificar sesion activa (si no hay, redirige al login automaticamente)
-      sissoRequerirSesion();
+    async iniciar(moduloActivo, tituloModulo, contenedorId = 'sisso-app') {
+      // Verificar sesion activa (si no hay, intenta un refresco
+      // silencioso antes de redirigir al login -- ver
+      // sissoRequerirSesion en shared/api.js).
+      await sissoRequerirSesion();
+      if (!SissoSesion.haySesion()) return; // ya redirigiendo al login, no seguir construyendo el layout
 
       const usuario = SissoSesion.obtenerUsuario();
       const contenedor = document.getElementById(contenedorId);

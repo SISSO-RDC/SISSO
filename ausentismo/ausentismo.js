@@ -11,7 +11,7 @@ let paginaActual = 1;
 const POR_PAGINA = 25;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('ausentismo', 'Ausentismo');
+  await SissoLayout.iniciar('ausentismo', 'Ausentismo');
   await Promise.all([cargarCatalogos(), cargarTrabajadores()]);
   await cargarResumen();
   await cargarLista();

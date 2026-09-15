@@ -21,7 +21,7 @@ const ETIQUETAS_TIPO_PELIGRO = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('matriz', 'Matriz de Riesgos');
+  await SissoLayout.iniciar('matriz', 'Matriz de Riesgos');
   await cargarCatalogos();
   poblarSelects();
   await cargarItems();

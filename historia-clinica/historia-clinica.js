@@ -19,7 +19,7 @@ let timeoutBusquedaCie10 = null;
 let ctx, dibujando = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('historia', 'Historia Clínica Ocupacional');
+  await SissoLayout.iniciar('historia', 'Historia Clínica Ocupacional');
 
   document.getElementById('p-fecha-atencion').value = new Date().toISOString().split('T')[0];
   document.getElementById('p-hora-atencion').value = new Date().toTimeString().slice(0, 5);

@@ -115,7 +115,7 @@ let trabajadores = [];
 let capacitacionActualId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  SissoLayout.iniciar('capacitaciones', 'Capacitaciones');
+  await SissoLayout.iniciar('capacitaciones', 'Capacitaciones');
 
   usuarioActual = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso', 'th'].includes(usuarioActual.rol);
