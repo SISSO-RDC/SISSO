@@ -300,10 +300,11 @@ const SissoLayout = (() => {
   function construirTopbar(tituloModulo) {
     return `
       <div class="sisso-topbar">
+        <button type="button" class="sisso-boton-menu-movil" id="sisso-boton-menu-movil" onclick="sissoAlternarSidebarMovil()" aria-label="Abrir menú" title="Menú">☰</button>
         <span class="sisso-topbar-titulo">${tituloModulo}</span>
         <div class="sisso-topbar-derecha" id="sisso-topbar-acciones">
           <button type="button" class="sisso-boton-modo-privado" id="sisso-boton-modo-privado" onclick="sissoAlternarModoPrivado()" title="Difumina el contenido en pantalla sin cerrar sesión. No reemplaza los permisos del sistema.">
-            👁️ Modo privado
+            👁️ <span class="texto-boton">Modo privado</span>
           </button>
           <!-- Las paginas individuales pueden inyectar botones aqui con SissoLayout.agregarAccionTopbar() -->
         </div>
@@ -351,6 +352,14 @@ const SissoLayout = (() => {
         sissoMostrarModalCambioPassword(true);
       }
 
+      // Lote G (Fase 14, responsive): overlay para cerrar el sidebar
+      // movil al tocar fuera de el. Mismo criterio que el overlay de
+      // modo privado -- se inyecta una sola vez por pagina.
+      if (!document.getElementById('sisso-sidebar-overlay')) {
+        document.body.insertAdjacentHTML('beforeend', `
+          <div class="sisso-sidebar-overlay" id="sisso-sidebar-overlay" onclick="sissoCerrarSidebarMovil()"></div>`);
+      }
+
       // Lote E (Fase 9): overlay del modo privado, inyectado una vez
       // por pagina fuera de .sisso-contenido para que NUNCA quede
       // difuminado ni bloqueado por su propio filtro/pointer-events.
@@ -393,6 +402,23 @@ const SissoLayout = (() => {
  * eso evita el riesgo de que quede "pegado" activado en un equipo
  * compartido despues de cerrar y reabrir el navegador.
  */
+/**
+ * Lote G (Fase 14, responsive): abre/cierra el sidebar como panel
+ * deslizante en pantallas angostas (ver el @media en
+ * shared/estilos.css). En escritorio estas funciones no tienen
+ * efecto visible porque el boton de hamburguesa esta oculto y el
+ * sidebar nunca recibe la clase que lo saca de pantalla.
+ */
+function sissoAlternarSidebarMovil() {
+  document.querySelector('.sisso-sidebar')?.classList.toggle('sidebar-movil-abierto');
+  document.getElementById('sisso-sidebar-overlay')?.classList.toggle('visible');
+}
+
+function sissoCerrarSidebarMovil() {
+  document.querySelector('.sisso-sidebar')?.classList.remove('sidebar-movil-abierto');
+  document.getElementById('sisso-sidebar-overlay')?.classList.remove('visible');
+}
+
 const SISSO_CLAVE_MODO_PRIVADO = 'sisso_modo_privado_activo';
 
 function sissoAplicarEstadoModoPrivado() {

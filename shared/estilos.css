@@ -472,3 +472,68 @@ a { color: inherit; }
   box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
 .sisso-modo-privado-banner span.punto { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; }
+
+/* ============================================================
+   Responsive (Fase 14 del plan): el layout compartido (sidebar +
+   topbar) no tenia NINGUN breakpoint -- el sidebar de 220px fijos
+   ocupaba mas de la mitad de una pantalla de celular. Este bloque
+   lo corrige de una sola vez para TODAS las paginas, ya que todas
+   usan este mismo layout via shared/layout.js.
+
+   Estrategia: por debajo de 860px, el sidebar pasa de "sticky" (ocupa
+   espacio siempre) a "fixed" fuera de pantalla (transform), con un
+   boton de hamburguesa en el topbar para abrirlo como panel
+   deslizante, y un fondo oscuro detras para cerrarlo al tocar fuera.
+   El contenido principal (.sisso-main) ya es flex:1, asi que al
+   sacar el sidebar del flujo normal (position:fixed) ocupa el 100%
+   del ancho automaticamente, sin tocar su CSS.
+   ============================================================ */
+.sisso-boton-menu-movil {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--t1);
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-right: 4px;
+}
+
+.sisso-sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 590;
+  background: rgba(0,0,0,.5);
+}
+.sisso-sidebar-overlay.visible { display: block; }
+
+@media (max-width: 860px) {
+  .sisso-boton-menu-movil { display: inline-flex; align-items: center; }
+
+  .sisso-sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 600;
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+    width: 260px;
+    min-width: 260px;
+  }
+  .sisso-sidebar.sidebar-movil-abierto { transform: translateX(0); }
+
+  .sisso-topbar-titulo { font-size: 13.5px; }
+  .sisso-boton-modo-privado span.texto-boton { display: none; }
+  .sisso-boton-modo-privado { padding: 6px 9px; }
+
+  .sisso-contenido { padding: 12px; }
+
+  /* Filas de campos lado a lado (formularios en varias paginas):
+     se apilan en columna en pantallas angostas. Esto es aditivo
+     -- solo fija flex-direction, no toca gap/display que cada
+     pagina ya define localmente. */
+  .fila-campos { flex-direction: column; }
+
+  /* Red de seguridad generica para tablas que no fueron disenadas
+     pensando en movil: permite scroll horizontal en vez de romper
+     el layout o desbordar la pantalla. */
+  .sisso-contenido table { display: block; overflow-x: auto; white-space: nowrap; }
+}
