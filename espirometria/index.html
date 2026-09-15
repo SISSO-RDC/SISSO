@@ -46,7 +46,7 @@
   <!-- Selector de trabajador -->
   <div class="sisso-tarjeta" id="caja-selector">
     <div class="sisso-tarjeta-titulo">Espirometría ocupacional</div>
-    <div class="sisso-tarjeta-subtitulo">Validación ATS/ERS 2005, valores de referencia ECSC/ERS 1993 (Quanjer).</div>
+    <div class="sisso-tarjeta-subtitulo">Reversibilidad broncodilatadora: criterio ERS/ATS 2022 (cambio &gt;10% del predicho de FEV1 o FVC). Valores predichos: ecuaciones ECSC/ERS 1993 (Quanjer), referencia <strong>interina</strong> mientras no se incorpore GLI-2012 con validación formal. La interpretación clínica final corresponde siempre al médico ocupacional.</div>
     <div class="sisso-error" id="error-selector"></div>
     <div class="selector-caja" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
       <div class="sisso-campo" style="flex:1;min-width:260px;margin-bottom:0;">
@@ -350,12 +350,19 @@ function mostrarResultado(examen) {
   const cont = document.getElementById('caja-resultado');
   const info = infoPatron(examen.patron);
 
+  // CORREGIDO en Auditoria N.16 (C-16-01, P0): el nombre de campo
+  // real es cambio_fev1_pct_predicho (no cambio_fev1_pct, que nunca
+  // existio en la respuesta del backend -- este texto nunca se
+  // renderizaba). El criterio mostrado ahora es exactamente el que
+  // usa el motor (espirometria.js): ERS/ATS 2022, >10% del predicho,
+  // no el ATS/ERS 2005 (>=12% y >=200 mL) que el backend ya no usa.
   let htmlReversibilidad = '';
   if (examen.reversibilidad_positiva) {
     htmlReversibilidad = `
       <div class="alerta-reversibilidad">
         <div class="alerta-reversibilidad-titulo">✓ Respuesta broncodilatadora positiva</div>
-        <div>FEV1 aumentó ${examen.cambio_fev1_pct}% (criterio ATS/ERS 2005: ≥12% y ≥200 mL).</div>
+        <div>FEV1 cambió ${examen.cambio_fev1_pct_predicho > 0 ? '+' : ''}${examen.cambio_fev1_pct_predicho}% del predicho (criterio ERS/ATS 2022: &gt;10% del predicho de FEV1 o FVC).</div>
+        ${examen.reversibilidad_protocolo_valido === false ? '<div style="margin-top:4px;color:var(--amb2);">⚠ Protocolo de broncodilatador no confirmado como válido — resultado no evaluable con certeza.</div>' : ''}
       </div>`;
   }
 
@@ -377,6 +384,24 @@ function mostrarResultado(examen) {
         <div class="valor">${examen.fev1_fvc_medido ?? '—'}%</div>
       </div>
       ${htmlReversibilidad}
+      ${construirAvisoReferencia(examen)}
+    </div>`;
+}
+
+// CREADO en Auditoria N.16 (C-16-01, P0): muestra exactamente el
+// criterio/version que uso el backend para este examen puntual
+// (metadatos_referencia), en vez de un texto fijo en el HTML que
+// puede desincronizarse del motor. Si el backend todavia no envia
+// metadatos_referencia (respuestas antiguas antes de esta
+// correccion), no se muestra nada en vez de inventar un valor.
+function construirAvisoReferencia(examen) {
+  const meta = examen.metadatos_referencia;
+  if (!meta) return '';
+  return `
+    <div style="margin-top:10px;font-size:11.5px;color:var(--t3);background:var(--bg3);border-radius:6px;padding:8px 10px;">
+      <div><strong>Referencia de predichos:</strong> ${escHtml(meta.ecuacionPredichos || '—')}</div>
+      <div><strong>Versión del algoritmo:</strong> ${escHtml(meta.versionAlgoritmo || '—')}${meta.esDefinitivo === false ? ' (interina, no GLI-2012 oficial)' : ''}</div>
+      <div style="margin-top:4px;">Este resultado es una aproximación técnica. La interpretación clínica final es responsabilidad del médico ocupacional.</div>
     </div>`;
 }
 
@@ -432,7 +457,7 @@ function construirFilaPostBD(e) {
       <strong style="color:var(--t2);">Post-BD${e.minutos_post_broncodilatador ? ` (${e.minutos_post_broncodilatador} min)` : ''}:</strong>
       <div>FVC: ${e.fvc_post ?? '—'} L</div>
       <div>FEV1: ${e.fev1_post ?? '—'} L ${flechaFev1}</div>
-      ${e.cambio_fev1_pct != null ? `<div>Δ FEV1: ${e.cambio_fev1_pct > 0 ? '+' : ''}${e.cambio_fev1_pct}%</div>` : ''}
+      ${e.cambio_fev1_pct_predicho != null ? `<div>Δ FEV1: ${e.cambio_fev1_pct_predicho > 0 ? '+' : ''}${e.cambio_fev1_pct_predicho}% del predicho</div>` : ''}
     </div>`;
 }
 

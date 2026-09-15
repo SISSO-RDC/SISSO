@@ -168,9 +168,10 @@ function renderizarPasoConfigurador() {
           </div>
         </div>
         <div class="normativa-aviso">
-          <strong>Perfil normativo: ${escSector(paisElegido?.nombre || '')} ${paisElegido?.estado === 'completo' ? '(completamente desarrollado)' : '(disponible / en desarrollo)'}.</strong><br>
+          <strong>Perfil normativo: ${escSector(paisElegido?.nombre || '')} ${paisElegido?.estado === 'completo' ? '(implementación parcial verificada)' : '(disponible / en desarrollo)'}.</strong><br>
           ${escSector(paisElegido?.descripcion_estado || '')}
           ${paisElegido?.normativa_principal ? `<div style="margin-top:6px;font-size:11.5px;">Referencia normativa: ${escSector(paisElegido.normativa_principal)}</div>` : ''}
+          ${construirCoberturaNormativa(paisElegido?.cobertura_detalle)}
           ${paisElegido?.estado === 'en_desarrollo' ? `<div style="margin-top:8px;font-weight:700;">⚠ Seleccionar este país NO activa reglas, formatos ni cumplimiento legal específico — solo registra tu preferencia para cuando ese perfil normativo esté desarrollado.</div>` : ''}
         </div>
       `;
@@ -213,7 +214,8 @@ function renderizarPasoConfigurador() {
       </div>
       <div class="previsualizacion-grupo">
         <h4>🩺 Exámenes ocupacionales sugeridos</h4>
-        <div class="previsualizacion-lista">${(s?.examenes_sugeridos || []).map(e => `<span>${escSector(e.nombre)}${e.frecuencia ? ' · ' + escSector(e.frecuencia) : ''}</span>`).join('') || '<span>—</span>'}</div>
+        <div class="previsualizacion-lista">${(s?.examenes_sugeridos || []).map(e => `<span>${escSector(e.nombre)}${e.frecuencia ? ' · ' + escSector(e.frecuencia) : ''}${e.tipo ? ` <em style="font-style:normal;color:var(--t3);">(${escSector(e.tipo)})</em>` : ''}</span>`).join('') || '<span>—</span>'}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px;">Ninguna de estas etiquetas es una obligación legal o clínica por sí sola — la necesidad real de cada examen depende del puesto, la exposición y el criterio del médico ocupacional.</div>
       </div>
       <div class="previsualizacion-grupo">
         <h4>📐 Herramientas ergonómicas sugeridas</h4>
@@ -233,6 +235,24 @@ function renderizarPasoConfigurador() {
 }
 
 function escSector(t) { return (typeof escaparHtml === 'function') ? escaparHtml(String(t ?? '')) : String(t ?? ''); }
+
+// CREADO en Auditoria N.16 (C-16-03, P0): reemplaza la afirmacion
+// absoluta "completamente desarrollado" por un desglose verificable
+// (reglas implementadas / pendientes / norma fuente / version /
+// fecha de revision / responsable), tal como pide la auditoria. Si
+// el backend todavia no envia cobertura_detalle (pais sin este dato
+// cargado), no se muestra nada en vez de inventar contenido.
+function construirCoberturaNormativa(cobertura) {
+  if (!cobertura) return '';
+  const implementadas = Array.isArray(cobertura.reglasImplementadas) ? cobertura.reglasImplementadas : [];
+  const pendientes = Array.isArray(cobertura.reglasPendientes) ? cobertura.reglasPendientes : [];
+  return `
+    <div style="margin-top:8px;font-size:11.5px;">
+      ${implementadas.length ? `<div><strong>Implementado y verificado:</strong> ${implementadas.map(escSector).join(' · ')}</div>` : ''}
+      ${pendientes.length ? `<div style="margin-top:4px;"><strong>Pendiente de validación:</strong> ${pendientes.map(escSector).join(' · ')}</div>` : ''}
+      ${cobertura.version ? `<div style="margin-top:4px;color:var(--t3);">Versión de esta matriz: ${escSector(cobertura.version)}${cobertura.fechaRevision ? ' · Revisado: ' + escSector(cobertura.fechaRevision) : ''}${cobertura.responsableValidacion ? ' · ' + escSector(cobertura.responsableValidacion) : ''}</div>` : ''}
+    </div>`;
+}
 function escAttrSector(t) { return (typeof escaparAtributoHtml === 'function') ? escaparAtributoHtml(String(t ?? '')) : String(t ?? ''); }
 
 async function seleccionarSectorConfigurador(clave) {
