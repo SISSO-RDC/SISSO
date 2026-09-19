@@ -106,7 +106,7 @@ const SissoLayout = (() => {
     { seccion: 'GENERAL' },
 
     { id: 'dashboard',    label: 'Dashboard',          icono: '⊞',  href: '../dashboard/index.html',      roles: [] },
-    { id: 'empresa',      label: 'Mi Empresa',         icono: '🏢', href: '../mi-empresa/index.html',   roles: ['admin'] },
+    { id: 'empresa',      label: 'Mi Empresa',         icono: '🏢', href: '../mi-empresa/index.html',   roles: ['admin', 'sso', 'medico'] },
     { id: 'trabajadores', label: 'Trabajadores',       icono: '👥', href: '../trabajadores/index.html',   roles: [] },
     { id: 'alertas',      label: 'Alertas',            icono: '🔔', href: '../alertas/index.html',      roles: [] },
     { id: 'calendario',   label: 'Calendario EMOs',    icono: '📅', href: '../calendario-emos/index.html', roles: [] },

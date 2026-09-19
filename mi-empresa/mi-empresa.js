@@ -7,7 +7,22 @@ let resumenActual = null; // usado por configurador-sectorial.js como sugerencia
 
 document.addEventListener('DOMContentLoaded', async () => {
   await SissoLayout.iniciar('empresa', 'Mi Empresa');
-  await cargarPerfil();
+
+  // N.17 C-17-03: esta pagina ahora es visible tambien a sso/medico
+  // (antes solo admin), pero SOLO para la tarjeta de "Propuestas
+  // Sectoriales" -- el resto de la pagina (perfil de la empresa,
+  // logo, configurador de sector) sigue siendo admin-only porque
+  // GET /organizacion y GET /auth/usuarios lo son en el backend
+  // (organizacionRoutes.js). Para sso/medico esa tarjeta ni se
+  // muestra ni se llama a esos endpoints (evita un 403 innecesario).
+  const rol = SissoSesion.obtenerUsuario()?.rol;
+  if (rol === 'admin') {
+    await cargarPerfil();
+  } else {
+    document.getElementById('tarjeta-perfil-empresa').style.display = 'none';
+  }
+
+  await SissoPropuestasSectoriales.iniciar(rol);
 });
 
 async function cargarPerfil() {

@@ -54,17 +54,61 @@
   .previsualizacion-lista span { background: var(--bg3); border: 1px solid var(--bd); border-radius: 8px; padding: 4px 9px; font-size: 11.5px; }
 
   .normativa-aviso { border: 1px dashed var(--bd2); border-radius: var(--r); padding: 12px 14px; font-size: 12.5px; color: var(--t3); background: var(--bg3); }
+
+  /* ---- N.17 C-17-03: Propuestas Sectoriales ---- */
+  .tabs-propuestas { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab-propuesta { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; cursor: pointer; background: var(--bg); color: var(--t2); border: 1px solid var(--bd); display: flex; align-items: center; gap: 6px; }
+  .tab-propuesta.activo { background: var(--teal2); color: #fff; border-color: var(--teal2); }
+  .tab-propuesta .contador { background: rgba(0,0,0,.15); border-radius: 10px; padding: 1px 7px; font-size: 10.5px; font-weight: 700; }
+  .tab-propuesta:not(.activo) .contador { background: var(--amb3); color: var(--amb2); }
+
+  .filtros-estado { display: flex; gap: 6px; margin-bottom: 14px; }
+  .filtro-estado { padding: 4px 11px; border-radius: 20px; font-size: 11.5px; cursor: pointer; background: var(--bg3); color: var(--t3); }
+  .filtro-estado.activo { background: var(--t1); color: #fff; }
+
+  .propuesta-card { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .propuesta-info { flex: 1; min-width: 220px; }
+  .propuesta-nombre { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; }
+  .propuesta-detalle { font-size: 11.5px; color: var(--t3); }
+  .propuesta-detalle span { display: inline-block; margin-right: 10px; }
+  .propuesta-acciones { display: flex; gap: 6px; flex-shrink: 0; }
+  .propuesta-acciones button { padding: 5px 12px; font-size: 12px; }
 </style>
 </head>
 <body>
 
 <div id="sisso-app">
 
-  <div class="sisso-tarjeta" style="margin-bottom:16px;">
+  <div class="sisso-tarjeta" style="margin-bottom:16px;" id="tarjeta-perfil-empresa">
     <div class="sisso-tarjeta-titulo">Mi Empresa</div>
     <div class="sisso-tarjeta-subtitulo">Perfil de la organización y datos usados en los documentos generados por SISSO.</div>
     <div class="sisso-error" id="error-general"></div>
     <div id="contenido-empresa"><div class="sisso-cargando">Cargando…</div></div>
+  </div>
+
+  <!-- N.17 C-17-03: visible tambien a sso/medico (no solo admin) --
+       ver mi-empresa.js para el porque de esta separacion en 2
+       tarjetas: /organizacion es admin-only en el backend, esta
+       tarjeta no depende de ese endpoint. -->
+  <div class="sisso-tarjeta" id="tarjeta-propuestas-sectoriales">
+    <div class="sisso-tarjeta-titulo">Propuestas Sectoriales</div>
+    <div class="sisso-tarjeta-subtitulo" id="propuestas-subtitulo">Sugerencias generadas a partir del sector de tu empresa. Revísalas y decide si las aceptas, las ajustas o las rechazas.</div>
+    <div class="sisso-error" id="propuestas-error"></div>
+    <div class="sisso-exito" id="propuestas-exito"></div>
+    <div id="contenido-propuestas"><div class="sisso-cargando">Cargando…</div></div>
+  </div>
+</div>
+
+<!-- N.17 C-17-03: modal de "Modificar" propuesta -->
+<div class="sisso-modal-fondo" id="modal-modificar-propuesta">
+  <div class="sisso-modal-caja ancha" style="width:480px;">
+    <div class="sisso-tarjeta-titulo" style="margin-bottom:14px;">Modificar antes de aceptar</div>
+    <div class="sisso-error" id="modificar-error"></div>
+    <div id="modificar-campos"></div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:18px;">
+      <button class="sisso-boton secundario" onclick="cerrarModalModificar()">Cancelar</button>
+      <button class="sisso-boton" id="btn-confirmar-modificar" onclick="confirmarModificacion()">Guardar y aceptar</button>
+    </div>
   </div>
 </div>
 
@@ -90,5 +134,6 @@
 <script src="../shared/layout.js"></script>
 <script src="mi-empresa.js"></script>
 <script src="configurador-sectorial.js"></script>
+<script src="propuestas-sectoriales.js"></script>
 </body>
 </html>
