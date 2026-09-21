@@ -100,13 +100,13 @@ function renderizarAlerta(item, categoria) {
 
   return `
     <div class="alerta-item">
-      <div class="alerta-cabecera" onclick="alternarGestion('${item.id}')">
+      <div class="alerta-cabecera" data-on-click="alternarGestion('${item.id}')">
         <div class="alerta-info">
           <strong>${escHtml(item.titulo)}</strong>
           <div class="alerta-detalle">${item.detalle ? escHtml(item.detalle) + ' · ' : ''}${chipDeEstado(item.estado)}${item.responsable_nombre ? ' · Responsable: ' + escHtml(item.responsable_nombre) : ''}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          ${item.trabajador_id ? `<button class="btn-mini" onclick="event.stopPropagation(); irATrabajador('${item.trabajador_id}', '${PAGINA_POR_CATEGORIA[categoria] || '#'}')">Ver →</button>` : ''}
+          ${item.trabajador_id ? `<button class="btn-mini" data-on-click="event.stopPropagation(); irATrabajador('${item.trabajador_id}', '${PAGINA_POR_CATEGORIA[categoria] || '#'}')">Ver →</button>` : ''}
           <span style="color:var(--teal2);font-size:12px;">Gestionar</span>
         </div>
       </div>
@@ -122,7 +122,7 @@ function renderizarAlerta(item, categoria) {
           <select class="sisso-select" id="responsable-${item.id}" style="max-width:200px;">${opcionesResponsable}</select>
         </div>
         <textarea class="sisso-textarea" id="nota-${item.id}" placeholder="Nota de gestión (opcional)">${item.nota_gestion ? escHtml(item.nota_gestion) : ''}</textarea>
-        <button class="sisso-boton secundario" style="margin-top:6px;" onclick="guardarGestion('${item.id}')">Guardar</button>
+        <button class="sisso-boton secundario" style="margin-top:6px;" data-on-click="guardarGestion('${item.id}')">Guardar</button>
       </div>
     </div>`;
 }

@@ -133,8 +133,8 @@ function renderizarTabla(items) {
         <td><span class="nivel-chip" style="background:${color.bg};color:${color.fg};">${it.nivel_riesgo} — ${ETIQUETAS_CLASIFICACION[it.clasificacion] || ''}</span></td>
         <td style="color:var(--t3);font-size:11.5px;">${escHtml(it.responsable_control || '—')}${it.plazo_control ? '<br>' + formatearFecha(it.plazo_control) : ''}</td>
         <td>
-          <button class="btn-mini" onclick="abrirModal('${it.id}')">✎</button>
-          <button class="btn-mini" onclick="eliminarItem('${it.id}')">🗑</button>
+          <button class="btn-mini" data-on-click="abrirModal('${it.id}')">✎</button>
+          <button class="btn-mini" data-on-click="eliminarItem('${it.id}')">🗑</button>
         </td>
       </tr>`;
   }).join('');

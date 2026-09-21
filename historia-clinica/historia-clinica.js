@@ -249,9 +249,9 @@ async function cargarHistorial() {
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span class="sisso-chip ${colorChip}">${etiquetaChip}</span>
-            <button class="btn-mini" onclick="verDetalle('${e.id}')">👁 Ver detalle</button>
-            <button class="btn-mini" onclick="descargarPdfEvaluacion('${e.id}')">📄 PDF</button>
-            <button class="btn-mini" onclick="descargarCertificado('${e.id}')">🏅 Certificado</button>
+            <button class="btn-mini" data-on-click="verDetalle('${e.id}')">👁 Ver detalle</button>
+            <button class="btn-mini" data-on-click="descargarPdfEvaluacion('${e.id}')">📄 PDF</button>
+            <button class="btn-mini" data-on-click="descargarCertificado('${e.id}')">🏅 Certificado</button>
           </div>
         </div>`;
     }).join('');
@@ -289,7 +289,7 @@ async function verDetalle(id) {
     <div style="background:#fff;border-radius:14px;padding:24px;width:720px;max-width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <div style="font-size:16px;font-weight:800;">Detalle de la evaluación</div>
-        <button class="btn-mini" onclick="document.getElementById('modal-detalle').remove()">✕ Cerrar</button>
+        <button class="btn-mini" data-on-click="sissoQuitarElemento('modal-detalle')">✕ Cerrar</button>
       </div>
       <div id="contenido-detalle"><div class="sisso-cargando">Cargando…</div></div>
     </div>`;
@@ -368,7 +368,7 @@ function renderizarDetalle(e) {
   if (e.recomendaciones_tratamiento) html += seccion('Recomendaciones', escHtml(e.recomendaciones_tratamiento));
 
   html += `<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;">
-    <button class="sisso-boton" onclick="descargarPdfEvaluacion('${e.id}')">📄 Descargar PDF completo</button>
+    <button class="sisso-boton" data-on-click="descargarPdfEvaluacion('${e.id}')">📄 Descargar PDF completo</button>
   </div>`;
 
   return html;
@@ -398,6 +398,13 @@ async function cargarInmunizaciones() {
   } catch (err) {
     cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
   }
+}
+
+// N.18 (CSP estricta): antes era una expresion de DOM en linea dentro del
+// atributo onchange del <select> de vacuna.
+function mostrarCampoVacunaOtra(valor) {
+  const campo = document.getElementById('inm-vacuna-otra');
+  if (campo) campo.style.display = valor === 'Otra' ? 'block' : 'none';
 }
 
 async function registrarInmunizacion() {
@@ -449,22 +456,22 @@ function renderizarAntecedentesLaborales() {
   const cont = document.getElementById('lista-antecedentes-laborales');
   cont.innerHTML = antecedentesLaborales.map(a => `
     <div class="fila-dinamica">
-      <button type="button" class="btn-mini btn-quitar" onclick="quitarAntecedenteLaboral('${a.id}')">✕ Quitar</button>
+      <button type="button" class="btn-mini btn-quitar" data-on-click="quitarAntecedenteLaboral('${a.id}')">✕ Quitar</button>
       <div class="fila-campos">
-        <div class="sisso-campo"><label class="sisso-etiqueta">Empresa</label><input class="sisso-input" data-campo="empresa" data-id="${a.id}" value="${escAttr(a.empresa)}" oninput="actualizarAntecedenteLaboral('${a.id}','empresa',this.value)"></div>
-        <div class="sisso-campo"><label class="sisso-etiqueta">Puesto</label><input class="sisso-input" value="${escAttr(a.puestoTrabajo)}" oninput="actualizarAntecedenteLaboral('${a.id}','puestoTrabajo',this.value)"></div>
-        <div class="sisso-campo"><label class="sisso-etiqueta">Tiempo (meses)</label><input type="number" min="0" class="sisso-input" value="${escAttr(a.tiempoMeses)}" oninput="actualizarAntecedenteLaboral('${a.id}','tiempoMeses',this.value)"></div>
+        <div class="sisso-campo"><label class="sisso-etiqueta">Empresa</label><input class="sisso-input" data-campo="empresa" data-id="${a.id}" value="${escAttr(a.empresa)}" data-on-input="actualizarAntecedenteLaboral('${a.id}','empresa',this.value)"></div>
+        <div class="sisso-campo"><label class="sisso-etiqueta">Puesto</label><input class="sisso-input" value="${escAttr(a.puestoTrabajo)}" data-on-input="actualizarAntecedenteLaboral('${a.id}','puestoTrabajo',this.value)"></div>
+        <div class="sisso-campo"><label class="sisso-etiqueta">Tiempo (meses)</label><input type="number" min="0" class="sisso-input" value="${escAttr(a.tiempoMeses)}" data-on-input="actualizarAntecedenteLaboral('${a.id}','tiempoMeses',this.value)"></div>
       </div>
-      <div class="sisso-campo" style="margin-top:10px;"><label class="sisso-etiqueta">Actividades</label><input class="sisso-input" value="${escAttr(a.actividades)}" oninput="actualizarAntecedenteLaboral('${a.id}','actividades',this.value)"></div>
+      <div class="sisso-campo" style="margin-top:10px;"><label class="sisso-etiqueta">Actividades</label><input class="sisso-input" value="${escAttr(a.actividades)}" data-on-input="actualizarAntecedenteLaboral('${a.id}','actividades',this.value)"></div>
       <div class="sisso-campo" style="margin-top:10px;"><label class="sisso-etiqueta">Riesgos a los que estuvo expuesto (categorías generales)</label>
         <div class="chips-checkbox">
           ${['fisico','mecanico','quimico','biologico','ergonomico','psicosocial'].map(r => `
             <label class="chip-checkbox">
-              <input type="checkbox" ${a.riesgos.includes(r) ? 'checked' : ''} onchange="toggleRiesgoAntecedente('${a.id}','${r}',this.checked)"> ${r}
+              <input type="checkbox" ${a.riesgos.includes(r) ? 'checked' : ''} data-on-change="toggleRiesgoAntecedente('${a.id}','${r}',this.checked)"> ${r}
             </label>`).join('')}
         </div>
       </div>
-      <div class="sisso-campo" style="margin-top:10px;"><label class="sisso-etiqueta">Observaciones</label><input class="sisso-input" value="${escAttr(a.observaciones)}" oninput="actualizarAntecedenteLaboral('${a.id}','observaciones',this.value)"></div>
+      <div class="sisso-campo" style="margin-top:10px;"><label class="sisso-etiqueta">Observaciones</label><input class="sisso-input" value="${escAttr(a.observaciones)}" data-on-input="actualizarAntecedenteLaboral('${a.id}','observaciones',this.value)"></div>
     </div>`).join('') || '<div class="sisso-vacio">Sin empleos anteriores registrados.</div>';
 }
 function actualizarAntecedenteLaboral(id, campo, valor) {
@@ -521,7 +528,7 @@ function renderizarSistemas() {
   document.getElementById('caja-sistemas').innerHTML = catalogos.SISTEMAS_REVISION.map(s => `
     <div class="sistema-item">
       <label class="sistema-item-cabecera">
-        <input type="checkbox" data-sistema="${s}" onchange="document.getElementById('desc-sistema-${s}').style.display=this.checked?'block':'none'">
+        <input type="checkbox" data-sistema="${s}" data-on-change="sissoMostrarSi('desc-sistema-${s}', this.checked, 'block')">
         ${etiquetas[s] || s}
       </label>
       <textarea id="desc-sistema-${s}" class="sisso-textarea" style="display:none;" placeholder="Describa el hallazgo…"></textarea>
@@ -550,7 +557,7 @@ function renderizarExamenRegional() {
       ${subitems.map(sub => `
         <div class="region-subitem">
           <label class="region-subitem-cabecera">
-            <input type="checkbox" data-region="${region}" data-subitem="${sub}" onchange="document.getElementById('desc-region-${region}-${sub}').style.display=this.checked?'block':'none'">
+            <input type="checkbox" data-region="${region}" data-subitem="${sub}" data-on-change="sissoMostrarSi('desc-region-${region}-${sub}', this.checked, 'block')">
             ${sub.replace(/_/g, ' ')}
           </label>
           <textarea id="desc-region-${region}-${sub}" class="sisso-textarea" style="display:none;" placeholder="Describa el hallazgo…"></textarea>
@@ -596,11 +603,11 @@ function renderizarResultadosExamenes() {
   const cont = document.getElementById('lista-resultados-examenes');
   cont.innerHTML = resultadosExamenes.map(r => `
     <div class="fila-dinamica">
-      <button type="button" class="btn-mini btn-quitar" onclick="quitarResultadoExamen('${r.id}')">✕ Quitar</button>
+      <button type="button" class="btn-mini btn-quitar" data-on-click="quitarResultadoExamen('${r.id}')">✕ Quitar</button>
       <div class="fila-campos">
-        <div class="sisso-campo"><label class="sisso-etiqueta">Examen</label><input class="sisso-input" value="${escAttr(r.examen)}" oninput="actualizarResultadoExamen('${r.id}','examen',this.value)" placeholder="Ej: Biometría hemática"></div>
-        <div class="sisso-campo"><label class="sisso-etiqueta">Fecha</label><input type="date" class="sisso-input" value="${escAttr(r.fecha)}" oninput="actualizarResultadoExamen('${r.id}','fecha',this.value)"></div>
-        <div class="sisso-campo"><label class="sisso-etiqueta">Resultado</label><input class="sisso-input" value="${escAttr(r.resultado)}" oninput="actualizarResultadoExamen('${r.id}','resultado',this.value)"></div>
+        <div class="sisso-campo"><label class="sisso-etiqueta">Examen</label><input class="sisso-input" value="${escAttr(r.examen)}" data-on-input="actualizarResultadoExamen('${r.id}','examen',this.value)" placeholder="Ej: Biometría hemática"></div>
+        <div class="sisso-campo"><label class="sisso-etiqueta">Fecha</label><input type="date" class="sisso-input" value="${escAttr(r.fecha)}" data-on-input="actualizarResultadoExamen('${r.id}','fecha',this.value)"></div>
+        <div class="sisso-campo"><label class="sisso-etiqueta">Resultado</label><input class="sisso-input" value="${escAttr(r.resultado)}" data-on-input="actualizarResultadoExamen('${r.id}','resultado',this.value)"></div>
       </div>
     </div>`).join('') || '<div class="sisso-vacio">Sin exámenes registrados.</div>';
 }
@@ -624,7 +631,7 @@ async function ejecutarBusquedaCie10() {
     cont.innerHTML = resultados.length === 0
       ? '<div class="resultado-cie10-item" style="color:var(--t3);">Sin resultados.</div>'
       : resultados.map(r => `
-          <div class="resultado-cie10-item" onclick='agregarDiagnostico(${JSON.stringify(r.codigo)}, ${JSON.stringify(r.descripcion)})'>
+          <div class="resultado-cie10-item" data-on-click="agregarDiagnostico(${escaparAtributoHtml(JSON.stringify(r.codigo))}, ${escaparAtributoHtml(JSON.stringify(r.descripcion))})">
             <span class="resultado-cie10-codigo">${escHtml(r.codigo)}</span>${escHtml(r.descripcion)}
           </div>`).join('');
     cont.classList.add('visible');
@@ -656,17 +663,17 @@ function renderizarDiagnosticos() {
       <div style="flex:1;">
         <span class="resultado-cie10-codigo">${escHtml(d.codigoCie10)}</span>${escHtml(d.descripcion)}
         <div style="display:flex;gap:8px;margin-top:6px;">
-          <select class="sisso-select" style="font-size:11px;padding:4px 6px;" onchange="actualizarDiagnostico('${d.codigoCie10}','tipo',this.value)">
+          <select class="sisso-select" style="font-size:11px;padding:4px 6px;" data-on-change="actualizarDiagnostico('${d.codigoCie10}','tipo',this.value)">
             <option value="enfermedad_comun" ${d.tipo === 'enfermedad_comun' ? 'selected' : ''}>Enfermedad común</option>
             <option value="enfermedad_profesional" ${d.tipo === 'enfermedad_profesional' ? 'selected' : ''}>Enfermedad profesional</option>
           </select>
-          <select class="sisso-select" style="font-size:11px;padding:4px 6px;" onchange="actualizarDiagnostico('${d.codigoCie10}','condicion',this.value)">
+          <select class="sisso-select" style="font-size:11px;padding:4px 6px;" data-on-change="actualizarDiagnostico('${d.codigoCie10}','condicion',this.value)">
             <option value="presuntivo" ${d.condicion === 'presuntivo' ? 'selected' : ''}>Presuntivo</option>
             <option value="definitivo" ${d.condicion === 'definitivo' ? 'selected' : ''}>Definitivo</option>
           </select>
         </div>
       </div>
-      <button type="button" class="btn-mini" onclick="quitarDiagnostico('${d.codigoCie10}')">✕</button>
+      <button type="button" class="btn-mini" data-on-click="quitarDiagnostico('${d.codigoCie10}')">✕</button>
     </div>`).join('') || '<div class="sisso-vacio">Sin diagnósticos agregados.</div>';
 }
 

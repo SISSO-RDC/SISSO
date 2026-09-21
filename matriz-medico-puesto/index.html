@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SISSO — Matriz Médico-Ocupacional por Puesto</title>
   <link rel="stylesheet" href="../shared/estilos.css">
@@ -35,7 +35,7 @@
         <label class="sisso-etiqueta" for="sel-puesto">Puesto de trabajo</label>
         <select id="sel-puesto" class="sisso-select"><option value="">Cargando puestos…</option></select>
       </div>
-      <button class="sisso-boton" onclick="elegirPuesto()">Continuar</button>
+      <button class="sisso-boton" data-on-click="elegirPuesto()">Continuar</button>
     </div>
   </div>
 
@@ -44,7 +44,7 @@
     <div class="sisso-tarjeta" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <div class="sisso-tarjeta-titulo" id="titulo-puesto" style="margin-bottom:0;">Puesto</div>
-        <button class="btn-mini" onclick="cambiarPuesto()">← Cambiar puesto</button>
+        <button class="btn-mini" data-on-click="cambiarPuesto()">← Cambiar puesto</button>
       </div>
     </div>
 
@@ -73,7 +73,7 @@
       <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t2);margin-bottom:12px;">
         <input type="checkbox" id="n-obligatorio" checked> Obligatorio
       </label>
-      <button class="sisso-boton ancho-completo" id="btn-agregar-req" onclick="crearRequisito()">Agregar requisito</button>
+      <button class="sisso-boton ancho-completo" id="btn-agregar-req" data-on-click="crearRequisito()">Agregar requisito</button>
     </div>
 
     <div class="sisso-tarjeta" style="margin-bottom:16px;">
@@ -88,192 +88,9 @@
   </div>
 </div>
 
+<script src="../shared/csp-eventos.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
-<script>
-
-let puestos = [];
-let puestoActualId = null;
-
-document.addEventListener('DOMContentLoaded', async () => {
-  await SissoLayout.iniciar('matriz-medico-puesto', 'Matriz Médico-Ocupacional');
-  await cargarPuestos();
-});
-
-async function cargarPuestos() {
-  const sel = document.getElementById('sel-puesto');
-  try {
-    const datos = await sissoFetch('/puestos-trabajo');
-    puestos = (datos.puestos || []).filter(p => p.activo !== false);
-
-    if (puestos.length === 0) {
-      // Distinguimos explicitamente "sin puestos registrados" de un
-      // error real de red/servidor, para que no parezca que la
-      // pagina se rompio cuando en realidad simplemente no hay
-      // puestos de trabajo creados todavia para esta organizacion.
-      sel.innerHTML = '<option value="">No hay puestos de trabajo registrados</option>';
-      mostrarError('error-puesto', 'No hay puestos de trabajo registrados todavía. Créalos primero en el módulo "Puestos de Trabajo".');
-      return;
-    }
-
-    sel.innerHTML = '<option value="">Selecciona un puesto…</option>' +
-      puestos.map(p => `<option value="${p.id}">${escHtml(p.nombre_puesto)}${p.area ? ' — ' + escHtml(p.area) : ''}</option>`).join('');
-  } catch (err) {
-    sel.innerHTML = '<option value="">Error al cargar puestos</option>';
-    mostrarError('error-puesto', err.message || 'Error de conexión al cargar los puestos de trabajo.');
-  }
-}
-
-function elegirPuesto() {
-  ocultarError('error-puesto');
-  const id = document.getElementById('sel-puesto').value;
-  if (!id) { mostrarError('error-puesto', 'Selecciona un puesto.'); return; }
-
-  puestoActualId = id;
-  const p = puestos.find(x => x.id === id);
-  document.getElementById('titulo-puesto').textContent = p ? `${p.nombre_puesto}${p.area ? ' — ' + p.area : ''}` : 'Puesto';
-
-  document.getElementById('caja-seleccion-puesto').style.display = 'none';
-  document.getElementById('caja-principal').style.display = 'block';
-  cargarRequisitos();
-  cargarCobertura();
-}
-
-function cambiarPuesto() {
-  puestoActualId = null;
-  document.getElementById('caja-seleccion-puesto').style.display = 'block';
-  document.getElementById('caja-principal').style.display = 'none';
-}
-
-async function crearRequisito() {
-  ocultarError('error-nuevo');
-  ocultarExito('exito-nuevo');
-
-  const tipoExamen = document.getElementById('n-tipo-examen').value;
-  const riesgo = document.getElementById('n-riesgo').value.trim();
-  const frecuencia = parseInt(document.getElementById('n-frecuencia').value, 10);
-  const obligatorio = document.getElementById('n-obligatorio').checked;
-
-  if (!riesgo) { mostrarError('error-nuevo', 'Indica el riesgo que justifica este requisito.'); return; }
-  if (!frecuencia || frecuencia < 1) { mostrarError('error-nuevo', 'Indica una frecuencia válida en meses.'); return; }
-
-  const boton = document.getElementById('btn-agregar-req');
-  boton.disabled = true;
-  boton.textContent = 'Agregando…';
-
-  try {
-    await sissoFetch('/matriz-medico-puesto', {
-      method: 'POST',
-      body: { puestoTrabajoId: puestoActualId, tipoExamen, riesgoQueLoJustifica: riesgo, frecuenciaMeses: frecuencia, obligatorio },
-    });
-    mostrarExito('exito-nuevo', 'Requisito agregado.');
-    document.getElementById('n-riesgo').value = '';
-    document.getElementById('n-frecuencia').value = '';
-    await cargarRequisitos();
-    await cargarCobertura();
-  } catch (err) {
-    mostrarError('error-nuevo', err.message || 'Error al agregar el requisito.');
-  } finally {
-    boton.disabled = false;
-    boton.textContent = 'Agregar requisito';
-  }
-}
-
-async function cargarRequisitos() {
-  const cont = document.getElementById('lista-requisitos');
-  cont.innerHTML = '<div class="sisso-cargando">Cargando requisitos…</div>';
-  try {
-    const datos = await sissoFetch(`/matriz-medico-puesto/puestos/${puestoActualId}`);
-    const requisitos = datos.requisitos || [];
-    if (requisitos.length === 0) {
-      cont.innerHTML = '<div class="sisso-vacio">Este puesto aún no tiene requisitos de vigilancia definidos.</div>';
-      return;
-    }
-    cont.innerHTML = requisitos.map(r => `
-      <div class="req-item">
-        <div class="req-cabecera">
-          <strong>${etiquetaTipoExamen(r.tipo_examen)}</strong>
-          <span class="sisso-chip ${r.activo ? 'verde' : 'gris'}">${r.activo ? 'Activo' : 'Inactivo'}</span>
-        </div>
-        <div style="font-size:12.5px;color:var(--t2);margin-top:4px;">${escHtml(r.riesgo_que_lo_justifica)}</div>
-        <div style="font-size:11.5px;color:var(--t3);margin-top:4px;">
-          Cada ${r.frecuencia_meses} meses · ${r.obligatorio ? 'Obligatorio' : 'Recomendado'}${r.responsable_nombre ? ' · Responsable: ' + escHtml(r.responsable_nombre) : ''}
-        </div>
-      </div>`).join('');
-  } catch (err) {
-    cont.innerHTML = `<div class="sisso-vacio">Error al cargar los requisitos: ${escHtml(err.message)}</div>`;
-  }
-}
-
-async function cargarCobertura() {
-  const cont = document.getElementById('cobertura');
-  cont.innerHTML = '<div class="sisso-cargando">Calculando cobertura…</div>';
-  try {
-    const datos = await sissoFetch(`/matriz-medico-puesto/puestos/${puestoActualId}/cobertura`);
-    const cobertura = datos.cobertura || [];
-    if (cobertura.length === 0) {
-      cont.innerHTML = '<div class="sisso-vacio">Sin requisitos activos: no hay cobertura que calcular.</div>';
-      return;
-    }
-    cont.innerHTML = cobertura.map(c => `
-      <div style="margin-bottom:22px;">
-        <div class="sisso-tarjeta-subtitulo" style="margin-bottom:6px;">${etiquetaTipoExamen(c.tipoExamen)}</div>
-        <div class="resumen-cifras">
-          <div class="cifra"><div class="num">${c.totalTrabajadores}</div><div class="lbl">Trabajadores</div></div>
-          <div class="cifra"><div class="num" style="color:var(--red2);">${c.totalSinCobertura}</div><div class="lbl">Sin cobertura</div></div>
-          <div class="cifra"><div class="num" style="color:var(--amb2);">${c.totalVencidos}</div><div class="lbl">Vencidos</div></div>
-        </div>
-        ${c.trabajadores.length === 0 ? '<div class="sisso-vacio">No hay trabajadores asignados a este puesto.</div>' : `
-        <table class="tabla-cobertura">
-          <thead><tr><th>Trabajador</th><th>Última evaluación</th><th>Próxima evaluación</th><th>Estado</th></tr></thead>
-          <tbody>
-            ${c.trabajadores.map(t => `
-              <tr>
-                <td>${escHtml(t.nombreCompleto)}</td>
-                <td>${t.ultimaEvaluacion ? formatearFecha(t.ultimaEvaluacion) : '—'}</td>
-                <td>${t.proximaEvaluacion ? formatearFecha(t.proximaEvaluacion) : '—'}</td>
-                <td>${t.sinCobertura
-                  ? '<span class="sisso-chip rojo">Sin cobertura</span>'
-                  : (t.estaVencido ? '<span class="sisso-chip ambar">Vencido</span>' : '<span class="sisso-chip verde">Al día</span>')}
-                </td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`}
-      </div>`).join('');
-  } catch (err) {
-    cont.innerHTML = `<div class="sisso-vacio">Error al calcular la cobertura: ${escHtml(err.message)}</div>`;
-  }
-}
-
-// ======= Utilidades =======
-function etiquetaTipoExamen(tipo) {
-  const mapa = {
-    audiometria: 'Audiometría', espirometria: 'Espirometría',
-    visiometria: 'Visiometría', evaluacion_periodica: 'Evaluación periódica',
-  };
-  return mapa[tipo] || tipo;
-}
-
-function formatearFecha(fecha) {
-  if (!fecha) return '—';
-  return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-const escHtml = escaparHtml;
-function mostrarError(idEl, msg) {
-  const el = document.getElementById(idEl);
-  el.textContent = msg;
-  el.classList.add('visible');
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-function ocultarError(idEl) { document.getElementById(idEl).classList.remove('visible'); }
-function mostrarExito(idEl, msg) {
-  const el = document.getElementById(idEl);
-  el.textContent = msg;
-  el.classList.add('visible');
-  setTimeout(() => el.classList.remove('visible'), 5000);
-}
-function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
-</script>
+<script src="pagina.js"></script>
 </body>
 </html>

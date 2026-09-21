@@ -124,7 +124,7 @@ function renderizarPasoConfigurador() {
     contenedor.innerHTML = `
       <div class="sector-cards-grid">
         ${configEstado.sectores.map(s => `
-          <div class="sector-card ${s.clave === configEstado.sectorClave ? 'seleccionada' : ''}" onclick="seleccionarSectorConfigurador('${s.clave}')">
+          <div class="sector-card ${s.clave === configEstado.sectorClave ? 'seleccionada' : ''}" data-on-click="seleccionarSectorConfigurador('${s.clave}')">
             <span class="icono">${escSector(s.icono || '🏢')}</span>
             <div class="etiqueta">${escSector(s.etiqueta)}</div>
           </div>
@@ -162,7 +162,7 @@ function renderizarPasoConfigurador() {
         <div class="fila-campos" style="margin-bottom:12px;">
           <div class="sisso-campo">
             <label class="sisso-etiqueta">País</label>
-            <select class="sisso-select" id="cfg-pais" onchange="cambiarPaisConfigurador(this.value)">
+            <select class="sisso-select" id="cfg-pais" data-on-change="cambiarPaisConfigurador(this.value)">
               ${configEstado.paises.map(p => `<option value="${p.clave}" ${p.clave === configEstado.paisNormativoClave ? 'selected' : ''}>${p.bandera_emoji || ''} ${escSector(p.nombre)}${p.estado === 'en_desarrollo' ? ' — en desarrollo' : ''}</option>`).join('')}
             </select>
           </div>
@@ -186,7 +186,7 @@ function renderizarPasoConfigurador() {
         <div>
           ${riesgos.map(r => `
             <label class="chip-checkbox">
-              <input type="checkbox" value="${escAttrSector(r.nombre)}" ${configEstado.riesgosSeleccionados.includes(r.nombre) ? 'checked' : ''} onchange="alternarRiesgoConfigurador('${escAttrSector(r.nombre)}', this.checked)">
+              <input type="checkbox" value="${escAttrSector(r.nombre)}" ${configEstado.riesgosSeleccionados.includes(r.nombre) ? 'checked' : ''} data-on-change="alternarRiesgoConfigurador('${escAttrSector(r.nombre)}', this.checked)">
               ${escSector(r.icono || '')} ${escSector(r.nombre)}
             </label>
           `).join('')}

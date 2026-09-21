@@ -67,8 +67,8 @@ function renderizarRegiones() {
       <details class="region">
         <summary>
           <span>${etiqueta}</span>
-          <label style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:12.5px;" onclick="event.stopPropagation()">
-            <input type="checkbox" id="tuvo-${region}" onchange="alternarRegion('${region}')"> ¿Tuvo molestias en los últimos 12 meses?
+          <label style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:12.5px;" data-on-click="event.stopPropagation()">
+            <input type="checkbox" id="tuvo-${region}" data-on-change="alternarRegion('${region}')"> ¿Tuvo molestias en los últimos 12 meses?
           </label>
         </summary>
         <div class="region-cuerpo" id="detalle-${region}" style="display:none;">
@@ -122,7 +122,7 @@ function renderizarRegiones() {
           <div style="margin-top:14px;">
             <label class="sisso-etiqueta">Intensidad de la molestia (0 = sin molestias, 5 = molestias muy fuertes)</label>
             <div class="escala-intensidad" id="intensidad-${region}">
-              ${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" onclick="elegirIntensidad('${region}', ${n})" data-valor="${n}">${n}</button>`).join('')}
+              ${[0, 1, 2, 3, 4, 5].map(n => `<button type="button" data-on-click="elegirIntensidad('${region}', ${n})" data-valor="${n}">${n}</button>`).join('')}
             </div>
           </div>
 

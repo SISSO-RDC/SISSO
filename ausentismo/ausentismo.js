@@ -131,10 +131,10 @@ function renderizarTabla(filas) {
       <td>${formatearFecha(f.fecha_inicio)}</td>
       <td>${formatearFecha(f.fecha_fin)}</td>
       <td style="text-align:center;font-weight:700;">${f.dias_calendario}</td>
-      <td>${f.certificado_url ? (puedeVerCertificado ? `<a href="#" onclick="return verCertificadoFirmado('${f.id}', event)">Ver</a>` : '<span style="color:var(--t3);">Adjunto</span>') : '—'}</td>
+      <td>${f.certificado_url ? (puedeVerCertificado ? `<a href="#" data-on-click="return verCertificadoFirmado('${f.id}', event)">Ver</a>` : '<span style="color:var(--t3);">Adjunto</span>') : '—'}</td>
       <td>
-        <button class="btn-mini" onclick="abrirModal('${f.id}')">✎</button>
-        <button class="btn-mini" onclick="eliminarItem('${f.id}')">🗑</button>
+        <button class="btn-mini" data-on-click="abrirModal('${f.id}')">✎</button>
+        <button class="btn-mini" data-on-click="eliminarItem('${f.id}')">🗑</button>
       </td>
     </tr>`).join('');
 }
@@ -159,9 +159,9 @@ function renderizarPaginacion(p) {
   if (!p) { document.getElementById('paginacion').innerHTML = ''; return; }
   const totalPaginas = Math.max(Math.ceil(p.total / p.porPagina), 1);
   document.getElementById('paginacion').innerHTML = `
-    <button ${p.pagina <= 1 ? 'disabled' : ''} onclick="irAPagina(${p.pagina - 1})">‹ Anterior</button>
+    <button ${p.pagina <= 1 ? 'disabled' : ''} data-on-click="irAPagina(${p.pagina - 1})">‹ Anterior</button>
     <span>Página ${p.pagina} de ${totalPaginas} — ${p.total} ausencia(s)</span>
-    <button ${p.pagina >= totalPaginas ? 'disabled' : ''} onclick="irAPagina(${p.pagina + 1})">Siguiente ›</button>`;
+    <button ${p.pagina >= totalPaginas ? 'disabled' : ''} data-on-click="irAPagina(${p.pagina + 1})">Siguiente ›</button>`;
 }
 
 function irAPagina(n) {
@@ -206,7 +206,7 @@ async function abrirModal(id) {
       if (a.certificado_url) {
         const puedeVerCertificado = ['medico', 'sso'].includes(SissoSesion.obtenerUsuario()?.rol);
         document.getElementById('m-certificado-actual').innerHTML = puedeVerCertificado
-          ? `Certificado actual: <a href="#" onclick="return verCertificadoFirmado('${a.id}', event)">ver archivo</a> (sube uno nuevo para reemplazarlo)`
+          ? `Certificado actual: <a href="#" data-on-click="return verCertificadoFirmado('${a.id}', event)">ver archivo</a> (sube uno nuevo para reemplazarlo)`
           : `Certificado actual: adjunto (sube uno nuevo para reemplazarlo)`;
       }
     } catch (err) {

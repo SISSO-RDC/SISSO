@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISSO — Certificados PDF</title>
 <link rel="stylesheet" href="../shared/estilos.css">
@@ -43,9 +43,9 @@
     <div class="sisso-tarjeta-subtitulo" style="margin-bottom:16px;">Genera y descarga certificados listos para entregar al trabajador.</div>
 
     <div class="tabs-cert">
-      <div class="tab-cert activa" data-tab="hcu081" onclick="cambiarTab('hcu081')">Certificado HCU 081</div>
-      <div class="tab-cert" data-tab="capacitacion" onclick="cambiarTab('capacitacion')">Asistencia a capacitación</div>
-      <div class="tab-cert" data-tab="aptitud" onclick="cambiarTab('aptitud')">Aptitud independiente</div>
+      <div class="tab-cert activa" data-tab="hcu081" data-on-click="cambiarTab('hcu081')">Certificado HCU 081</div>
+      <div class="tab-cert" data-tab="capacitacion" data-on-click="cambiarTab('capacitacion')">Asistencia a capacitación</div>
+      <div class="tab-cert" data-tab="aptitud" data-on-click="cambiarTab('aptitud')">Aptitud independiente</div>
     </div>
 
     <div class="sisso-error" id="error-cert"></div>
@@ -58,7 +58,7 @@
       </p>
       <div class="sisso-campo">
         <label class="sisso-etiqueta">Trabajador</label>
-        <select id="hcu-trabajador" class="sisso-select" onchange="cargarEvaluacionesHcu081()"><option value="">Selecciona un trabajador…</option></select>
+        <select id="hcu-trabajador" class="sisso-select" data-on-change="cargarEvaluacionesHcu081()"><option value="">Selecciona un trabajador…</option></select>
       </div>
       <table class="tabla-cert" id="tabla-hcu081" style="display:none;">
         <thead><tr><th>Tipo de evaluación</th><th>Fecha</th><th>Aptitud</th><th>Médico</th><th>Acción</th></tr></thead>
@@ -71,7 +71,7 @@
     <div class="panel-cert" id="panel-capacitacion">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <p style="font-size:12.5px;color:var(--t3);margin:0;">Registra una capacitación con su lista de asistentes, y genera el certificado individual de cada uno.</p>
-        <button class="sisso-boton" onclick="abrirModalCapacitacion()">+ Nueva capacitación</button>
+        <button class="sisso-boton" data-on-click="abrirModalCapacitacion()">+ Nueva capacitación</button>
       </div>
       <table class="tabla-cert">
         <thead><tr><th>Capacitación</th><th>Fecha</th><th>Horas</th><th>Asistentes</th><th>Acciones</th></tr></thead>
@@ -87,12 +87,12 @@
       <div class="fila-campos">
         <div class="sisso-campo">
           <label class="sisso-etiqueta">Trabajador</label>
-          <select id="apt-trabajador" class="sisso-select" onchange="mostrarPreviewAptitud()"><option value="">Selecciona un trabajador…</option></select>
+          <select id="apt-trabajador" class="sisso-select" data-on-change="mostrarPreviewAptitud()"><option value="">Selecciona un trabajador…</option></select>
         </div>
       </div>
       <div id="preview-aptitud" style="margin-top:16px;display:none;">
         <div style="font-size:13px;margin-bottom:10px;">Aptitud actual: <span id="preview-aptitud-chip"></span></div>
-        <button class="sisso-boton" onclick="descargarCertificadoAptitud()">📄 Generar certificado</button>
+        <button class="sisso-boton" data-on-click="descargarCertificadoAptitud()">📄 Generar certificado</button>
       </div>
     </div>
   </div>
@@ -119,8 +119,8 @@
     </div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-      <button class="sisso-boton secundario" onclick="cerrarModalCapacitacion()">Cancelar</button>
-      <button class="sisso-boton" id="btn-guardar-capacitacion" onclick="guardarCapacitacion()">Guardar</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarModalCapacitacion()">Cancelar</button>
+      <button class="sisso-boton" id="btn-guardar-capacitacion" data-on-click="guardarCapacitacion()">Guardar</button>
     </div>
   </div>
 </div>
@@ -135,11 +135,12 @@
       <tbody id="tbody-asistentes"></tbody>
     </table>
     <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-      <button class="sisso-boton secundario" onclick="cerrarModalAsistentes()">Cerrar</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarModalAsistentes()">Cerrar</button>
     </div>
   </div>
 </div>
 
+<script src="../shared/csp-eventos.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
 <script src="certificados-pdf.js"></script>
