@@ -190,7 +190,6 @@
                  estos dos selects. -->
             <div class="fila-campos" style="margin:12px 0;">
               <div class="sisso-campo"><label class="sisso-etiqueta">N° de archivo (opcional)</label><input id="a-numero-archivo" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Religión</label><select id="a-religion" class="sisso-select"></select></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Grupo sanguíneo</label><input id="a-grupo-sanguineo" class="sisso-input" placeholder="Ej: O+"></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Lateralidad</label><select id="a-lateralidad" class="sisso-select"></select></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de ingreso al trabajo</label><input id="a-fecha-ingreso" type="date" class="sisso-input"></div>
@@ -204,15 +203,6 @@
             <div class="fila-campos" id="caja-discapacidad-detalle" style="display:none;">
               <div class="sisso-campo"><label class="sisso-etiqueta">Tipo de discapacidad</label><input id="a-discapacidad-tipo" class="sisso-input"></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Porcentaje (%)</label><input id="a-discapacidad-porcentaje" type="number" min="0" max="100" step="0.1" class="sisso-input"></div>
-            </div>
-
-            <div id="caja-ginecobstetricos" style="display:none;margin-top:14px;">
-              <div class="matriz-riesgo-titulo">Antecedentes gineco-obstétricos</div>
-              <div class="fila-campos">
-                <div class="sisso-campo"><label class="sisso-etiqueta">Edad de la menarquia</label><input id="a-menarquia" type="number" min="8" max="20" class="sisso-input"></div>
-                <div class="sisso-campo"><label class="sisso-etiqueta">Duración de ciclos (días)</label><input id="a-ciclos" type="number" min="1" max="60" class="sisso-input"></div>
-                <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de última menstruación</label><input id="a-fum" type="date" class="sisso-input"></div>
-              </div>
             </div>
           </div>
         </div>
@@ -261,55 +251,15 @@
           </div>
           <div class="sisso-campo"><label class="sisso-etiqueta">Otros antecedentes / detalle adicional</label><textarea id="c-clinicos-quirurgicos" class="sisso-textarea" placeholder="Detalle cualquier antecedente marcado arriba (fecha, tratamiento, etc.) y cualquier otro que no esté en la lista…"></textarea></div>
 
-          <div data-solo="preocupacional_inicio">
-          <div id="caja-c-femenino" style="display:none;">
-            <div class="matriz-riesgo-titulo">Antecedentes gineco-obstétricos</div>
-            <div class="fila-campos" style="margin-bottom:10px;">
-              <div class="sisso-campo"><label class="sisso-etiqueta">Gestas</label><input id="c-gestas" type="number" min="0" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Partos</label><input id="c-partos" type="number" min="0" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Cesáreas</label><input id="c-cesareas" type="number" min="0" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Abortos</label><input id="c-abortos" type="number" min="0" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos vivos</label><input id="c-hijos-vivos" type="number" min="0" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos fallecidos</label><input id="c-hijos-muertos" type="number" min="0" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Método de planificación</label><input id="c-metodo-planificacion-f" class="sisso-input" placeholder="Ninguno / cuál…"></div>
-            </div>
-            <div class="matriz-riesgo-titulo">Exámenes ginecológicos</div>
-            <div class="fila-campos">
-              <div class="sisso-campo"><label class="sisso-etiqueta">Papanicolau — fecha</label><input id="c-papanicolau-fecha" type="date" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Papanicolau — resultado</label><input id="c-papanicolau-resultado" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Eco mamario — fecha</label><input id="c-eco-mamario-fecha" type="date" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Eco mamario — resultado</label><input id="c-eco-mamario-resultado" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Mamografía — fecha</label><input id="c-mamografia-fecha" type="date" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Mamografía — resultado</label><input id="c-mamografia-resultado" class="sisso-input"></div>
-            </div>
-          </div>
-
-          <div id="caja-c-masculino" style="display:none;">
-            <div class="matriz-riesgo-titulo">Antecedentes reproductivos</div>
-            <div class="fila-campos">
-              <div class="sisso-campo"><label class="sisso-etiqueta">Antígeno prostático — fecha</label><input id="c-antigeno-fecha" type="date" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Antígeno prostático — resultado</label><input id="c-antigeno-resultado" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Eco prostático — fecha</label><input id="c-eco-prostatico-fecha" type="date" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Eco prostático — resultado</label><input id="c-eco-prostatico-resultado" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Método de planificación</label><input id="c-metodo-planificacion-m" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos vivos</label><input id="c-m-hijos-vivos" type="number" min="0" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Hijos fallecidos</label><input id="c-m-hijos-muertos" type="number" min="0" class="sisso-input"></div>
-            </div>
-          </div>
-          </div>
-
+          <!-- CORREGIDO en Auditoria N.19 (C19-01, critico): se retiraron de la
+               captura los antecedentes gineco-obstetricos y reproductivos,
+               los habitos toxicos y la religion. El backend ya los descarta
+               por la Sentencia 59-19-IN/24; pedirlos en pantalla contradecia
+               el principio de minimizacion desde el primer punto del
+               tratamiento. tests/historia_clinica_campos_prohibidos.test.js
+               falla si alguno vuelve a aparecer. -->
           <div data-solo="preocupacional_inicio periodica">
-          <div class="matriz-riesgo-titulo" style="margin-top:14px;">Hábitos tóxicos</div>
-          <div class="fila-campos" style="margin-bottom:10px;">
-            <div class="sisso-campo"><label class="sisso-etiqueta">Tabaco — ¿consume?</label><select id="c-tabaco-consume" class="sisso-select"><option value="no">No</option><option value="si">Sí</option><option value="ex">Ex-consumidor</option></select></div>
-            <div class="sisso-campo"><label class="sisso-etiqueta">Tabaco — detalle</label><input id="c-tabaco-detalle" class="sisso-input" placeholder="Cantidad y tiempo"></div>
-            <div class="sisso-campo"><label class="sisso-etiqueta">Alcohol — ¿consume?</label><select id="c-alcohol-consume" class="sisso-select"><option value="no">No</option><option value="si">Sí</option><option value="ex">Ex-consumidor</option></select></div>
-            <div class="sisso-campo"><label class="sisso-etiqueta">Alcohol — detalle</label><input id="c-alcohol-detalle" class="sisso-input" placeholder="Cantidad y tiempo"></div>
-            <div class="sisso-campo"><label class="sisso-etiqueta">Otras drogas — ¿consume?</label><select id="c-drogas-consume" class="sisso-select"><option value="no">No</option><option value="si">Sí</option><option value="ex">Ex-consumidor</option></select></div>
-            <div class="sisso-campo"><label class="sisso-etiqueta">Otras drogas — cuál/detalle</label><input id="c-drogas-detalle" class="sisso-input"></div>
-          </div>
-
-          <div class="matriz-riesgo-titulo">Estilo de vida</div>
+          <div class="matriz-riesgo-titulo" style="margin-top:14px;">Estilo de vida</div>
           <div class="fila-campos">
             <div class="sisso-campo"><label class="sisso-etiqueta">Actividad física</label><input id="c-actividad-fisica" class="sisso-input" placeholder="Cuál y con qué frecuencia"></div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Medicación habitual</label><input id="c-medicacion-habitual" class="sisso-input" placeholder="Cuál y desde cuándo"></div>

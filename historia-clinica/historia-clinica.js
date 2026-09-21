@@ -125,7 +125,6 @@ function poblarSelectsCatalogo() {
     sel.innerHTML = '<option value="">Selecciona…</option>' +
       valores.map(v => `<option value="${v}">${(etiquetas && etiquetas[v]) || v.replace(/_/g, ' ')}</option>`).join('');
   };
-  llenar('a-religion', catalogos.RELIGIONES);
   llenar('a-lateralidad', catalogos.LATERALIDADES);
   // CORREGIDO en Auditoria N.15: ORIENTACIONES_SEXUALES/IDENTIDADES_GENERO
   // ya no existen en los catalogos del backend (ver comentario en
@@ -150,11 +149,8 @@ function elegirTrabajador() {
   document.getElementById('a-area-trabajo').value = trabajadorActual.area || '';
   document.getElementById('f-puesto-area').value = [trabajadorActual.puesto, trabajadorActual.area].filter(Boolean).join(' — ');
 
-  // Mostrar bloques condicionales segun sexo
-  const sexo = trabajadorActual.sexo;
-  document.getElementById('caja-ginecobstetricos').style.display = sexo === 'F' ? 'block' : 'none';
-  document.getElementById('caja-c-femenino').style.display = sexo === 'F' ? 'block' : 'none';
-  document.getElementById('caja-c-masculino').style.display = sexo === 'M' ? 'block' : 'none';
+  // C19-01 (Auditoria N.19): ya no existen bloques condicionados por sexo;
+  // los datos reproductivos/gineco-obstetricos dejaron de solicitarse.
 
   ajustarTamanoCanvasFirma();
   cargarHistorial();
@@ -751,14 +747,11 @@ async function guardarPreocupacional() {
   const val = (id) => document.getElementById(id).value.trim() || null;
   const num = (id) => { const v = document.getElementById(id).value; return v === '' ? null : parseFloat(v); };
 
-  const sexo = trabajadorActual.sexo;
-
   const cuerpo = {
     fechaAtencion: val('p-fecha-atencion'),
     horaAtencion: val('p-hora-atencion'),
 
     numeroArchivo: val('a-numero-archivo'),
-    religion: val('a-religion'),
     grupoSanguineo: val('a-grupo-sanguineo'),
     lateralidad: val('a-lateralidad'),
     // CORREGIDO en Auditoria N.15: los campos "a-orientacion-sexual" y
@@ -773,34 +766,10 @@ async function guardarPreocupacional() {
     puestoTrabajoCiuo: val('a-ciuo'),
     areaTrabajo: val('a-area-trabajo'),
     actividadesRelevantes: val('a-actividades-relevantes'),
-    antecedentesGinecobstetricos: sexo === 'F' ? {
-      menarquiaEdad: num('a-menarquia'), ciclosDias: num('a-ciclos'), fechaUltimaMenstruacion: val('a-fum'),
-    } : null,
 
     motivoConsulta: val('b-motivo-consulta'),
 
     antecedentesClinicosQuirurgicos: obtenerAntecedentesClinicosCombinado(),
-    antecedentesGinecologicosExamenes: sexo === 'F' ? {
-      gestas: num('c-gestas'), partos: num('c-partos'), cesareas: num('c-cesareas'), abortos: num('c-abortos'),
-      hijosVivos: num('c-hijos-vivos'), hijosMuertos: num('c-hijos-muertos'),
-      metodoPlanificacion: val('c-metodo-planificacion-f'),
-      examenes: {
-        papanicolau: { fecha: val('c-papanicolau-fecha'), resultado: val('c-papanicolau-resultado') },
-        ecoMamario: { fecha: val('c-eco-mamario-fecha'), resultado: val('c-eco-mamario-resultado') },
-        mamografia: { fecha: val('c-mamografia-fecha'), resultado: val('c-mamografia-resultado') },
-      },
-    } : null,
-    antecedentesReproductivosMasculinos: sexo === 'M' ? {
-      antigenoProstatico: { fecha: val('c-antigeno-fecha'), resultado: val('c-antigeno-resultado') },
-      ecoProstatico: { fecha: val('c-eco-prostatico-fecha'), resultado: val('c-eco-prostatico-resultado') },
-      metodoPlanificacion: val('c-metodo-planificacion-m'),
-      hijosVivos: num('c-m-hijos-vivos'), hijosMuertos: num('c-m-hijos-muertos'),
-    } : null,
-    habitosToxicos: {
-      tabaco: { consume: val('c-tabaco-consume'), detalle: val('c-tabaco-detalle') },
-      alcohol: { consume: val('c-alcohol-consume'), detalle: val('c-alcohol-detalle') },
-      otrasDrogas: { consume: val('c-drogas-consume'), detalle: val('c-drogas-detalle') },
-    },
     estiloVida: {
       actividadFisica: val('c-actividad-fisica'),
       medicacionHabitual: val('c-medicacion-habitual'),
@@ -958,11 +927,6 @@ async function guardarPeriodica() {
     puestoTrabajoCiuo: val('a-ciuo'),
 
     antecedentesClinicosQuirurgicos: obtenerAntecedentesClinicosCombinado(),
-    habitosToxicos: {
-      tabaco: { consume: val('c-tabaco-consume'), detalle: val('c-tabaco-detalle') },
-      alcohol: { consume: val('c-alcohol-consume'), detalle: val('c-alcohol-detalle') },
-      otrasDrogas: { consume: val('c-drogas-consume'), detalle: val('c-drogas-detalle') },
-    },
     estiloVida: {
       actividadFisica: val('c-actividad-fisica'),
       medicacionHabitual: val('c-medicacion-habitual'),

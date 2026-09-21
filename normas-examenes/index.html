@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — Normas de exámenes</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  .aviso-norma { font-size: 12.5px; color: var(--t2); background: var(--bg3); border-radius: var(--r); padding: 12px 14px; margin-bottom: 14px; line-height: 1.5; }
+  .resumen-norma { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tabla-norma-wrap { overflow-x: auto; }
+  .norma-detalle { font-size: 12px; color: var(--t2); line-height: 1.45; }
+  .norma-detalle span { color: var(--t3); }
+  .acciones-norma { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sisso-boton.pequeno { padding: 6px 10px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div class="sisso-tarjeta">
+    <div class="sisso-tarjeta-titulo">Verificación normativa de los exámenes</div>
+    <div class="sisso-tarjeta-subtitulo">Protocolo de exámenes periódicos de la organización y el respaldo normativo de cada uno.</div>
+    <div class="aviso-norma">
+      Un examen <strong>«No verificada»</strong> es una sugerencia (sectorial o manual), <strong>no una norma</strong>: no debe presentarse
+      como obligación legal. Solo el <strong>médico ocupacional</strong> puede marcar una norma como verificada, registrando la fuente, la jurisdicción,
+      el artículo y la fecha de validación. Si la vigencia declarada vence, el examen vuelve a mostrarse como <strong>«Verificada — vencida»</strong> hasta que se revalide.
+    </div>
+    <div class="sisso-error" id="error-general"></div>
+    <div class="sisso-exito" id="exito-general"></div>
+    <div id="resumen" class="resumen-norma"></div>
+    <div id="contenido"><div class="sisso-cargando">Cargando exámenes…</div></div>
+  </div>
+
+  <div class="sisso-tarjeta" id="panel-verificacion" style="display:none;">
+    <div class="sisso-tarjeta-titulo" id="panel-titulo">Verificar norma</div>
+    <div class="sisso-tarjeta-subtitulo" id="panel-subtitulo"></div>
+    <div class="sisso-error" id="error-panel"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="v-fuente">Fuente de la norma * <span style="color:var(--t3);font-weight:400;">(instrumento y año, 5 a 250 caracteres)</span></label>
+      <input id="v-fuente" class="sisso-input" maxlength="250" placeholder="Ej.: nombre completo del reglamento o acuerdo y su año">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="v-jurisdiccion">Jurisdicción *</label>
+        <input id="v-jurisdiccion" class="sisso-input" maxlength="80" placeholder="Ej.: país, provincia o ámbito">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="v-articulo">Artículo / sección *</label>
+        <input id="v-articulo" class="sisso-input" maxlength="150" placeholder="Ej.: Art. 12, numeral 3">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="v-fecha-validacion">Fecha de validación *</label>
+        <input id="v-fecha-validacion" type="date" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="v-vigente-hasta">Vigente hasta <span style="color:var(--t3);font-weight:400;">(opcional)</span></label>
+        <input id="v-vigente-hasta" type="date" class="sisso-input">
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="v-frecuencia">Frecuencia <span style="color:var(--t3);font-weight:400;">(opcional)</span></label>
+        <input id="v-frecuencia" class="sisso-input" maxlength="100" placeholder="Ej.: anual">
+      </div>
+    </div>
+    <div class="acciones-norma">
+      <button class="sisso-boton" id="btn-guardar-verificacion" data-on-click="guardarVerificacion()">Guardar verificación</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarPanel()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="normas-examenes.js"></script>
+</body>
+</html>

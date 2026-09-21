@@ -173,6 +173,13 @@ async function guardarExamen() {
   }
 }
 
+// G19-01 (Auditoria N.19): la espirometria usa ecuaciones de referencia
+// interinas (ECSC/ERS 1993), no una implementacion validada de GLI/ERS-ATS.
+const AVISO_INTERINO_ESPIROMETRIA = `
+  <div style="margin-bottom:10px;font-size:12px;font-weight:600;color:var(--amb2);background:var(--bg3);border-radius:6px;padding:8px 10px;">
+    ⚠ Resultado INTERINO de apoyo: no es una conclusión diagnóstica. Requiere interpretación y validación del médico ocupacional.
+  </div>`;
+
 function mostrarResultado(examen) {
   const cont = document.getElementById('caja-resultado');
   const info = infoPatron(examen.patron);
@@ -193,8 +200,11 @@ function mostrarResultado(examen) {
       </div>`;
   }
 
+  // G19-01 (Auditoria N.19): el estado INTERINO se muestra SIEMPRE junto al
+  // resultado, no solo cuando el backend envia metadatos_referencia.
   cont.innerHTML = `
     <div class="resultado-caja">
+      ${AVISO_INTERINO_ESPIROMETRIA}
       <div style="margin-bottom:10px;">
         <span class="patron-chip-grande" style="background:${info.bg};color:${info.fg};">${info.etiqueta}</span>
       </div>
