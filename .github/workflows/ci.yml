@@ -1,0 +1,21 @@
+# CI del frontend de SISSO (Auditoria N.18, G18-08): verifica de forma
+# automatica que la CSP sea uniforme y estricta en TODAS las paginas y que
+# ningun cambio reintroduzca scripts/atributos en linea. Sin dependencias.
+name: CI frontend
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+jobs:
+  csp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pruebas estaticas de CSP y delegador de eventos
+        run: node --test tests/*.test.js

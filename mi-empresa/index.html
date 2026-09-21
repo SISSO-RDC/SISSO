@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISSO — Mi Empresa</title>
 <link rel="stylesheet" href="../shared/estilos.css">
@@ -106,8 +106,8 @@
     <div class="sisso-error" id="modificar-error"></div>
     <div id="modificar-campos"></div>
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:18px;">
-      <button class="sisso-boton secundario" onclick="cerrarModalModificar()">Cancelar</button>
-      <button class="sisso-boton" id="btn-confirmar-modificar" onclick="confirmarModificacion()">Guardar y aceptar</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarModalModificar()">Cancelar</button>
+      <button class="sisso-boton" id="btn-confirmar-modificar" data-on-click="confirmarModificacion()">Guardar y aceptar</button>
     </div>
   </div>
 </div>
@@ -121,15 +121,16 @@
     <div class="sisso-error" id="config-error"></div>
     <div id="config-contenido-paso"></div>
     <div style="display:flex; justify-content:space-between; margin-top:20px;">
-      <button class="sisso-boton secundario" id="btn-config-cancelar" onclick="cerrarConfiguradorSectorial()">Cancelar</button>
+      <button class="sisso-boton secundario" id="btn-config-cancelar" data-on-click="cerrarConfiguradorSectorial()">Cancelar</button>
       <div style="display:flex; gap:8px;">
-        <button class="sisso-boton secundario" id="btn-config-atras" onclick="pasoAnteriorConfigurador()" style="display:none;">← Atrás</button>
-        <button class="sisso-boton" id="btn-config-siguiente" onclick="pasoSiguienteConfigurador()">Siguiente →</button>
+        <button class="sisso-boton secundario" id="btn-config-atras" data-on-click="pasoAnteriorConfigurador()" style="display:none;">← Atrás</button>
+        <button class="sisso-boton" id="btn-config-siguiente" data-on-click="pasoSiguienteConfigurador()">Siguiente →</button>
       </div>
     </div>
   </div>
 </div>
 
+<script src="../shared/csp-eventos.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
 <script src="mi-empresa.js"></script>

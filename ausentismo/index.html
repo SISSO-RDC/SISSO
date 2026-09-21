@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISSO — Ausentismo</title>
 <link rel="stylesheet" href="../shared/estilos.css">
@@ -55,8 +55,8 @@
         <div class="sisso-tarjeta-subtitulo">Registro y control de ausencias laborales (clasificación tipo IESS).</div>
       </div>
       <div class="btn-acciones">
-        <button class="sisso-boton secundario" onclick="abrirModalImportar()">📥 Importar Excel</button>
-        <button class="sisso-boton" onclick="abrirModal()">+ Nueva ausencia</button>
+        <button class="sisso-boton secundario" data-on-click="abrirModalImportar()">📥 Importar Excel</button>
+        <button class="sisso-boton" data-on-click="abrirModal()">+ Nueva ausencia</button>
       </div>
     </div>
     <div class="sisso-exito" id="exito-lista"></div>
@@ -70,15 +70,15 @@
     <div class="filtros">
       <div class="sisso-campo">
         <label class="sisso-etiqueta">Tipo</label>
-        <select id="f-tipo" class="sisso-select" onchange="aplicarFiltros()"><option value="">Todos</option></select>
+        <select id="f-tipo" class="sisso-select" data-on-change="aplicarFiltros()"><option value="">Todos</option></select>
       </div>
       <div class="sisso-campo">
         <label class="sisso-etiqueta">Desde</label>
-        <input id="f-desde" type="date" class="sisso-input" onchange="aplicarFiltros()">
+        <input id="f-desde" type="date" class="sisso-input" data-on-change="aplicarFiltros()">
       </div>
       <div class="sisso-campo">
         <label class="sisso-etiqueta">Hasta</label>
-        <input id="f-hasta" type="date" class="sisso-input" onchange="aplicarFiltros()">
+        <input id="f-hasta" type="date" class="sisso-input" data-on-change="aplicarFiltros()">
       </div>
     </div>
 
@@ -111,7 +111,7 @@
     <div class="fila-campos" style="margin-bottom:12px;">
       <div class="sisso-campo">
         <label class="sisso-etiqueta">Tipo de ausencia *</label>
-        <select id="m-tipo" class="sisso-select" onchange="sincronizarSubsidioIess()"></select>
+        <select id="m-tipo" class="sisso-select" data-on-change="sincronizarSubsidioIess()"></select>
       </div>
       <div class="sisso-campo" style="display:flex;align-items:center;gap:8px;padding-top:20px;">
         <input type="checkbox" id="m-subsidiado" style="width:16px;height:16px;">
@@ -131,15 +131,15 @@
 
     <div class="sisso-campo">
       <label class="sisso-etiqueta">Certificado escaneado (imagen o PDF, opcional)</label>
-      <input id="m-certificado-archivo" type="file" accept="image/*,application/pdf" class="sisso-input" onchange="leerCertificado(this)">
+      <input id="m-certificado-archivo" type="file" accept="image/*,application/pdf" class="sisso-input" data-on-change="leerCertificado(this)">
       <div id="m-certificado-actual" style="font-size:11.5px;color:var(--t3);margin-top:4px;"></div>
     </div>
 
     <div class="sisso-campo"><label class="sisso-etiqueta">Observaciones</label><textarea id="m-observaciones" class="sisso-textarea"></textarea></div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-      <button class="sisso-boton secundario" onclick="cerrarModal()">Cancelar</button>
-      <button class="sisso-boton" id="btn-guardar-modal" onclick="guardarItem()">Guardar</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarModal()">Cancelar</button>
+      <button class="sisso-boton" id="btn-guardar-modal" data-on-click="guardarItem()">Guardar</button>
     </div>
   </div>
 </div>
@@ -157,7 +157,7 @@
 
     <div class="sisso-campo">
       <label class="sisso-etiqueta">Archivo (.xlsx, .xls, .csv)</label>
-      <input id="archivo-excel" type="file" accept=".xlsx,.xls,.csv" class="sisso-input" onchange="previsualizarArchivo(this)">
+      <input id="archivo-excel" type="file" accept=".xlsx,.xls,.csv" class="sisso-input" data-on-change="previsualizarArchivo(this)">
     </div>
 
     <div id="preview-importar" style="display:none;">
@@ -168,14 +168,15 @@
     </div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-      <button class="sisso-boton secundario" onclick="cerrarModal('modal-importar')">Cancelar</button>
-      <button class="sisso-boton" id="btn-confirmar-importar" onclick="ejecutarImportacion()" disabled>Importar</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarModal('modal-importar')">Cancelar</button>
+      <button class="sisso-boton" id="btn-confirmar-importar" data-on-click="ejecutarImportacion()" disabled>Importar</button>
     </div>
   </div>
 </div>
 
 <!-- Scripts: SheetJS para Excel, luego compartidos, luego logica de la pagina -->
 <script src="../lib/xlsx.full.min.js"></script>
+<script src="../shared/csp-eventos.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
 <script src="ausentismo.js"></script>

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISSO — Ecuación NIOSH</title>
 <link rel="stylesheet" href="../shared/estilos.css">
@@ -34,7 +34,7 @@
         <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
         <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
       </div>
-      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+      <button class="sisso-boton" data-on-click="elegirTrabajador()">Continuar</button>
     </div>
   </div>
 
@@ -43,7 +43,7 @@
     <div class="sisso-tarjeta" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;"></div>
-        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+        <button class="btn-mini" data-on-click="cambiarTrabajador()">← Cambiar trabajador</button>
       </div>
     </div>
 
@@ -114,13 +114,14 @@
         <textarea id="observaciones" class="sisso-textarea" placeholder="Notas sobre la tarea evaluada…"></textarea>
       </div>
 
-      <button class="sisso-boton ancho-completo" id="btn-guardar" onclick="guardarEvaluacion()">Calcular y guardar evaluación</button>
+      <button class="sisso-boton ancho-completo" id="btn-guardar" data-on-click="guardarEvaluacion()">Calcular y guardar evaluación</button>
 
       <div id="caja-resultado"></div>
     </div>
   </div>
 </div>
 
+<script src="../shared/csp-eventos.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
 <script src="niosh.js"></script>

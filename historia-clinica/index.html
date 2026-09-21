@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISSO — Historia Clínica Ocupacional</title>
 <link rel="stylesheet" href="../shared/estilos.css">
@@ -68,7 +68,7 @@
         <label class="sisso-etiqueta" for="sel-trabajador">Trabajador</label>
         <select id="sel-trabajador" class="sisso-select"><option value="">Cargando trabajadores…</option></select>
       </div>
-      <button class="sisso-boton" onclick="elegirTrabajador()">Continuar</button>
+      <button class="sisso-boton" data-on-click="elegirTrabajador()">Continuar</button>
     </div>
   </div>
 
@@ -77,7 +77,7 @@
     <div class="sisso-tarjeta" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <div class="sisso-tarjeta-titulo" id="titulo-trabajador" style="margin-bottom:0;"></div>
-        <button class="btn-mini" onclick="cambiarTrabajador()">← Cambiar trabajador</button>
+        <button class="btn-mini" data-on-click="cambiarTrabajador()">← Cambiar trabajador</button>
       </div>
     </div>
 
@@ -100,7 +100,7 @@
           <div class="fila-campos" style="margin-bottom:12px;">
             <div class="sisso-campo">
               <label class="sisso-etiqueta">Vacuna</label>
-              <select id="inm-vacuna" class="sisso-select" onchange="document.getElementById('inm-vacuna-otra').style.display=this.value==='Otra'?'block':'none';">
+              <select id="inm-vacuna" class="sisso-select" data-on-change="mostrarCampoVacunaOtra(this.value)">
                 <option value="Tétanos-Difteria">Tétanos-Difteria</option>
                 <option value="Hepatitis B">Hepatitis B</option>
                 <option value="Hepatitis A">Hepatitis A</option>
@@ -133,7 +133,7 @@
             <input type="checkbox" id="inm-esquema-completo"> Esquema de vacunación completo
           </label>
           <div class="sisso-campo"><label class="sisso-etiqueta">Observaciones</label><textarea id="inm-observaciones" class="sisso-textarea"></textarea></div>
-          <button class="sisso-boton" onclick="registrarInmunizacion()">Registrar dosis</button>
+          <button class="sisso-boton" data-on-click="registrarInmunizacion()">Registrar dosis</button>
         </div>
       </details>
     </div>
@@ -141,10 +141,10 @@
     <div class="sisso-tarjeta" style="margin-bottom:16px;">
       <div class="sisso-tarjeta-titulo">Nueva evaluación</div>
       <div class="toggle-tipo-evaluacion">
-        <button type="button" id="btn-tipo-preocupacional" class="activo" onclick="cambiarTipoEvaluacion('preocupacional_inicio')">Preocupacional (HCU 077)</button>
-        <button type="button" id="btn-tipo-periodica" onclick="cambiarTipoEvaluacion('periodica')">Periódica (HCU 078)</button>
-        <button type="button" id="btn-tipo-reintegro" onclick="cambiarTipoEvaluacion('reintegro')">Reintegro (HCU 079)</button>
-        <button type="button" id="btn-tipo-retiro" onclick="cambiarTipoEvaluacion('retiro')">Retiro (HCU 080)</button>
+        <button type="button" id="btn-tipo-preocupacional" class="activo" data-on-click="cambiarTipoEvaluacion('preocupacional_inicio')">Preocupacional (HCU 077)</button>
+        <button type="button" id="btn-tipo-periodica" data-on-click="cambiarTipoEvaluacion('periodica')">Periódica (HCU 078)</button>
+        <button type="button" id="btn-tipo-reintegro" data-on-click="cambiarTipoEvaluacion('reintegro')">Reintegro (HCU 079)</button>
+        <button type="button" id="btn-tipo-retiro" data-on-click="cambiarTipoEvaluacion('retiro')">Retiro (HCU 080)</button>
       </div>
       <div class="sisso-error" id="error-form"></div>
       <div class="sisso-exito" id="exito-form"></div>
@@ -156,15 +156,15 @@
           <div data-solo="retiro" style="display:none;">
             <div class="fila-campos" style="margin-bottom:12px;">
               <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de inicio de labores</label><input id="r-fecha-inicio-labores" type="date" class="sisso-input"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de salida</label><input id="r-fecha-salida" type="date" class="sisso-input" onchange="calcularTiempoPermanencia()"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de salida</label><input id="r-fecha-salida" type="date" class="sisso-input" data-on-change="calcularTiempoPermanencia()"></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Tiempo de permanencia (meses)</label><input id="r-tiempo-permanencia" type="number" min="0" class="sisso-input" placeholder="Se calcula automáticamente"></div>
             </div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Factores de riesgo a los que estuvo expuesto</label><textarea id="r-factores-riesgo-texto" class="sisso-textarea"></textarea></div>
           </div>
           <div data-solo="reintegro" style="display:none;">
             <div class="fila-campos" style="margin-bottom:12px;">
-              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha del último día laboral</label><input id="ri-fecha-ultimo-dia" type="date" class="sisso-input" onchange="calcularDiasAusencia()"></div>
-              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de reingreso</label><input id="ri-fecha-reingreso" type="date" class="sisso-input" onchange="calcularDiasAusencia()"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha del último día laboral</label><input id="ri-fecha-ultimo-dia" type="date" class="sisso-input" data-on-change="calcularDiasAusencia()"></div>
+              <div class="sisso-campo"><label class="sisso-etiqueta">Fecha de reingreso</label><input id="ri-fecha-reingreso" type="date" class="sisso-input" data-on-change="calcularDiasAusencia()"></div>
               <div class="sisso-campo"><label class="sisso-etiqueta">Total de días de ausencia</label><input id="ri-dias-ausencia" type="number" min="0" class="sisso-input" placeholder="Se calcula automáticamente"></div>
             </div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Causa de la salida</label><textarea id="ri-causa-salida" class="sisso-textarea"></textarea></div>
@@ -198,7 +198,7 @@
             </div>
 
             <label class="chip-checkbox" style="border-radius:8px;margin-bottom:12px;">
-              <input type="checkbox" id="a-discapacidad-tiene" onchange="document.getElementById('caja-discapacidad-detalle').style.display=this.checked?'grid':'none'">
+              <input type="checkbox" id="a-discapacidad-tiene" data-on-change="sissoMostrarSi('caja-discapacidad-detalle', this.checked, 'grid')">
               ¿Tiene alguna discapacidad?
             </label>
             <div class="fila-campos" id="caja-discapacidad-detalle" style="display:none;">
@@ -328,7 +328,7 @@
         <div class="bloque-cuerpo">
           <div data-solo="preocupacional_inicio">
             <div id="lista-antecedentes-laborales"></div>
-            <button type="button" class="sisso-boton secundario" onclick="agregarAntecedenteLaboral()">+ Agregar empleo anterior</button>
+            <button type="button" class="sisso-boton secundario" data-on-click="agregarAntecedenteLaboral()">+ Agregar empleo anterior</button>
           </div>
 
           <div class="matriz-riesgo-titulo" style="margin-top:16px;">Accidentes de trabajo previos</div>
@@ -413,8 +413,8 @@
             <div class="sisso-campo"><label class="sisso-etiqueta">Frec. cardíaca (lat/min)</label><input id="j-fc" type="number" class="sisso-input"></div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Saturación O₂ (%)</label><input id="j-satO2" type="number" class="sisso-input"></div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Frec. respiratoria (resp/min)</label><input id="j-fr" type="number" class="sisso-input"></div>
-            <div class="sisso-campo"><label class="sisso-etiqueta">Peso (kg)</label><input id="j-peso" type="number" step="0.1" class="sisso-input" oninput="calcularImcEnPantalla()"></div>
-            <div class="sisso-campo"><label class="sisso-etiqueta">Talla (cm)</label><input id="j-talla" type="number" class="sisso-input" oninput="calcularImcEnPantalla()"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Peso (kg)</label><input id="j-peso" type="number" step="0.1" class="sisso-input" data-on-input="calcularImcEnPantalla()"></div>
+            <div class="sisso-campo"><label class="sisso-etiqueta">Talla (cm)</label><input id="j-talla" type="number" class="sisso-input" data-on-input="calcularImcEnPantalla()"></div>
             <div class="sisso-campo"><label class="sisso-etiqueta">Perímetro abdominal (cm)</label><input id="j-perimetro-abdominal" type="number" step="0.1" class="sisso-input"></div>
           </div>
           <div class="imc-resultado" id="imc-resultado"></div>
@@ -432,7 +432,7 @@
         <summary><span class="bloque-letra">L</span> Resultados de exámenes generales/específicos</summary>
         <div class="bloque-cuerpo">
           <div id="lista-resultados-examenes"></div>
-          <button type="button" class="sisso-boton secundario" onclick="agregarResultadoExamen()">+ Agregar resultado de examen</button>
+          <button type="button" class="sisso-boton secundario" data-on-click="agregarResultadoExamen()">+ Agregar resultado de examen</button>
         </div>
       </details>
 
@@ -441,7 +441,7 @@
         <summary><span class="bloque-letra">M</span> Diagnóstico</summary>
         <div class="bloque-cuerpo">
           <div class="buscador-cie10">
-            <input id="buscar-cie10" class="sisso-input" placeholder="Buscar por código o descripción (ej: epilepsia, G40)…" oninput="buscarCie10Debounced()" autocomplete="off">
+            <input id="buscar-cie10" class="sisso-input" placeholder="Buscar por código o descripción (ej: epilepsia, G40)…" data-on-input="buscarCie10Debounced()" autocomplete="off">
             <div class="resultados-cie10" id="resultados-cie10"></div>
           </div>
           <div id="lista-diagnosticos" style="margin-top:10px;"></div>
@@ -510,16 +510,17 @@
         <div class="bloque-cuerpo">
           <canvas id="lienzo-firma"></canvas>
           <div class="firma-acciones">
-            <button type="button" class="sisso-boton secundario" onclick="limpiarFirma()">🗑 Limpiar firma</button>
+            <button type="button" class="sisso-boton secundario" data-on-click="limpiarFirma()">🗑 Limpiar firma</button>
           </div>
         </div>
       </details>
 
-      <button class="sisso-boton ancho-completo" id="btn-guardar" onclick="guardarEvaluacion()" style="margin-top:16px;">Guardar evaluación preocupacional</button>
+      <button class="sisso-boton ancho-completo" id="btn-guardar" data-on-click="guardarEvaluacion()" style="margin-top:16px;">Guardar evaluación preocupacional</button>
     </div>
   </div>
 </div>
 
+<script src="../shared/csp-eventos.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
 <script src="historia-clinica.js"></script>

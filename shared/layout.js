@@ -70,24 +70,26 @@ function escaparAtributoHtml(valor) {
 // escaparValorOnclickJs: para un valor que va DENTRO de un string
 // JavaScript de comillas simples que a su vez esta dentro de un
 // atributo de evento HTML entre comillas dobles, ej:
-//   `<button onclick="hacerAlgo('${escaparValorOnclickJs(dato)}')">`
+//   `<button data-on-click="accionEjemplo('${escaparValorOnclickJs(dato)}')">`
+// (desde la Auditoria N.18 los atributos onclick/onchange/oninput se
+// llaman data-on-click/data-on-change/data-on-input y los ejecuta el
+// delegador de shared/csp-eventos.js, sin eval; el formato del valor
+// no cambia).
 // IMPORTANTE: escapar la comilla simple como entidad HTML (&#39;)
 // NO alcanza aqui, a diferencia de escaparAtributoHtml -- el
 // navegador decodifica las entidades HTML del atributo ANTES de que
-// el motor de JavaScript reciba y compile ese codigo como el
-// manejador del evento, asi que &#39; se convertiria de vuelta en un
-// caracter ' literal justo a tiempo para romper el string de
-// JavaScript igual que si nunca se hubiera escapado. Por eso esta
-// funcion escapa la comilla simple con una barra invertida (escape
-// de string de JS), no con una entidad HTML, y ademas escapa la
-// barra invertida misma primero (para que un valor que ya contenga
-// "\'" no pueda forjar una comilla sin escapar).
+// el delegador lea el texto de la expresion, asi que &#39; se
+// convertiria de vuelta en un caracter ' literal justo a tiempo para
+// romper el string, igual que si nunca se hubiera escapado. Por eso
+// esta funcion escapa la comilla simple con una barra invertida
+// (escape de string de JS), no con una entidad HTML, y ademas escapa
+// la barra invertida misma primero (para que un valor que ya
+// contenga "\'" no pueda forjar una comilla sin escapar).
 //
-// Este patron (datos dinamicos interpolados dentro de un atributo
-// onclick) es fragil por naturaleza -- ver el hallazgo MODERADO
-// M15-03, que recomienda migrar estos casos a addEventListener() de
-// forma gradual. Mientras esa migracion no se haga, todo caso nuevo
-// de este patron DEBE usar esta funcion, nunca una copia local.
+// Todo caso nuevo de este patron DEBE usar esta funcion, nunca una
+// copia local. Para valores complejos (objetos, texto libre largo)
+// se puede usar escaparAtributoHtml(JSON.stringify(valor)): el
+// delegador interpreta literales de texto con comillas dobles.
 function escaparValorOnclickJs(valor) {
   if (valor === null || valor === undefined) return '';
   return String(valor)
@@ -241,7 +243,7 @@ const SissoLayout = (() => {
         return `<a
           href="${item.href}"
           class="sisso-nav-item${estaActivo ? ' activo' : ''}${esPendiente ? ' pendiente' : ''}"
-          ${esPendiente ? 'onclick="return false;" title="Próximamente"' : ''}
+          ${esPendiente ? 'data-on-click="return false;" title="Próximamente"' : ''}
           style="${esPendiente ? 'opacity:.4;cursor:not-allowed;' : ''}"
         >
           <span style="width:18px;text-align:center">${item.icono}</span>
@@ -251,7 +253,7 @@ const SissoLayout = (() => {
       }).join('');
 
       return `
-        <button type="button" class="sisso-nav-seccion-btn" aria-expanded="${!estaColapsada}" onclick="sissoToggleSeccion(this, '${escaparHtml(seccion.nombre)}')">
+        <button type="button" class="sisso-nav-seccion-btn" aria-expanded="${!estaColapsada}" data-on-click="sissoToggleSeccion(this, '${escaparHtml(seccion.nombre)}')">
           <span class="sisso-nav-seccion">${escaparHtml(seccion.nombre)}</span>
           <span class="sisso-nav-seccion-flecha">▼</span>
         </button>
@@ -281,16 +283,16 @@ const SissoLayout = (() => {
             ${escaparHtml(usuario.nombreCompleto)}
             <span style="display:block;font-size:10px;margin-top:1px;color:rgba(255,255,255,.4);font-weight:600;">${escaparHtml(usuario.rol?.toUpperCase())}</span>
           </div>
-          <button onclick="sissoAbrirCambioPassword()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+          <button data-on-click="sissoAbrirCambioPassword()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
             Cambiar mi contraseña
           </button>
-          <button onclick="sissoAbrirMfa()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+          <button data-on-click="sissoAbrirMfa()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
             Verificación en 2 pasos
           </button>
-          <button onclick="sissoAbrirSesiones()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+          <button data-on-click="sissoAbrirSesiones()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
             Sesiones activas
           </button>
-          <button onclick="sissoCerrarSesionConConfirmacion()" style="width:100%;padding:7px;background:rgba(220,38,38,.15);color:#fca5a5;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
+          <button data-on-click="sissoCerrarSesionConConfirmacion()" style="width:100%;padding:7px;background:rgba(220,38,38,.15);color:#fca5a5;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
             Cerrar sesión
           </button>
         </div>
@@ -300,10 +302,10 @@ const SissoLayout = (() => {
   function construirTopbar(tituloModulo) {
     return `
       <div class="sisso-topbar">
-        <button type="button" class="sisso-boton-menu-movil" id="sisso-boton-menu-movil" onclick="sissoAlternarSidebarMovil()" aria-label="Abrir menú" title="Menú">☰</button>
+        <button type="button" class="sisso-boton-menu-movil" id="sisso-boton-menu-movil" data-on-click="sissoAlternarSidebarMovil()" aria-label="Abrir menú" title="Menú">☰</button>
         <span class="sisso-topbar-titulo">${tituloModulo}</span>
         <div class="sisso-topbar-derecha" id="sisso-topbar-acciones">
-          <button type="button" class="sisso-boton-modo-privado" id="sisso-boton-modo-privado" onclick="sissoAlternarModoPrivado()" title="Difumina el contenido en pantalla sin cerrar sesión. No reemplaza los permisos del sistema.">
+          <button type="button" class="sisso-boton-modo-privado" id="sisso-boton-modo-privado" data-on-click="sissoAlternarModoPrivado()" title="Difumina el contenido en pantalla sin cerrar sesión. No reemplaza los permisos del sistema.">
             👁️ <span class="texto-boton">Modo privado</span>
           </button>
           <!-- Las paginas individuales pueden inyectar botones aqui con SissoLayout.agregarAccionTopbar() -->
@@ -360,7 +362,7 @@ const SissoLayout = (() => {
       // modo privado -- se inyecta una sola vez por pagina.
       if (!document.getElementById('sisso-sidebar-overlay')) {
         document.body.insertAdjacentHTML('beforeend', `
-          <div class="sisso-sidebar-overlay" id="sisso-sidebar-overlay" onclick="sissoCerrarSidebarMovil()"></div>`);
+          <div class="sisso-sidebar-overlay" id="sisso-sidebar-overlay" data-on-click="sissoCerrarSidebarMovil()"></div>`);
       }
 
       // Lote E (Fase 9): overlay del modo privado, inyectado una vez
@@ -368,7 +370,7 @@ const SissoLayout = (() => {
       // difuminado ni bloqueado por su propio filtro/pointer-events.
       if (!document.getElementById('sisso-modo-privado-overlay')) {
         document.body.insertAdjacentHTML('beforeend', `
-          <div class="sisso-modo-privado-overlay" id="sisso-modo-privado-overlay" onclick="sissoAlternarModoPrivado()">
+          <div class="sisso-modo-privado-overlay" id="sisso-modo-privado-overlay" data-on-click="sissoAlternarModoPrivado()">
             <div class="sisso-modo-privado-banner"><span class="punto"></span> Modo privado activo — toca para reactivar la pantalla</div>
           </div>`);
       }
@@ -521,8 +523,8 @@ function sissoMostrarModalCambioPassword(forzado) {
         <input id="sisso-cp-nueva" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:20px;box-sizing:border-box;font-family:inherit;">
 
         <div style="display:flex;gap:10px;justify-content:flex-end;">
-          ${forzado ? '' : '<button onclick="sissoCerrarModalCambioPassword()" style="padding:11px 18px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cancelar</button>'}
-          <button id="sisso-cp-boton" onclick="sissoConfirmarCambioPassword(${forzado})" style="padding:11px 18px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Guardar nueva contraseña</button>
+          ${forzado ? '' : '<button data-on-click="sissoCerrarModalCambioPassword()" style="padding:11px 18px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cancelar</button>'}
+          <button id="sisso-cp-boton" data-on-click="sissoConfirmarCambioPassword(${forzado})" style="padding:11px 18px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Guardar nueva contraseña</button>
         </div>
       </div>
     </div>`;
@@ -603,7 +605,7 @@ async function sissoAbrirMfa() {
         <div style="font-size:16px;font-weight:800;margin-bottom:6px;">Verificación en 2 pasos</div>
         <div id="sisso-mfa-contenido" style="font-size:13px;color:#64748b;">Cargando…</div>
         <div style="display:flex;justify-content:flex-end;margin-top:18px;">
-          <button onclick="sissoCerrarModalMfa()" style="padding:11px 18px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>
+          <button data-on-click="sissoCerrarModalMfa()" style="padding:11px 18px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>
         </div>
       </div>
     </div>`;
@@ -635,7 +637,7 @@ function sissoRenderizarMfaActivo() {
     <input id="sisso-mfa-password" type="password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
     <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:5px;">Código de tu app de autenticación</label>
     <input id="sisso-mfa-codigo-desactivar" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:16px;text-align:center;letter-spacing:4px;margin-bottom:12px;box-sizing:border-box;font-family:inherit;">
-    <button id="sisso-mfa-btn-desactivar" onclick="sissoDesactivarMfa()" style="width:100%;padding:11px;background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Desactivar verificación en 2 pasos</button>`;
+    <button id="sisso-mfa-btn-desactivar" data-on-click="sissoDesactivarMfa()" style="width:100%;padding:11px;background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Desactivar verificación en 2 pasos</button>`;
 }
 
 // CORREGIDO tras auditoria de seguridad (hallazgo CRITICO): ahora se
@@ -681,7 +683,7 @@ async function sissoRenderizarMfaSetup() {
     <p style="margin:0 0 8px;">2. Escribe el código de 6 dígitos que te muestra la app para confirmar:</p>
     <div id="sisso-mfa-error" style="display:none;background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;"></div>
     <input id="sisso-mfa-codigo" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:16px;text-align:center;letter-spacing:4px;margin-bottom:14px;box-sizing:border-box;font-family:inherit;">
-    <button id="sisso-mfa-btn-confirmar" onclick="sissoConfirmarMfaSetup()" style="width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Activar verificación en 2 pasos</button>`;
+    <button id="sisso-mfa-btn-confirmar" data-on-click="sissoConfirmarMfaSetup()" style="width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Activar verificación en 2 pasos</button>`;
   document.getElementById('sisso-mfa-codigo').focus();
 }
 
@@ -725,10 +727,10 @@ async function sissoAbrirSesiones() {
         <div style="font-size:12px;color:#94a3b8;margin-bottom:14px;">Dispositivos donde tu cuenta tiene una sesión abierta actualmente.</div>
         <div id="sisso-sesiones-contenido" style="font-size:13px;color:#64748b;">Cargando…</div>
         <div style="display:flex;justify-content:space-between;margin-top:18px;gap:8px;">
-          <button id="sisso-sesiones-btn-cerrar-otras" onclick="sissoRevocarOtrasSesiones()" style="padding:9px 14px;background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">
+          <button id="sisso-sesiones-btn-cerrar-otras" data-on-click="sissoRevocarOtrasSesiones()" style="padding:9px 14px;background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">
             Cerrar todas las demás
           </button>
-          <button onclick="sissoCerrarModalSesiones()" style="padding:9px 16px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>
+          <button data-on-click="sissoCerrarModalSesiones()" style="padding:9px 16px;background:#fff;color:#334155;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>
         </div>
       </div>
     </div>`;
@@ -790,7 +792,7 @@ async function sissoCargarSesiones() {
               ${s.ipOrigen ? ` · IP: ${escaparHtml(s.ipOrigen)}` : ''}
             </div>
           </div>
-          ${s.esSesionActual ? '' : `<button onclick="sissoRevocarSesion('${escaparHtml(s.familiaId)}')" style="flex-shrink:0;padding:5px 10px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>`}
+          ${s.esSesionActual ? '' : `<button data-on-click="sissoRevocarSesion('${escaparHtml(s.familiaId)}')" style="flex-shrink:0;padding:5px 10px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Cerrar</button>`}
         </div>
       </div>
     `).join('');

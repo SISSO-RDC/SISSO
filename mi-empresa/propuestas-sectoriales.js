@@ -88,7 +88,7 @@ const SissoPropuestasSectoriales = (() => {
       const activo = tipo === estadoActual.tipoActivo;
       const pendientesTab = activo ? estadoActual.propuestas.filter((p) => p.estado === 'pendiente').length : null;
       return `
-        <div class="tab-propuesta ${activo ? 'activo' : ''}" onclick="SissoPropuestasSectoriales.cambiarTipo('${tipo}')">
+        <div class="tab-propuesta ${activo ? 'activo' : ''}" data-on-click="SissoPropuestasSectoriales.cambiarTipo('${tipo}')">
           ${info.icono} ${info.etiqueta}
           ${activo && pendientesTab > 0 ? `<span class="contador">${pendientesTab}</span>` : ''}
         </div>`;
@@ -97,7 +97,7 @@ const SissoPropuestasSectoriales = (() => {
     const filtros = ['pendiente', 'aceptada', 'modificada', 'rechazada', 'todas'];
     const etiquetaFiltro = { pendiente: 'Pendientes', aceptada: 'Aceptadas', modificada: 'Modificadas', rechazada: 'Rechazadas', todas: 'Todas' };
     const filtrosHtml = filtros.map((f) => `
-      <div class="filtro-estado ${f === estadoActual.filtroEstado ? 'activo' : ''}" onclick="SissoPropuestasSectoriales.cambiarFiltro('${f}')">${etiquetaFiltro[f]}</div>
+      <div class="filtro-estado ${f === estadoActual.filtroEstado ? 'activo' : ''}" data-on-click="SissoPropuestasSectoriales.cambiarFiltro('${f}')">${etiquetaFiltro[f]}</div>
     `).join('');
 
     const visibles = estadoActual.filtroEstado === 'todas'
@@ -111,7 +111,7 @@ const SissoPropuestasSectoriales = (() => {
     document.getElementById('contenido-propuestas').innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
         <div class="tabs-propuestas">${tabsHtml}</div>
-        <button class="sisso-boton secundario" id="btn-generar-propuestas" onclick="SissoPropuestasSectoriales.generar()">🔄 Generar propuestas</button>
+        <button class="sisso-boton secundario" id="btn-generar-propuestas" data-on-click="SissoPropuestasSectoriales.generar()">🔄 Generar propuestas</button>
       </div>
       <div class="filtros-estado">${filtrosHtml}</div>
       <div id="lista-propuestas">${listaHtml}</div>
@@ -137,9 +137,9 @@ const SissoPropuestasSectoriales = (() => {
 
     const acciones = p.estado === 'pendiente' ? `
       <div class="propuesta-acciones">
-        <button class="sisso-boton" onclick="SissoPropuestasSectoriales.aceptar('${p.id}')">Aceptar</button>
-        <button class="sisso-boton secundario" onclick="SissoPropuestasSectoriales.abrirModalModificar('${p.id}')">Modificar</button>
-        <button class="sisso-boton secundario" style="color:var(--red2);" onclick="SissoPropuestasSectoriales.rechazar('${p.id}')">Rechazar</button>
+        <button class="sisso-boton" data-on-click="SissoPropuestasSectoriales.aceptar('${p.id}')">Aceptar</button>
+        <button class="sisso-boton secundario" data-on-click="SissoPropuestasSectoriales.abrirModalModificar('${p.id}')">Modificar</button>
+        <button class="sisso-boton secundario" style="color:var(--red2);" data-on-click="SissoPropuestasSectoriales.rechazar('${p.id}')">Rechazar</button>
       </div>
     ` : '';
 
@@ -323,5 +323,12 @@ const SissoPropuestasSectoriales = (() => {
 // Los onclick del HTML (index.html) llaman a estas 2 funciones
 // sueltas, igual que el resto de modales de la app (ver
 // cerrarConfiguradorSectorial en configurador-sectorial.js).
+// N.18 (CSP estricta): los botones de esta tarjeta usan
+// atributos data-on-click que invocan metodos de SissoPropuestasSectoriales. El delegador de
+// eventos (shared/csp-eventos.js) resuelve funciones solo desde `window`, y
+// un `const` de nivel superior NO es propiedad de `window`, asi que se
+// expone explicitamente.
+window.SissoPropuestasSectoriales = SissoPropuestasSectoriales;
+
 function cerrarModalModificar() { SissoPropuestasSectoriales.cerrarModalModificar(); }
 function confirmarModificacion() { SissoPropuestasSectoriales.confirmarModificacion(); }

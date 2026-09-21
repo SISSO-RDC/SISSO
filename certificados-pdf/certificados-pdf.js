@@ -75,7 +75,7 @@ async function cargarEvaluacionesHcu081() {
         <td>${formatearFechaCert(e.fecha_atencion)}</td>
         <td>${e.aptitud_msp ? ETIQUETAS_APTITUD_MSP[e.aptitud_msp] || e.aptitud_msp : '—'}</td>
         <td>${escCert(e.medico_nombre)}</td>
-        <td><button class="btn-mini" onclick="descargarHcu081('${e.id}')">📄 Certificado</button></td>
+        <td><button class="btn-mini" data-on-click="descargarHcu081('${e.id}')">📄 Certificado</button></td>
       </tr>`).join('');
     tabla.style.display = '';
   } catch (err) {
@@ -113,8 +113,8 @@ async function cargarCapacitaciones() {
         <td>${c.horas_duracion}</td>
         <td>${c.total_asistentes}</td>
         <td>
-          <button class="btn-mini" onclick="verAsistentes('${c.id}')">👥 Certificados</button>
-          <button class="btn-mini" onclick="eliminarCapacitacion('${c.id}')">🗑</button>
+          <button class="btn-mini" data-on-click="verAsistentes('${c.id}')">👥 Certificados</button>
+          <button class="btn-mini" data-on-click="eliminarCapacitacion('${c.id}')">🗑</button>
         </td>
       </tr>`).join('');
   } catch (err) {
@@ -216,7 +216,7 @@ async function verAsistentes(capacitacionId) {
       <tr>
         <td>${escCert(a.nombre_completo)}</td>
         <td>${escCert(a.documento)}</td>
-        <td><button class="btn-mini" onclick="descargarCertificadoCapacitacion('${capacitacionId}','${a.trabajador_id}')">📄 Generar</button></td>
+        <td><button class="btn-mini" data-on-click="descargarCertificadoCapacitacion('${capacitacionId}','${a.trabajador_id}')">📄 Generar</button></td>
       </tr>`).join('');
   } catch (err) {
     document.getElementById('error-modal-asistentes').textContent = err.message;

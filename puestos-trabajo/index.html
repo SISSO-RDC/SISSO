@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISSO — Puestos de Trabajo</title>
 <link rel="stylesheet" href="../shared/estilos.css">
@@ -37,7 +37,7 @@
         <div class="sisso-tarjeta-titulo" style="margin-bottom:2px;">Puestos de Trabajo</div>
         <div class="sisso-tarjeta-subtitulo">Catálogo de puestos con su perfil de riesgo, reutilizable en otros módulos.</div>
       </div>
-      <button class="sisso-boton" onclick="abrirModal()">+ Nuevo puesto</button>
+      <button class="sisso-boton" data-on-click="abrirModal()">+ Nuevo puesto</button>
     </div>
     <div class="sisso-exito" id="exito-lista"></div>
     <div style="overflow-x:auto;">
@@ -84,12 +84,13 @@
     </div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
-      <button class="sisso-boton secundario" onclick="cerrarModal()">Cancelar</button>
-      <button class="sisso-boton" id="btn-guardar-modal" onclick="guardarPuesto()">Guardar puesto</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarModal()">Cancelar</button>
+      <button class="sisso-boton" id="btn-guardar-modal" data-on-click="guardarPuesto()">Guardar puesto</button>
     </div>
   </div>
 </div>
 
+<script src="../shared/csp-eventos.js"></script>
 <script src="../shared/api.js"></script>
 <script src="../shared/layout.js"></script>
 <script src="puestos-trabajo.js"></script>

@@ -98,10 +98,10 @@ function renderizar(org, resumen, usuarios) {
             <div style="font-size:11.5px; color:var(--t3);">${org.numero_trabajadores_declarado != null ? `${org.numero_trabajadores_declarado} trabajadores declarados · ` : ''}${org.pais_bandera ? `${org.pais_bandera} ${escHtml(org.pais_nombre || '')}${org.pais_estado === 'en_desarrollo' ? ' (normativa en desarrollo)' : ''} · ` : ''}Perfil sectorial configurado</div>
           </div>
         </div>
-        <button class="sisso-boton secundario" onclick="abrirConfiguradorSectorial()">🧭 Editar configuración</button>
+        <button class="sisso-boton secundario" data-on-click="abrirConfiguradorSectorial()">🧭 Editar configuración</button>
       ` : `
         <div class="sector-sin-configurar">Todavía no configuraste el perfil sectorial de tu empresa (riesgos, exámenes y EPP sugeridos según tu sector).</div>
-        <button class="sisso-boton" onclick="abrirConfiguradorSectorial()">🧭 Configurar perfil sectorial</button>
+        <button class="sisso-boton" data-on-click="abrirConfiguradorSectorial()">🧭 Configurar perfil sectorial</button>
       `}
     </div>
 
@@ -110,8 +110,8 @@ function renderizar(org, resumen, usuarios) {
         ${org.logo_url ? `<img src="${org.logo_url}" alt="Logo">` : '<span style="font-size:11px;color:var(--t3);">Sin logo</span>'}
       </div>
       <div>
-        <input type="file" id="input-logo" accept="image/*" style="display:none;" onchange="subirLogo(event)">
-        <button class="sisso-boton secundario" onclick="document.getElementById('input-logo').click()">📷 ${org.logo_url ? 'Cambiar' : 'Subir'} logo</button>
+        <input type="file" id="input-logo" accept="image/*" style="display:none;" data-on-change="subirLogo(event)">
+        <button class="sisso-boton secundario" data-on-click="sissoClickEn('input-logo')">📷 ${org.logo_url ? 'Cambiar' : 'Subir'} logo</button>
         <div style="font-size:11px;color:var(--t3);margin-top:6px;">Se usa en los PDF generados por el sistema (consentimientos, certificados, historia clínica).</div>
       </div>
     </div>
@@ -150,7 +150,7 @@ function renderizar(org, resumen, usuarios) {
       <div class="sisso-campo"><label class="sisso-etiqueta">Responsable del Departamento Médico — cargo</label><input id="e-medico-cargo" class="sisso-input" value="${escAttr(org.responsable_medico_cargo)}" placeholder="Ej: Médico Ocupacional"></div>
     </div>
 
-    <button class="sisso-boton" id="btn-guardar" onclick="guardarPerfil()" style="margin-top:16px;">Guardar cambios</button>
+    <button class="sisso-boton" id="btn-guardar" data-on-click="guardarPerfil()" style="margin-top:16px;">Guardar cambios</button>
   `;
 }
 

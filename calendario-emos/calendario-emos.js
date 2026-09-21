@@ -40,11 +40,11 @@ function renderizarResumen(resumen) {
   const total = Object.values(resumen).reduce((a, b) => a + b, 0);
   const cont = document.getElementById('resumen-grid');
   const chipTodos = `
-    <div class="resumen-item ${filtroUrgencia === null ? 'activo' : ''}" onclick="aplicarFiltro(null)">
+    <div class="resumen-item ${filtroUrgencia === null ? 'activo' : ''}" data-on-click="aplicarFiltro(null)">
       <div class="numero">${total}</div><div class="etiqueta">Todos</div>
     </div>`;
   const chipsUrgencia = ORDEN_RESUMEN.filter(u => resumen[u]).map(u => `
-    <div class="resumen-item ${filtroUrgencia === u ? 'activo' : ''}" onclick="aplicarFiltro('${u}')">
+    <div class="resumen-item ${filtroUrgencia === u ? 'activo' : ''}" data-on-click="aplicarFiltro('${u}')">
       <div class="numero" style="color:${INFO_URGENCIA[u].color};">${resumen[u]}</div>
       <div class="etiqueta">${ETIQUETAS_RESUMEN[u]}</div>
     </div>`).join('');

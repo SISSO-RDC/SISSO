@@ -83,8 +83,8 @@ async function cargarPuestos() {
         <td style="color:var(--t3);">${escHtml(p.codigo_ciuo || '—')}</td>
         <td>${p.numero_trabajadores_estimado ?? '—'}</td>
         <td>
-          <button class="btn-mini" onclick="abrirModal('${p.id}')">✎ Editar</button>
-          <button class="btn-mini" onclick="eliminarPuesto('${p.id}', '${escAttr(p.nombre_puesto)}')">🗑 Desactivar</button>
+          <button class="btn-mini" data-on-click="abrirModal('${p.id}')">✎ Editar</button>
+          <button class="btn-mini" data-on-click="eliminarPuesto('${p.id}', '${escAttr(p.nombre_puesto)}')">🗑 Desactivar</button>
         </td>
       </tr>`).join('');
   } catch (err) {
