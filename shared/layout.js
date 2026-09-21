@@ -134,6 +134,9 @@ const SissoLayout = (() => {
     // salud: medico gestiona, sso solo lee (datos ya agregados).
     { id: 'matriz-medico-puesto', label: 'Matriz médico-puesto', icono: '🗂️', href: '../matriz-medico-puesto/index.html', roles: ['medico'] },
     { id: 'vigilancia-salud', label: 'Vigilancia de la salud', icono: '📊', href: '../vigilancia-salud/index.html', roles: ['medico', 'sso'] },
+    // CREADO en Auditoria N.19 (G19-07): pantalla de verificacion normativa de los examenes del
+    // protocolo. El medico verifica; admin y SSO la ven en solo lectura.
+    { id: 'normas-examenes', label: 'Normas de exámenes', icono: '⚖️', href: '../normas-examenes/index.html', roles: ['medico', 'admin', 'sso'] },
 
     { seccion: 'ERGONOMÍA' },
     { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '../puestos-trabajo/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
@@ -160,6 +163,9 @@ const SissoLayout = (() => {
     { id: 'matriz',       label: 'Matriz de riesgos',  icono: '🗂️', href: '../matriz-riesgos/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
     { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '../reportes-bi/index.html', roles: [] },
     { id: 'indicadores',  label: 'Indicadores SSO',    icono: '📈', href: '../indicadores/index.html',  roles: [] },
+    // CREADO en Auditoria N.19 (G19-08): comparativo de KPIs (meta vs. valor real). Lo ven todos los
+    // roles; el backend decide que indicadores puede ver cada uno (no_disponible_para_su_rol).
+    { id: 'kpis',         label: 'KPIs meta vs. real',  icono: '🎯', href: '../kpis/index.html',         roles: [] },
     { id: 'certificados', label: 'Certificados PDF',   icono: '📄', href: '../certificados-pdf/index.html', roles: [] },
 
     { seccion: 'SISTEMA' },

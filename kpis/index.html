@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — KPIs: meta vs. valor real</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  .aviso-kpi { font-size: 12.5px; color: var(--t2); background: var(--bg3); border-radius: var(--r); padding: 12px 14px; margin-bottom: 14px; line-height: 1.5; }
+  .kpi-lista { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .kpi-caja { border: 1px solid var(--bd); border-radius: var(--r); padding: 16px; }
+  .kpi-caja h3 { font-size: 14px; margin: 0 0 4px; color: var(--t1); }
+  .kpi-meta-texto { font-size: 11.5px; color: var(--t3); margin-bottom: 10px; }
+  .kpi-valor { font-size: 28px; font-weight: 800; }
+  .kpi-valor.cumple { color: var(--grn2); }
+  .kpi-valor.no-cumple { color: var(--red2); }
+  .kpi-linea { font-size: 12px; color: var(--t2); margin-top: 6px; line-height: 1.5; }
+  .kpi-historial { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .kpi-punto { font-size: 11px; border-radius: 6px; padding: 3px 7px; background: var(--bg3); color: var(--t2); }
+  .kpi-punto.ok { background: var(--grn3); color: var(--grn2); }
+  .kpi-punto.mal { background: var(--red3); color: var(--red2); }
+  .acciones-kpi { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .sisso-boton.pequeno { padding: 6px 10px; font-size: 12px; }
+  .barra-acciones { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div class="sisso-tarjeta">
+    <div class="sisso-tarjeta-titulo">KPIs: meta vs. valor real</div>
+    <div class="sisso-tarjeta-subtitulo">Comparación de cada KPI de la organización con el indicador calculado al que está vinculado.</div>
+    <div class="aviso-kpi">
+      La <strong>meta escrita en texto libre no se interpreta</strong>: un KPI solo se evalúa cuando el administrador lo vincula a un indicador
+      calculado y fija un operador y una meta numérica. Sin vínculo, el KPI figura como <strong>«Sin vínculo»</strong> y nunca se muestra como cumplido.
+      Si no hay trabajadores o exámenes que medir aparece <strong>«Sin datos»</strong>, y si su rol no puede ver ese indicador, <strong>«No disponible para su rol»</strong>.
+    </div>
+    <div class="sisso-error" id="error-general"></div>
+    <div class="sisso-exito" id="exito-general"></div>
+    <div class="barra-acciones" id="barra-acciones" style="display:none;">
+      <button class="sisso-boton secundario" id="btn-medicion" data-on-click="registrarMedicionHoy()">Registrar medición de hoy</button>
+      <span style="font-size:12px;color:var(--t3);">Guarda el valor de hoy de cada KPI vinculado disponible para su rol (alimenta la tendencia).</span>
+    </div>
+    <div id="contenido"><div class="sisso-cargando">Comparando KPIs…</div></div>
+  </div>
+
+  <div class="sisso-tarjeta" id="panel-vinculo" style="display:none;">
+    <div class="sisso-tarjeta-titulo">Vincular KPI a un indicador</div>
+    <div class="sisso-tarjeta-subtitulo" id="vinculo-subtitulo"></div>
+    <div class="sisso-error" id="error-vinculo"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="k-indicador">Indicador calculado *</label>
+      <select id="k-indicador" class="sisso-select"></select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="k-operador">Cumple si el valor es *</label>
+        <select id="k-operador" class="sisso-select">
+          <option value="&gt;=">mayor o igual que (≥)</option>
+          <option value="&gt;">mayor que (&gt;)</option>
+          <option value="&lt;=">menor o igual que (≤)</option>
+          <option value="&lt;">menor que (&lt;)</option>
+          <option value="=">igual a (=)</option>
+        </select>
+      </div>
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="k-meta">Meta numérica (0 a 100 %) *</label>
+        <input id="k-meta" type="number" min="0" max="100" step="0.1" class="sisso-input">
+      </div>
+    </div>
+    <div class="acciones-kpi">
+      <button class="sisso-boton" id="btn-guardar-vinculo" data-on-click="guardarVinculo()">Guardar vínculo</button>
+      <button class="sisso-boton secundario" data-on-click="cerrarPanelVinculo()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="kpis.js"></script>
+</body>
+</html>
