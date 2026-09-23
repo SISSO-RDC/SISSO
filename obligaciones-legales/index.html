@@ -24,7 +24,10 @@
     <div class="sisso-tarjeta">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div class="sisso-tarjeta-titulo">Obligaciones legales</div>
-        <button class="sisso-boton" data-on-click="abrirModalNueva()">+ Nueva obligación</button>
+        <div style="display:flex;gap:8px;">
+          <button class="sisso-boton secundario" id="btn-generar-sisat" data-on-click="abrirModalGenerarSisat()" style="display:none;">Generar obligaciones SISAT</button>
+          <button class="sisso-boton" data-on-click="abrirModalNueva()">+ Nueva obligación</button>
+        </div>
       </div>
       <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;">
         Matriz de requisitos legales. La referencia normativa solo cuenta como verificada cuando alguien la confirma con fuente y fecha.
@@ -103,6 +106,29 @@
     <div class="sisso-campo"><label class="sisso-etiqueta" for="c-fecha">Fecha límite *</label><input id="c-fecha" type="date" class="sisso-input"></div>
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button class="sisso-boton" style="flex:1;" data-on-click="confirmarGenerarCapa()">Generar CAPA</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: generar obligaciones de SISAT (solo admin) -->
+<div class="modal-fondo" id="modal-generar-sisat">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Generar obligaciones de SISAT</div>
+    <p style="color:var(--t3);font-size:12.5px;">
+      Genera en esta matriz los plazos de las Disposiciones Transitorias del Reglamento SISAT
+      (Acuerdo Ministerial MSP 00004-2026): registro/habilitación de profesionales (1 año),
+      certificación BLS (2 años) y permiso de funcionamiento del establecimiento de salud (2 años).
+      Confirme primero la fecha real de publicación en el Registro Oficial — SISSO no la asume
+      automáticamente. Puede verificarla en el panel <strong>Normativas</strong>.
+    </p>
+    <div class="sisso-error" id="error-modal-generar-sisat"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="gs-fecha-ro">Fecha de publicación en el Registro Oficial *</label>
+      <input id="gs-fecha-ro" type="date" class="sisso-input">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarGenerarSisat()">Generar</button>
       <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
     </div>
   </div>

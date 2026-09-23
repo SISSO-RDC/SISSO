@@ -7,9 +7,49 @@ let obligacionActualId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   await SissoLayout.iniciar('obligaciones-legales', 'Obligaciones legales');
+  const usuario = SissoSesion.obtenerUsuario();
+  // "Generar obligaciones SISAT" queda reservado a admin (mismo criterio
+  // que el backend, ver obligacionesLegalesRoutes.js: POST /generar-sisat).
+  if (usuario && usuario.rol === 'admin') {
+    document.getElementById('btn-generar-sisat').style.display = '';
+  }
   await cargarUsuarios();
   await cargarListado();
 });
+
+// ------------------------------------------------------------
+// Generar obligaciones de las Disposiciones Transitorias de SISAT
+// (Acuerdo Ministerial MSP 00004-2026). Ver
+// obligacionesLegalesController.js: generarPlantillaSisat.
+// ------------------------------------------------------------
+function abrirModalGenerarSisat() {
+  document.getElementById('error-modal-generar-sisat').textContent = '';
+  document.getElementById('gs-fecha-ro').value = '';
+  document.getElementById('modal-generar-sisat').classList.add('visible');
+}
+
+async function confirmarGenerarSisat() {
+  const errorEl = document.getElementById('error-modal-generar-sisat');
+  errorEl.textContent = '';
+  const fechaPublicacionRo = document.getElementById('gs-fecha-ro').value;
+
+  if (!fechaPublicacionRo) {
+    errorEl.textContent = 'Indique la fecha de publicación en el Registro Oficial.';
+    return;
+  }
+
+  try {
+    const datos = await sissoFetch('/obligaciones-legales/generar-sisat', {
+      method: 'POST',
+      body: { fechaPublicacionRo },
+    });
+    cerrarModales();
+    await cargarListado();
+    alert(datos.mensaje || 'Obligaciones de SISAT generadas.');
+  } catch (err) {
+    errorEl.textContent = err.message || 'Error al generar las obligaciones de SISAT.';
+  }
+}
 
 async function cargarUsuarios() {
   try {
