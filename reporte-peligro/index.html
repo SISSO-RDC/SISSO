@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Reportar condición de riesgo</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    /* Pagina publica (sin sidebar/topbar): centrada, sin necesitar sesion. */
+    body { background: var(--bg); }
+    .rp-contenedor { max-width: 480px; margin: 0 auto; padding: 24px 16px 60px; }
+    .rp-logo { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 18px; }
+    .rp-logo-img { width: 110px; height: auto; }
+    .rp-titulo { font-size: 18px; font-weight: 900; color: var(--t1); text-align: center; margin-bottom: 2px; }
+    .rp-sub { font-size: 12.5px; color: var(--t3); text-align: center; margin-bottom: 22px; }
+    .rp-clasificacion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .rp-clasificacion-opcion {
+      border: 1px solid var(--bd); border-radius: var(--r); padding: 10px 8px; text-align: center;
+      font-size: 12.5px; cursor: pointer; user-select: none; background: #fff;
+    }
+    .rp-clasificacion-opcion.activa { border-color: var(--blue); background: var(--blue3); font-weight: 700; }
+    .rp-clasificacion-opcion .icono { font-size: 20px; display: block; margin-bottom: 4px; }
+    .rp-exito-caja { text-align: center; padding: 30px 10px; }
+    .rp-exito-icono { font-size: 44px; margin-bottom: 10px; }
+    #vista-exito { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="rp-contenedor">
+  <div class="rp-logo">
+    <img src="../shared/logo.png" alt="SISSO" class="rp-logo-img">
+  </div>
+
+  <div id="vista-formulario">
+    <div class="rp-titulo">Reportar una condición de riesgo</div>
+    <div class="rp-sub">Su observación ayuda a prevenir accidentes. No necesita una cuenta para reportar.</div>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-error" id="error-form"></div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="f-codigo">Código de la empresa *</label>
+        <input id="f-codigo" class="sisso-input" placeholder="Ej: EMPRESA-XYZ123" autocomplete="off">
+      </div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta">¿Qué está reportando? *</label>
+        <div class="rp-clasificacion-grid" id="rp-clasificaciones">
+          <div class="rp-clasificacion-opcion" data-valor="condicion_insegura" data-on-click="elegirClasificacion(this)">
+            <span class="icono">⚠️</span>Condición insegura
+          </div>
+          <div class="rp-clasificacion-opcion" data-valor="acto_inseguro" data-on-click="elegirClasificacion(this)">
+            <span class="icono">🚫</span>Acto inseguro
+          </div>
+          <div class="rp-clasificacion-opcion" data-valor="casi_accidente" data-on-click="elegirClasificacion(this)">
+            <span class="icono">⚡</span>Casi accidente
+          </div>
+          <div class="rp-clasificacion-opcion" data-valor="observacion_positiva" data-on-click="elegirClasificacion(this)">
+            <span class="icono">✅</span>Observación positiva
+          </div>
+          <div class="rp-clasificacion-opcion" data-valor="sugerencia" data-on-click="elegirClasificacion(this)">
+            <span class="icono">💡</span>Sugerencia
+          </div>
+        </div>
+      </div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="f-descripcion">Descripción *</label>
+        <textarea id="f-descripcion" class="sisso-textarea" placeholder="Describa lo que observó (mínimo 10 caracteres)"></textarea>
+      </div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="f-area">Área / lugar (opcional)</label>
+        <input id="f-area" class="sisso-input" placeholder="Ej: Bodega, línea de producción 2">
+      </div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="f-ubicacion">Ubicación exacta (opcional)</label>
+        <input id="f-ubicacion" class="sisso-input" placeholder="Ej: Junto a la puerta de emergencia norte">
+      </div>
+
+      <div class="sisso-campo">
+        <label class="sisso-etiqueta" for="f-foto">Foto (opcional)</label>
+        <input type="file" id="f-foto" accept="image/*" class="sisso-input">
+      </div>
+
+      <div class="sisso-campo" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="f-identificarse" style="width:auto;">
+        <label class="sisso-etiqueta" for="f-identificarse" style="margin:0;">Quiero identificarme (opcional)</label>
+      </div>
+
+      <div class="sisso-campo" id="caja-nombre" style="display:none;">
+        <label class="sisso-etiqueta" for="f-nombre">Su nombre</label>
+        <input id="f-nombre" class="sisso-input" placeholder="Nombre y apellido">
+      </div>
+
+      <button class="sisso-boton ancho-completo" id="btn-enviar" data-on-click="enviarReporte()">Enviar reporte</button>
+    </div>
+  </div>
+
+  <div id="vista-exito">
+    <div class="sisso-tarjeta rp-exito-caja">
+      <div class="rp-exito-icono">✅</div>
+      <div class="sisso-tarjeta-titulo">Gracias por reportar</div>
+      <p style="color:var(--t3);font-size:13px;" id="texto-exito"></p>
+      <button class="sisso-boton secundario ancho-completo" data-on-click="reiniciarFormulario()">Enviar otro reporte</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

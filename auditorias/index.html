@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Auditorías</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .au-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .au-item:hover { background: var(--bg); }
+    .au-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .au-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .hallazgo-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 10px 12px; margin-bottom: 8px; }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div id="vista-listado">
+    <div class="sisso-tarjeta">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="sisso-tarjeta-titulo">Auditorías</div>
+        <button class="sisso-boton" data-on-click="abrirModalNuevaAuditoria()">+ Nueva auditoría</button>
+      </div>
+      <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;">Programación y hallazgos de auditorías internas y externas.</p>
+      <div id="lista-auditorias"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" data-on-click="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+    <div class="sisso-tarjeta">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-auditoria"></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);" id="acciones-auditoria"></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="sisso-tarjeta-titulo" style="font-size:13px;">Hallazgos</div>
+          <button class="sisso-boton secundario" data-on-click="abrirModalHallazgo()">+ Agregar hallazgo</button>
+        </div>
+        <div id="lista-hallazgos"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nueva auditoria -->
+<div class="modal-fondo" id="modal-nueva">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Nueva auditoría</div>
+    <div class="sisso-error" id="error-modal-nueva"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-tipo">Tipo *</label>
+      <select id="n-tipo" class="sisso-select"><option value="interna">Interna</option><option value="externa">Externa</option></select>
+    </div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-norma">Norma de referencia</label><input id="n-norma" class="sisso-input" placeholder="Ej: ISO 45001"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-alcance">Alcance</label><textarea id="n-alcance" class="sisso-textarea"></textarea></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-auditor">Auditor</label><input id="n-auditor" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-fecha">Fecha programada *</label><input id="n-fecha" type="date" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNuevaAuditoria()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuevo hallazgo -->
+<div class="modal-fondo" id="modal-hallazgo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Agregar hallazgo</div>
+    <div class="sisso-error" id="error-modal-hallazgo"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="h-tipo">Tipo *</label>
+      <select id="h-tipo" class="sisso-select">
+        <option value="no_conformidad">No conformidad</option>
+        <option value="observacion">Observación</option>
+        <option value="oportunidad_mejora">Oportunidad de mejora</option>
+      </select>
+    </div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="h-descripcion">Descripción *</label><textarea id="h-descripcion" class="sisso-textarea"></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarHallazgo()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: generar CAPA desde hallazgo -->
+<div class="modal-fondo" id="modal-capa">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Generar acción CAPA</div>
+    <div class="sisso-error" id="error-modal-capa"></div>
+    <input type="hidden" id="c-hallazgo-id">
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="c-responsable">Responsable *</label><select id="c-responsable" class="sisso-select"><option value="">Cargando…</option></select></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="c-fecha">Fecha límite *</label><input id="c-fecha" type="date" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarGenerarCapa()">Generar CAPA</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

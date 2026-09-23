@@ -155,6 +155,14 @@ const SissoLayout = (() => {
     { id: 'accidentes',   label: 'Accidentes/Incidentes', icono: '🚨', href: '../accidentes/index.html', roles: [] },
     { id: 'capa',         label: 'CAPA',                icono: '🔁', href: '../capa/index.html', roles: [] },
     { id: 'inspecciones', label: 'Inspecciones',        icono: '🔎', href: '../inspecciones/index.html', roles: [] },
+    // CREADO Lote 1 (plan de cierre de brechas frente a plataformas EHS globales, Sep 2026): triage
+    // de los reportes recibidos por el canal publico QR/enlace (ver ../reporte-peligro/, sin login).
+    // Solo admin/sso: es el mismo criterio de gestion que ya tienen accidentes/inspecciones/CAPA.
+    { id: 'reportes-peligro', label: 'Reportes de peligro', icono: '📢', href: '../reportes-peligro/index.html', roles: ['admin', 'sso'] },
+    // CREADO Lote 2 (plan de cierre de brechas frente a plataformas EHS globales, Sep 2026).
+    { id: 'documentos-control', label: 'Control documental', icono: '📄', href: '../documentos-control/index.html', roles: [] },
+    { id: 'obligaciones-legales', label: 'Obligaciones legales', icono: '⚖️', href: '../obligaciones-legales/index.html', roles: ['admin', 'sso'] },
+    { id: 'auditorias', label: 'Auditorías', icono: '🗂️', href: '../auditorias/index.html', roles: ['admin', 'sso'] },
     { id: 'riesgo-psicosocial', label: 'Riesgo psicosocial', icono: '🧠', href: '../riesgo-psicosocial/index.html', roles: ['admin', 'sso', 'medico'] },
     { id: 'higiene-industrial', label: 'Higiene industrial', icono: '🌡️', href: '../higiene-industrial/index.html', roles: [] },
     { id: 'epp',           label: 'EPP',                 icono: '🦺', href: '../epp/index.html', roles: [] },
