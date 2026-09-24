@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Control documental</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .dc-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .dc-item:hover { background: var(--bg); }
+    .dc-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .dc-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div id="vista-listado">
+    <div class="sisso-tarjeta">
+      <div class="rp-cabecera" style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="sisso-tarjeta-titulo">Control documental</div>
+        <button class="sisso-boton" id="btn-nuevo" data-on-click="abrirModalNuevo()" style="display:none;">+ Nuevo documento</button>
+      </div>
+      <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;">
+        Políticas, procedimientos e instructivos versionados, con acuse de lectura.
+      </p>
+      <div class="sisso-campo" style="max-width:220px;">
+        <label class="sisso-etiqueta" for="f-categoria">Categoría</label>
+        <select id="f-categoria" class="sisso-select" data-on-change="cargarListado()">
+          <option value="">Todas</option>
+          <option value="politica">Política</option>
+          <option value="procedimiento">Procedimiento</option>
+          <option value="instructivo">Instructivo</option>
+          <option value="formato">Formato</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div id="lista-documentos"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" data-on-click="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+    <div class="sisso-tarjeta">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-documento"></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);" id="acciones-documento"></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);">
+        <div class="sisso-tarjeta-titulo" style="font-size:13px;">Historial de versiones</div>
+        <div id="historial-documento"></div>
+      </div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);" id="caja-acuses">
+        <div class="sisso-tarjeta-titulo" style="font-size:13px;">Acuses de lectura</div>
+        <div id="lista-acuses"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuevo documento / nueva version -->
+<div class="modal-fondo" id="modal-nuevo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo" id="titulo-modal-nuevo">Nuevo documento</div>
+    <div class="sisso-error" id="error-modal-nuevo"></div>
+    <input type="hidden" id="m-reemplaza-a">
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-numero">Código del documento *</label>
+      <input id="m-numero" class="sisso-input" placeholder="Ej: POL-SST-001">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-titulo">Título *</label>
+      <input id="m-titulo" class="sisso-input" placeholder="Ej: Política de Seguridad y Salud Ocupacional">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-categoria">Categoría *</label>
+      <select id="m-categoria" class="sisso-select">
+        <option value="politica">Política</option>
+        <option value="procedimiento">Procedimiento</option>
+        <option value="instructivo">Instructivo</option>
+        <option value="formato">Formato</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-propietario">Propietario *</label>
+      <select id="m-propietario" class="sisso-select"><option value="">Cargando…</option></select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-aprobador">Aprobador (opcional)</label>
+      <select id="m-aprobador" class="sisso-select"><option value="">— Ninguno —</option></select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-proxima-revision">Próxima revisión (opcional)</label>
+      <input id="m-proxima-revision" type="date" class="sisso-input">
+    </div>
+    <div class="sisso-campo" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="m-requiere-acuse" style="width:auto;" checked>
+      <label class="sisso-etiqueta" for="m-requiere-acuse" style="margin:0;">Requiere acuse de lectura</label>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-archivo">Archivo PDF *</label>
+      <input type="file" id="m-archivo" accept="application/pdf" class="sisso-input">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNuevoDocumento()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

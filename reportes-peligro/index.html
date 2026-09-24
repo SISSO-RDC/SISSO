@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Reportes de peligro</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .filtros-caja { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+    .filtros-caja .sisso-campo { margin-bottom: 0; min-width: 150px; }
+    .rp-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .rp-item:hover { background: var(--bg); }
+    .rp-item.nuevo { border-left: 3px solid var(--blue); }
+    .rp-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .rp-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .rp-evidencia-img { max-width: 100%; border-radius: var(--r); margin-top: 10px; display: none; }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+
+  <!-- ======= LISTADO ======= -->
+  <div id="vista-listado">
+    <div class="sisso-tarjeta">
+      <div class="sisso-tarjeta-titulo">Reportes de peligro</div>
+      <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;">
+        Reportes enviados por el canal público (QR/enlace, sin cuenta). Configure el enlace en
+        <a href="../mi-empresa/index.html">Mi Empresa</a>.
+      </p>
+      <div class="filtros-caja">
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-estado">Estado</label>
+          <select id="f-estado" class="sisso-select" data-on-change="cargarListado()">
+            <option value="">Todos</option>
+            <option value="nuevo">Nuevo</option>
+            <option value="en_revision">En revisión</option>
+            <option value="con_capa">Con CAPA</option>
+            <option value="descartado">Descartado</option>
+            <option value="cerrado">Cerrado</option>
+          </select>
+        </div>
+        <div class="sisso-campo">
+          <label class="sisso-etiqueta" for="f-clasificacion">Clasificación</label>
+          <select id="f-clasificacion" class="sisso-select" data-on-change="cargarListado()">
+            <option value="">Todas</option>
+            <option value="condicion_insegura">Condición insegura</option>
+            <option value="acto_inseguro">Acto inseguro</option>
+            <option value="casi_accidente">Casi accidente</option>
+            <option value="observacion_positiva">Observación positiva</option>
+            <option value="sugerencia">Sugerencia</option>
+          </select>
+        </div>
+      </div>
+      <div id="lista-reportes"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <!-- ======= DETALLE ======= -->
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" data-on-click="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+
+    <div class="sisso-tarjeta">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-reporte"></div>
+      <img class="rp-evidencia-img" id="img-evidencia">
+
+      <div id="acciones-triage" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: descartar (pide nota obligatoria) -->
+<div class="modal-fondo" id="modal-descartar">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Descartar reporte</div>
+    <div class="sisso-error" id="error-modal-descartar"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="d-nota">Motivo (mínimo 5 caracteres) *</label>
+      <textarea id="d-nota" class="sisso-textarea" placeholder="Ej: se verificó en sitio, no aplica corrección"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarDescartar()">Descartar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: generar CAPA -->
+<div class="modal-fondo" id="modal-capa">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Generar acción CAPA</div>
+    <div class="sisso-error" id="error-modal-capa"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-responsable">Responsable *</label>
+      <select id="m-responsable" class="sisso-select"><option value="">Cargando…</option></select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-fecha-limite">Fecha límite *</label>
+      <input id="m-fecha-limite" type="date" class="sisso-input">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarGenerarCapa()">Generar CAPA</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

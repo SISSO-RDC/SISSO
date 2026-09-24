@@ -137,6 +137,12 @@ const SissoLayout = (() => {
     // CREADO en Auditoria N.19 (G19-07): pantalla de verificacion normativa de los examenes del
     // protocolo. El medico verifica; admin y SSO la ven en solo lectura.
     { id: 'normas-examenes', label: 'Normas de exámenes', icono: '⚖️', href: '../normas-examenes/index.html', roles: ['medico', 'admin', 'sso'] },
+    // CREADO a pedido de la persona usuaria (Sep 2026), integracion del
+    // Acuerdo Ministerial MSP 00004-2026 (SISAT): panel unico con TODAS
+    // las normativas sobre las que se sustenta SISSO, visible a todos los
+    // roles (lectura); alta/edicion reservada a superadmin dentro de la
+    // propia pantalla. Ver migration_096_normativas_sisso.sql.
+    { id: 'normativas', label: 'Normativas', icono: '📚', href: '../normativas/index.html', roles: [] },
 
     { seccion: 'ERGONOMÍA' },
     { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '../puestos-trabajo/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
@@ -155,6 +161,14 @@ const SissoLayout = (() => {
     { id: 'accidentes',   label: 'Accidentes/Incidentes', icono: '🚨', href: '../accidentes/index.html', roles: [] },
     { id: 'capa',         label: 'CAPA',                icono: '🔁', href: '../capa/index.html', roles: [] },
     { id: 'inspecciones', label: 'Inspecciones',        icono: '🔎', href: '../inspecciones/index.html', roles: [] },
+    // CREADO Lote 1 (plan de cierre de brechas frente a plataformas EHS globales, Sep 2026): triage
+    // de los reportes recibidos por el canal publico QR/enlace (ver ../reporte-peligro/, sin login).
+    // Solo admin/sso: es el mismo criterio de gestion que ya tienen accidentes/inspecciones/CAPA.
+    { id: 'reportes-peligro', label: 'Reportes de peligro', icono: '📢', href: '../reportes-peligro/index.html', roles: ['admin', 'sso'] },
+    // CREADO Lote 2 (plan de cierre de brechas frente a plataformas EHS globales, Sep 2026).
+    { id: 'documentos-control', label: 'Control documental', icono: '📄', href: '../documentos-control/index.html', roles: [] },
+    { id: 'obligaciones-legales', label: 'Obligaciones legales', icono: '⚖️', href: '../obligaciones-legales/index.html', roles: ['admin', 'sso'] },
+    { id: 'auditorias', label: 'Auditorías', icono: '🗂️', href: '../auditorias/index.html', roles: ['admin', 'sso'] },
     { id: 'riesgo-psicosocial', label: 'Riesgo psicosocial', icono: '🧠', href: '../riesgo-psicosocial/index.html', roles: ['admin', 'sso', 'medico'] },
     { id: 'higiene-industrial', label: 'Higiene industrial', icono: '🌡️', href: '../higiene-industrial/index.html', roles: [] },
     { id: 'epp',           label: 'EPP',                 icono: '🦺', href: '../epp/index.html', roles: [] },
@@ -361,6 +375,12 @@ const SissoLayout = (() => {
       // layout compartido, y no en una sola pagina).
       if (usuario.requiereCambioPassword) {
         sissoMostrarModalCambioPassword(true);
+      } else if (usuario.disclaimerNormativoAceptado === false) {
+        // Solo se muestra si YA paso el cambio de contrasena forzado
+        // (evita apilar dos modales bloqueantes a la vez). Se vuelve a
+        // mostrar automaticamente si sube DISCLAIMER_NORMATIVO_VERSION_ACTUAL
+        // en el backend, aunque el usuario ya lo hubiera aceptado antes.
+        sissoMostrarModalDisclaimerNormativo();
       }
 
       // Lote G (Fase 14, responsive): overlay para cerrar el sidebar
@@ -591,6 +611,108 @@ async function sissoConfirmarCambioPassword(forzado) {
     errorEl.style.display = 'block';
     boton.disabled = false;
     boton.textContent = 'Guardar nueva contraseña';
+  }
+}
+
+// ------------------------------------------------------------
+// Disclaimer normativo (una sola vez por usuario, persistido en
+// base de datos -- ver migration_096_normativas_sisso.sql y
+// authController.js: aceptarDisclaimerNormativo/DISCLAIMER_NORMATIVO_VERSION_ACTUAL).
+//
+// A diferencia del bloqueo por cambio de contrasena, este modal NO
+// impide interactuar con el resto de la pagina de fondo (no hay
+// forma de "escapar" sin pasar por login de nuevo si se cierra la
+// pestana), pero SI exige marcar la casilla de aceptacion antes de
+// habilitar el boton -- igual que un termino y condicion estandar.
+// ------------------------------------------------------------
+async function sissoMostrarModalDisclaimerNormativo() {
+  if (document.getElementById('sisso-modal-disclaimer-normativo')) return;
+
+  let listaHtml = '<li>Cargando listado de normativas…</li>';
+  document.body.insertAdjacentHTML('beforeend', construirHtmlDisclaimerNormativo(listaHtml));
+
+  try {
+    const datos = await sissoFetch('/normativas?pais=ecuador');
+    const normativas = Array.isArray(datos.normativas) ? datos.normativas : [];
+    const vigentes = normativas.filter((n) => n.estado !== 'derogada');
+    listaHtml = vigentes.length
+      ? vigentes.map((n) => `<li>${escaparHtml(n.numero_acto ? n.numero_acto + ' — ' : '')}${escaparHtml(n.titulo)}</li>`).join('')
+      : '<li>No se pudo cargar el detalle; puede revisarlo luego en "Normativas" desde el menú.</li>';
+  } catch {
+    listaHtml = '<li>No se pudo cargar el detalle; puede revisarlo luego en "Normativas" desde el menú.</li>';
+  }
+
+  const contenedorLista = document.getElementById('sisso-disclaimer-normativo-lista');
+  if (contenedorLista) contenedorLista.innerHTML = listaHtml;
+}
+
+function construirHtmlDisclaimerNormativo(listaHtmlInicial) {
+  return `
+    <div id="sisso-modal-disclaimer-normativo" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;">
+      <div style="background:#fff;border-radius:14px;padding:26px;width:480px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">Alcance normativo de SISSO</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:10px;line-height:1.5;">
+          SISSO se apoya en la normativa ecuatoriana vigente sobre seguridad y salud en el trabajo,
+          incluyendo el Reglamento de los Servicios Integrales de Salud en el Trabajo (SISAT — Acuerdo
+          Ministerial MSP 00004-2026). El listado completo, con enlaces a los textos oficiales, está
+          disponible en cualquier momento en <strong>Normativas</strong> desde el menú lateral.
+        </div>
+        <ul class="sisso-disclaimer-lista" id="sisso-disclaimer-normativo-lista">${listaHtmlInicial}</ul>
+        <div style="font-size:12px;color:#64748b;margin-bottom:16px;line-height:1.5;">
+          Este listado es informativo y de referencia. SISSO no reemplaza el criterio de un profesional
+          de la salud ocupacional ni de un asesor legal, y no certifica cumplimiento normativo integral
+          por sí solo — el cumplimiento efectivo depende de cómo cada organización implemente y verifique
+          sus procesos.
+        </div>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#334155;margin-bottom:16px;cursor:pointer;">
+          <input type="checkbox" id="sisso-disclaimer-normativo-check" style="margin-top:2px;" data-on-change="sissoActualizarBotonDisclaimerNormativo()">
+          <span>He leído y entiendo el alcance normativo de SISSO descrito arriba.</span>
+        </label>
+        <div id="sisso-disclaimer-normativo-error" style="display:none;background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button id="sisso-disclaimer-normativo-boton" data-on-click="sissoAceptarDisclaimerNormativo()" disabled
+            style="padding:11px 18px;background:#94a3b8;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;font-family:inherit;">
+            Continuar
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function sissoActualizarBotonDisclaimerNormativo() {
+  const marcado = document.getElementById('sisso-disclaimer-normativo-check').checked;
+  const boton = document.getElementById('sisso-disclaimer-normativo-boton');
+  boton.disabled = !marcado;
+  boton.style.background = marcado ? '#0d9488' : '#94a3b8';
+  boton.style.cursor = marcado ? 'pointer' : 'not-allowed';
+}
+
+async function sissoAceptarDisclaimerNormativo() {
+  const errorEl = document.getElementById('sisso-disclaimer-normativo-error');
+  const boton = document.getElementById('sisso-disclaimer-normativo-boton');
+  errorEl.style.display = 'none';
+
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+
+  try {
+    await sissoFetch('/auth/aceptar-disclaimer-normativo', { method: 'POST' });
+
+    // Igual que en sissoConfirmarCambioPassword: se actualiza la sesion
+    // en memoria para que no vuelva a pedirse dentro de la misma sesion.
+    const usuario = SissoSesion.obtenerUsuario();
+    if (usuario) {
+      usuario.disclaimerNormativoAceptado = true;
+      sessionStorage.setItem('sisso_usuario', JSON.stringify(usuario));
+    }
+
+    const modal = document.getElementById('sisso-modal-disclaimer-normativo');
+    if (modal) modal.remove();
+  } catch (err) {
+    errorEl.textContent = err.message || 'No se pudo registrar la aceptación. Intente nuevamente.';
+    errorEl.style.display = 'block';
+    boton.disabled = false;
+    boton.textContent = 'Continuar';
   }
 }
 

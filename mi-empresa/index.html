@@ -86,6 +86,15 @@
     <div id="contenido-empresa"><div class="sisso-cargando">Cargando…</div></div>
   </div>
 
+  <!-- Lote 1 (Sep 2026): enlace y QR del canal publico de reporte de peligros -->
+  <div class="sisso-tarjeta" style="margin-bottom:16px;" id="tarjeta-qr-reporte-peligro">
+    <div class="sisso-tarjeta-titulo">Reporte de peligro (QR para planta)</div>
+    <div class="sisso-tarjeta-subtitulo">Imprima este código y péguelo en áreas de trabajo. Cualquier trabajador puede escanearlo para reportar una condición de riesgo, sin necesitar una cuenta.</div>
+    <div class="sisso-error" id="qr-error"></div>
+    <div class="sisso-exito" id="qr-exito"></div>
+    <div id="contenido-qr-reporte"><div class="sisso-cargando">Generando…</div></div>
+  </div>
+
   <!-- N.17 C-17-03: visible tambien a sso/medico (no solo admin) --
        ver mi-empresa.js para el porque de esta separacion en 2
        tarjetas: /organizacion es admin-only en el backend, esta

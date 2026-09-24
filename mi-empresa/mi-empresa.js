@@ -18,8 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const rol = SissoSesion.obtenerUsuario()?.rol;
   if (rol === 'admin') {
     await cargarPerfil();
+    await cargarQrReportePeligro();
   } else {
     document.getElementById('tarjeta-perfil-empresa').style.display = 'none';
+    document.getElementById('tarjeta-qr-reporte-peligro').style.display = 'none';
   }
 
   await SissoPropuestasSectoriales.iniciar(rol);
@@ -203,6 +205,35 @@ async function subirLogo(evento) {
     }
   };
   lector.readAsDataURL(archivo);
+}
+
+// ------- Lote 1 (Sep 2026): enlace/QR del canal de reporte de peligro -------
+async function cargarQrReportePeligro() {
+  const cont = document.getElementById('contenido-qr-reporte');
+  try {
+    const datos = await sissoFetch('/organizacion/qr-reporte-peligro');
+    cont.innerHTML = `
+      <img src="${datos.qrDataUrl}" alt="Código QR del canal de reporte de peligro" style="width:180px;height:180px;display:block;margin:0 auto 12px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" class="sisso-input" readonly value="${escAttr(datos.url)}" id="enlace-reporte-peligro" style="flex:1;font-size:12px;">
+        <button class="sisso-boton secundario" data-on-click="copiarEnlaceReporte()">Copiar</button>
+      </div>`;
+  } catch (err) {
+    cont.innerHTML = '';
+    mostrarError('qr-error', err.message || 'Error al generar el código QR.');
+  }
+}
+
+async function copiarEnlaceReporte() {
+  const campo = document.getElementById('enlace-reporte-peligro');
+  if (!campo) return;
+  try {
+    await navigator.clipboard.writeText(campo.value);
+    mostrarExito('qr-exito', 'Enlace copiado.');
+  } catch (err) {
+    campo.select();
+    mostrarError('qr-error', 'No se pudo copiar automáticamente. Selecciona y copia el enlace manualmente.');
+  }
 }
 
 // ------- Utilidades -------

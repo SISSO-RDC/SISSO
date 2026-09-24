@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISSO — Normativas</title>
+<link rel="stylesheet" href="../shared/estilos.css">
+<style>
+  .nv-aviso { font-size: 12.5px; color: var(--t2); background: var(--bg3); border-radius: var(--r); padding: 12px 14px; margin-bottom: 14px; line-height: 1.5; }
+  .nv-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 14px 16px; margin-bottom: 10px; }
+  .nv-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .nv-titulo { font-weight: 700; font-size: 13.5px; }
+  .nv-meta { font-size: 11.5px; color: var(--t3); margin-top: 3px; }
+  .nv-resumen { font-size: 12.5px; color: var(--t2); margin-top: 8px; line-height: 1.5; }
+  .nv-ambito { font-size: 12px; color: var(--t2); margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--bd); }
+  .nv-tag { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; padding: 3px 8px; border-radius: 999px; background: var(--bg3); color: var(--t2); margin-right: 6px; }
+  .nv-tag.derogada { background: #fef2f2; color: #b91c1c; }
+  .nv-tag.vigente { background: #ecfdf5; color: #047857; }
+  .nv-filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+  .modal-fondo.visible { display: flex; }
+  .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; }
+
+  /* Disclaimer normativo (una sola vez por usuario, ver shared/layout.js) */
+  .sisso-disclaimer-lista { font-size: 12.5px; color: var(--t2); line-height: 1.6; max-height: 260px; overflow-y: auto; margin: 10px 0 16px; padding: 10px 14px; background: var(--bg3); border-radius: var(--r); }
+  .sisso-disclaimer-lista li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div class="sisso-tarjeta">
+    <div class="nv-cabecera">
+      <div>
+        <div class="sisso-tarjeta-titulo">Normativas</div>
+        <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;max-width:640px;">
+          Leyes, reglamentos y acuerdos ministeriales sobre los que se sustenta SISSO. Este listado
+          es informativo y de referencia — no constituye asesoría legal ni certifica cumplimiento
+          integral; verifique siempre con el texto oficial.
+        </p>
+      </div>
+      <button class="sisso-boton" id="btn-nueva-normativa" data-on-click="abrirModalNormativa()" style="display:none;">+ Nueva normativa</button>
+    </div>
+
+    <div class="nv-filtros">
+      <select id="f-pais" class="sisso-select" style="max-width:200px;" data-on-change="cargarNormativas()">
+        <option value="">Todos los países</option>
+      </select>
+      <select id="f-estado" class="sisso-select" style="max-width:200px;" data-on-change="renderizarNormativas()">
+        <option value="">Todos los estados</option>
+        <option value="vigente">Vigentes</option>
+        <option value="derogada">Derogadas (histórico)</option>
+      </select>
+    </div>
+
+    <div id="lista-normativas"><div class="sisso-cargando">Cargando…</div></div>
+  </div>
+</div>
+
+<!-- Modal: nueva/editar normativa (solo superadmin) -->
+<div class="modal-fondo" id="modal-normativa">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo" id="titulo-modal-normativa">Nueva normativa</div>
+    <div class="sisso-error" id="error-modal-normativa"></div>
+    <input type="hidden" id="m-id">
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-tipo">Tipo *</label>
+      <select id="m-tipo" class="sisso-select">
+        <option value="constitucion">Constitución</option>
+        <option value="ley">Ley</option>
+        <option value="codigo">Código</option>
+        <option value="decreto_ejecutivo">Decreto Ejecutivo</option>
+        <option value="acuerdo_ministerial">Acuerdo Ministerial</option>
+        <option value="reglamento">Reglamento</option>
+        <option value="resolucion">Resolución</option>
+        <option value="decision_can">Decisión CAN</option>
+        <option value="sentencia">Sentencia</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-numero">Número de acto</label>
+      <input id="m-numero" class="sisso-input" placeholder="Ej: 00004-2026">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-titulo">Título *</label>
+      <input id="m-titulo" class="sisso-input" placeholder="Ej: Reglamento de los Servicios Integrales de Salud en el Trabajo (SISAT)">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-entidad">Entidad emisora</label>
+      <input id="m-entidad" class="sisso-input" placeholder="Ej: Ministerio de Salud Pública">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <div class="sisso-campo" style="flex:1;">
+        <label class="sisso-etiqueta" for="m-fecha-expedicion">Fecha de expedición</label>
+        <input id="m-fecha-expedicion" type="date" class="sisso-input">
+      </div>
+      <div class="sisso-campo" style="flex:1;">
+        <label class="sisso-etiqueta" for="m-fecha-ro">Fecha publicación Registro Oficial</label>
+        <input id="m-fecha-ro" type="date" class="sisso-input">
+      </div>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-estado">Estado</label>
+      <select id="m-estado" class="sisso-select">
+        <option value="vigente">Vigente</option>
+        <option value="derogada">Derogada</option>
+        <option value="pendiente_confirmar_vigencia">Pendiente confirmar vigencia</option>
+      </select>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-resumen">Resumen</label>
+      <textarea id="m-resumen" class="sisso-input" rows="3"></textarea>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-ambito">Ámbito en SISSO</label>
+      <textarea id="m-ambito" class="sisso-input" rows="2" placeholder="Qué módulos/decisiones de SISSO se apoyan en esta norma"></textarea>
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-url-pdf">Enlace al PDF</label>
+      <input id="m-url-pdf" class="sisso-input" placeholder="https://…">
+    </div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="m-fuente-cita">Fuente de esta ficha *</label>
+      <input id="m-fuente-cita" class="sisso-input" placeholder="Ej: Considerandos del propio AM 00004-2026">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNormativa()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="normativas.js"></script>
+</body>
+</html>
