@@ -78,8 +78,8 @@ async function cargarDetalle() {
       </div>`;
 
     let acciones = '';
-    if (a.estado === 'programada') acciones += '<button class="sisso-boton secundario" data-on-click="cambiarEstado(\'en_progreso\')">Marcar en progreso</button> ';
-    if (a.estado !== 'completada') acciones += '<button class="sisso-boton" data-on-click="cambiarEstado(\'completada\')">Marcar completada</button>';
+    if (a.estado === 'programada') acciones += `<button class="sisso-boton secundario" data-on-click="cambiarEstado('en_progreso')">Marcar en progreso</button> `;
+    if (a.estado !== 'completada') acciones += `<button class="sisso-boton" data-on-click="cambiarEstado('completada')">Marcar completada</button>`;
     document.getElementById('acciones-auditoria').innerHTML = acciones || '<div class="sisso-vacio">Auditoría completada.</div>';
 
     document.getElementById('lista-hallazgos').innerHTML = (datos.hallazgos || []).length === 0
