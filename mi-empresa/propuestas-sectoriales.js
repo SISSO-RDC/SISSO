@@ -187,6 +187,7 @@ const SissoPropuestasSectoriales = (() => {
     try {
       const datos = await sissoFetch('/configuracion-sectorial/propuestas/generar', { method: 'POST', body: {} });
       mostrarExitoProp(`Se generaron ${datos.generadas ?? 0} propuestas nuevas (${datos.consideradas ?? 0} ítems revisados en el catálogo del sector).`);
+      renderizarResumenSisat(datos.categoriaSisat, datos.advertencias);
       await cargarYRenderizar();
     } catch (err) {
       mostrarErrorProp(err.message || 'Error al generar propuestas.');
@@ -298,6 +299,37 @@ const SissoPropuestasSectoriales = (() => {
     } finally {
       boton.disabled = false;
     }
+  }
+
+  // ------- Resumen de categoría SISAT (I-V), devuelto por el mismo
+  // endpoint de generar propuestas -- ver configuracionSectorialController.js.
+  // No se muestra nada si no viene informacion (compatibilidad con
+  // respuestas antiguas cacheadas en el navegador).
+  function renderizarResumenSisat(categoriaSisat, advertencias) {
+    const contenedor = document.getElementById('resumen-sisat');
+    if (!contenedor) return;
+    if (!categoriaSisat) { contenedor.style.display = 'none'; return; }
+
+    const advertenciasSisat = (advertencias || []).filter((a) =>
+      ['SECTOR_SIN_NIVEL_RIESGO_SISAT', 'ORGANIZACION_EXCEPTUADA_SISAT'].includes(a.codigo));
+
+    let html;
+    if (categoriaSisat.categoria) {
+      const roles = (categoriaSisat.personalMinimo || [])
+        .map((p) => `<li>${escHtmlProp(p.rol)} — <em>${escHtmlProp(p.regimen)}</em></li>`).join('');
+      html = `
+        <strong>Categoría SISAT: ${escHtmlProp(categoriaSisat.categoria)}</strong>
+        <p style="margin:6px 0 4px;">Personal mínimo de salud ocupacional exigido (ya propuesto como puesto de trabajo, revíselo abajo):</p>
+        <ul style="margin:0 0 0 18px;">${roles}</ul>`;
+    } else {
+      html = advertenciasSisat.map((a) => `<p style="margin:0;">${escHtmlProp(a.mensaje)}</p>`).join('')
+        || '<p style="margin:0;">No se pudo determinar la categoría SISAT de esta organización.</p>';
+    }
+
+    contenedor.innerHTML = html;
+    contenedor.style.display = 'block';
+    contenedor.className = 'sisso-aviso';
+    contenedor.style.cssText += 'margin-top:12px;padding:12px 14px;border-radius:8px;background:var(--bg3);font-size:12.5px;color:var(--t2);line-height:1.5;';
   }
 
   // ------- Utilidades (usa las funciones de escape compartidas de shared/layout.js) -------
