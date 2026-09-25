@@ -625,6 +625,11 @@ async function sissoConfirmarCambioPassword(forzado) {
 // pestana), pero SI exige marcar la casilla de aceptacion antes de
 // habilitar el boton -- igual que un termino y condicion estandar.
 // ------------------------------------------------------------
+// Debe coincidir con DISCLAIMER_NORMATIVO_VERSION_ACTUAL en
+// authController.js -- es solo para mostrarla en pantalla, la
+// version real que decide si se pide de nuevo vive en el backend.
+const DISCLAIMER_NORMATIVO_VERSION_MOSTRADA = '2026-09-terminos-v2';
+
 async function sissoMostrarModalDisclaimerNormativo() {
   if (document.getElementById('sisso-modal-disclaimer-normativo')) return;
 
@@ -648,10 +653,63 @@ async function sissoMostrarModalDisclaimerNormativo() {
 
 function construirHtmlDisclaimerNormativo(listaHtmlInicial) {
   return `
-    <div id="sisso-modal-disclaimer-normativo" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;">
-      <div style="background:#fff;border-radius:14px;padding:26px;width:480px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">Alcance normativo de SISSO</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:10px;line-height:1.5;">
+    <div id="sisso-modal-disclaimer-normativo" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;">
+      <div style="background:#fff;border-radius:14px;padding:26px;width:620px;max-width:94vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="font-size:16px;font-weight:800;margin-bottom:4px;">📋 Descargo de responsabilidad y condiciones de uso de SISSO</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:14px;">Versión ${escaparHtml(DISCLAIMER_NORMATIVO_VERSION_MOSTRADA)} — por favor lea antes de continuar.</div>
+
+        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;">1. Alcance operativo y autonomía profesional</div>
+        <div style="font-size:12.5px;color:#475569;margin-bottom:12px;line-height:1.55;">
+          SISSO (Sistema Integral de Salud y Seguridad Ocupacional) es una herramienta tecnológica de gestión,
+          automatización y registro. Los reportes, cálculos automáticos (como REBA, RULA, NIOSH, IPER) y
+          sugerencias generadas por el sistema sirven como soporte técnico, pero no sustituyen ni reemplazan
+          el criterio profesional, clínico, legal o preventivo del Médico Ocupacional, los responsables de
+          Seguridad y Salud Ocupacional (SSO) ni de Talento Humano. La validación final de aptitudes y
+          dictámenes médicos es responsabilidad exclusiva del profesional acreditado.
+        </div>
+
+        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;">2. Veracidad e integridad de la información</div>
+        <div style="font-size:12.5px;color:#475569;margin-bottom:12px;line-height:1.55;">
+          El usuario y la empresa registrada son los únicos responsables de la exactitud, veracidad y
+          actualización de la información ingresada en la plataforma (datos del trabajador, antecedentes,
+          mediciones, ausentismo y registros de inspección). RonnDu Corp no asume responsabilidad por
+          dictámenes, reportes o sanciones derivadas de datos erróneos, incompletos o falsificados por los
+          usuarios.
+        </div>
+
+        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;">3. Protección de datos sensibles y confidencialidad médica</div>
+        <div style="font-size:12.5px;color:#475569;margin-bottom:6px;line-height:1.55;">
+          La plataforma maneja información confidencial de salud y personal. De acuerdo con el control de
+          acceso basado en roles (RBAC) de SISSO:
+        </div>
+        <ul style="font-size:12.5px;color:#475569;margin:0 0 12px;padding-left:20px;line-height:1.55;">
+          <li>Los datos clínicos individuales (historias clínicas, diagnósticos CIE-10, exámenes) son de
+              acceso exclusivo del personal médico autorizado.</li>
+          <li>Los roles administrativos, SSO y Talento Humano únicamente acceden a medidas operativas,
+              restricciones laborales o consolidados agregados, conforme al principio de necesidad de
+              conocer.</li>
+          <li>El usuario se compromete a mantener estricta confidencialidad de la información a la que tenga
+              acceso y a no compartir credenciales ni códigos de autenticación (MFA).</li>
+        </ul>
+
+        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;">4. Uso de firmas digitales y validez de documentos</div>
+        <div style="font-size:12.5px;color:#475569;margin-bottom:12px;line-height:1.55;">
+          El usuario declara que las firmas capturadas en pantalla, consentimientos informados y documentos
+          escaneados cargados en el sistema responden a procedimientos reales y autorizados por los
+          titulares de los datos, asumiendo la responsabilidad legal de su custodia y validez.
+        </div>
+
+        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;">5. Marca registrada y propiedad de la plataforma</div>
+        <div style="font-size:12.5px;color:#475569;margin-bottom:12px;line-height:1.55;">
+          El nombre "SISSO", su logotipo y la identidad visual de la plataforma son marca y propiedad
+          exclusiva de <strong>RonnDu Corp</strong>. Queda prohibido su uso, reproducción, copia o
+          explotación total o parcial, en cualquier medio, sin autorización previa y por escrito de RonnDu
+          Corp. El acceso otorgado al usuario es una licencia de uso de la plataforma, no una cesión de
+          derechos sobre la marca, el software ni sus contenidos.
+        </div>
+
+        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;">6. Alcance normativo</div>
+        <div style="font-size:12.5px;color:#475569;margin-bottom:8px;line-height:1.55;">
           SISSO se apoya en la normativa ecuatoriana vigente sobre seguridad y salud en el trabajo,
           incluyendo el Reglamento de los Servicios Integrales de Salud en el Trabajo (SISAT — Acuerdo
           Ministerial MSP 00004-2026). El listado completo, con enlaces a los textos oficiales, está
@@ -664,15 +722,17 @@ function construirHtmlDisclaimerNormativo(listaHtmlInicial) {
           por sí solo — el cumplimiento efectivo depende de cómo cada organización implemente y verifique
           sus procesos.
         </div>
+
         <label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#334155;margin-bottom:16px;cursor:pointer;">
           <input type="checkbox" id="sisso-disclaimer-normativo-check" style="margin-top:2px;" data-on-change="sissoActualizarBotonDisclaimerNormativo()">
-          <span>He leído y entiendo el alcance normativo de SISSO descrito arriba.</span>
+          <span>He leído, comprendo y acepto los Términos de Uso, Responsabilidades y Políticas de
+          Confidencialidad de SISSO descritos arriba.</span>
         </label>
         <div id="sisso-disclaimer-normativo-error" style="display:none;background:#fef2f2;color:#b91c1c;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
         <div style="display:flex;justify-content:flex-end;">
           <button id="sisso-disclaimer-normativo-boton" data-on-click="sissoAceptarDisclaimerNormativo()" disabled
             style="padding:11px 18px;background:#94a3b8;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;font-family:inherit;">
-            Continuar
+            Aceptar y continuar
           </button>
         </div>
       </div>
