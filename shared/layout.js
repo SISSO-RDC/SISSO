@@ -328,7 +328,10 @@ const SissoLayout = (() => {
         <div class="sisso-sidebar-cabecera">
           <div class="sisso-sidebar-logo">
             <img src="../shared/logo.png" alt="SISSO" class="sisso-sidebar-logo-img">
-            <span class="sisso-sidebar-lema">Seguridad y Salud Ocupacional</span>
+            <div class="sisso-sidebar-marca-texto">
+              <span class="sisso-sidebar-marca-sigla">SISSO</span>
+              <span class="sisso-sidebar-lema">Sistema Integral de Salud y Seguridad Ocupacional</span>
+            </div>
           </div>
           <div class="sisso-sidebar-empresa">
             ${marcaEmpresa}
