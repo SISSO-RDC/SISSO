@@ -203,134 +203,146 @@ a { color: inherit; }
 .sisso-layout { display: flex; min-height: 100vh; }
 
 .sisso-sidebar {
-  width: 220px;
-  min-width: 220px;
-  background: var(--t1);
+  /* Paleta corporativa del panel: azul pizarra profundo + acento teal de la marca */
+  --sb-bg: #0f172a;
+  --sb-bg2: #162033;
+  --sb-borde: rgba(148, 163, 184, .16);
+  --sb-texto: #cbd5e1;
+  --sb-tenue: #94a3b8;
+  --sb-acento: #2dd4bf;
+  --sb-acento-bg: rgba(45, 212, 191, .14);
+
+  width: 280px;
+  min-width: 280px;
+  background: var(--sb-bg);
+  color: var(--sb-texto);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
   flex-shrink: 0;
 }
 
-.sisso-sidebar-logo {
-  padding: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 2px;
+/* Cabecera fija: marca, organizacion y buscador (no se desplazan) */
+.sisso-sidebar-cabecera { padding: 18px 16px 14px; border-bottom: 1px solid var(--sb-borde); flex-shrink: 0; }
+.sisso-sidebar-logo { display: flex; align-items: center; gap: 12px; }
+.sisso-sidebar-logo-img { width: 96px; height: auto; flex-shrink: 0; }
+.sisso-sidebar-lema {
+  font-size: 11px; line-height: 1.3; color: var(--sb-tenue);
+  border-left: 1px solid var(--sb-borde); padding-left: 12px;
 }
-
-/* CORREGIDO: reemplaza el antiguo icono cuadrado con la letra "S"
-   por el logo real de la organizacion. Como es un grafico horizontal
-   (no un icono cuadrado), se muestra apilado sobre el texto en vez
-   de en fila junto a el (igual criterio que en login/index.html). */
-.sisso-sidebar-logo-img {
-  width: 92px;
-  height: auto;
-  margin-bottom: 2px;
-}
-
-.sisso-sidebar-nombre { color: #fff; font-weight: 700; font-size: 14px; }
-
-/* CORREGIDO: logo de la empresa cliente, ademas del logo de la
-   plataforma (antes solo se veia "SISSO", nunca la marca del
-   cliente actual). Se muestra en una franja propia, mas discreta,
-   justo debajo del logo de la plataforma -- SISSO sigue siendo lo
-   primero que se ve (es la plataforma), la empresa es contexto. */
 .sisso-sidebar-empresa {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 9px 10px;
+  background: var(--sb-bg2); border: 1px solid var(--sb-borde); border-radius: 10px;
 }
 .sisso-sidebar-empresa-logo {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: #fff;
-  object-fit: contain;
-  flex-shrink: 0;
-  padding: 2px;
+  width: 34px; height: 34px; border-radius: 8px; background: #fff;
+  object-fit: contain; padding: 3px; flex-shrink: 0;
 }
+.sisso-sidebar-empresa-inicial {
+  width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+  background: var(--sb-acento-bg); color: var(--sb-acento);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px;
+}
+.sisso-sidebar-empresa-texto { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.sisso-sidebar-empresa-etiqueta { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--sb-tenue); }
 .sisso-sidebar-empresa-nombre {
-  font-size: 11.5px;
-  color: #2dd4bf;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13.5px; font-weight: 600; color: #f1f5f9;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sisso-nav-buscar-caja { position: relative; margin-top: 12px; }
+.sisso-nav-buscar {
+  width: 100%; padding: 10px 12px 10px 36px; background: var(--sb-bg2);
+  border: 1px solid var(--sb-borde); border-radius: 9px; color: #f1f5f9;
+  font-size: 13.5px; font-family: inherit; outline: none; -webkit-appearance: none; appearance: none;
+}
+.sisso-nav-buscar::placeholder { color: var(--sb-tenue); }
+.sisso-nav-buscar:focus { border-color: var(--sb-acento); box-shadow: 0 0 0 3px rgba(45, 212, 191, .15); }
+.sisso-nav-buscar-ico {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--sb-tenue); pointer-events: none;
 }
 
-/* Titulos de seccion del sidebar (GENERAL, CLINICO, ERGONOMIA,
-   GESTION, SISTEMA): color de acento de la app y dentro de un
-   rectangulo propio para diferenciarlos claramente del resto del
-   menu (pedido explicito del usuario). */
-.sisso-nav-seccion {
-  padding: 0;
-  font-size: 10px;
-  color: #2dd4bf;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+/* Zona de navegacion: es la unica que hace scroll */
+.sisso-nav {
+  flex: 1; overflow-y: auto; padding: 12px 12px 14px;
+  scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, .3) transparent;
 }
+.sisso-ico { width: 20px; height: 20px; flex-shrink: 0; }
+.sisso-nav-fijos { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--sb-borde); }
+.sisso-nav-fijos .sisso-nav-item { padding: 10px 12px; font-size: 14.5px; font-weight: 500; gap: 12px; }
+.sisso-nav-fijos .sisso-ico { color: var(--sb-tenue); }
+.sisso-nav-fijos .sisso-nav-item.activo .sisso-ico { color: var(--sb-acento); }
 
-/* CORREGIDO: secciones del sidebar ahora colapsables (el menu crece
-   con cada modulo nuevo y sin esto obliga a hacer scroll largo). El
-   encabezado de seccion es un boton clickeable con una flecha que
-   gira; los items de esa seccion se ocultan con display:none en vez
-   de animarse con max-height, para no depender de medir alturas
-   dinamicas de contenido variable. */
-.sisso-nav-seccion-btn {
-  width: calc(100% - 20px);
-  margin: 11px 10px 6px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 10px;
-  background: rgba(45, 212, 191, .12);
-  border: 1px solid rgba(45, 212, 191, .3);
-  border-radius: 7px;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
+/* Grupos (acordeon): solo el grupo activo esta abierto por defecto */
+.sisso-nav-grupo { margin-bottom: 2px; }
+.sisso-nav-grupo-btn {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 12px;
+  background: none; border: 0; border-radius: 9px; color: var(--sb-texto);
+  font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; text-align: left;
 }
-.sisso-nav-seccion-btn .sisso-nav-seccion { padding: 0; }
-.sisso-nav-seccion-flecha {
-  font-size: 9px;
-  color: #2dd4bf;
-  transition: transform .15s;
-  flex-shrink: 0;
+.sisso-nav-grupo-btn:hover { background: rgba(148, 163, 184, .10); color: #fff; }
+.sisso-nav-grupo.tiene-activo > .sisso-nav-grupo-btn { color: #fff; }
+.sisso-nav-grupo-icono { display: inline-flex; color: var(--sb-tenue); flex-shrink: 0; }
+.sisso-nav-grupo.tiene-activo .sisso-nav-grupo-icono { color: var(--sb-acento); }
+.sisso-nav-grupo-nombre { flex: 1; min-width: 0; }
+.sisso-nav-chevron { width: 16px; height: 16px; color: var(--sb-tenue); transition: transform .15s; }
+.sisso-nav-grupo-btn[aria-expanded="false"] .sisso-nav-chevron { transform: rotate(-90deg); }
+.sisso-nav-grupo-items { margin: 2px 0 8px 21px; padding-left: 12px; border-left: 1px solid var(--sb-borde); }
+.sisso-nav-grupo-items.colapsada { display: none; }
+.sisso-nav-subtitulo {
+  padding: 12px 10px 4px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--sb-tenue);
 }
-.sisso-nav-seccion-btn[aria-expanded="false"] .sisso-nav-seccion-flecha { transform: rotate(-90deg); }
-.sisso-nav-seccion-items.colapsada { display: none; }
-
 .sisso-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 16px;
-  cursor: pointer;
-  color: rgba(255, 255, 255, .5);
-  font-size: 13px;
-  border-left: 2px solid transparent;
-  transition: all .12s;
-  user-select: none;
-  text-decoration: none;
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+  color: var(--sb-texto); font-size: 14px; text-decoration: none;
+  transition: background .12s, color .12s; user-select: none;
 }
-
-.sisso-nav-item:hover { background: rgba(255, 255, 255, .06); color: rgba(255, 255, 255, .85); }
-
+.sisso-nav-item:hover { background: rgba(148, 163, 184, .10); color: #fff; }
 .sisso-nav-item.activo {
-  background: rgba(13, 148, 136, .2);
-  color: #5eead4;
-  border-left-color: var(--teal);
+  background: var(--sb-acento-bg); color: #fff; font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--sb-acento);
 }
+.sisso-nav-item.pendiente { opacity: .45; cursor: not-allowed; }
+
+/* Buscador: mientras hay texto se abren todos los grupos con coincidencias */
+.sisso-nav .oculto { display: none !important; }
+.sisso-nav.filtrando .sisso-nav-grupo-items.colapsada { display: block; }
+.sisso-nav.filtrando .sisso-nav-subtitulo { display: none; }
+.sisso-nav-vacio { display: none; padding: 16px 10px; font-size: 13px; color: var(--sb-tenue); text-align: center; }
+.sisso-nav-vacio.visible { display: block; }
+
+/* Pie fijo: cuenta de usuario; las acciones de seguridad van en un menu */
+.sisso-usuario { position: relative; padding: 12px; border-top: 1px solid var(--sb-borde); flex-shrink: 0; }
+.sisso-usuario-fila { display: flex; align-items: center; gap: 10px; }
+.sisso-avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  background: var(--sb-acento-bg); color: var(--sb-acento);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px;
+}
+.sisso-usuario-datos { flex: 1; min-width: 0; line-height: 1.3; }
+.sisso-usuario-nombre { font-size: 13.5px; font-weight: 600; color: #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sisso-usuario-rol { font-size: 12px; color: var(--sb-tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sisso-usuario-btn {
+  background: none; border: 0; color: var(--sb-tenue); width: 34px; height: 34px;
+  border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sisso-usuario-btn:hover { background: rgba(148, 163, 184, .14); color: #fff; }
+.sisso-usuario-menu {
+  display: none; position: absolute; left: 12px; right: 12px; bottom: calc(100% - 2px);
+  background: #1e293b; border: 1px solid var(--sb-borde); border-radius: 10px;
+  padding: 6px; box-shadow: 0 12px 32px rgba(0, 0, 0, .4); z-index: 5;
+}
+.sisso-usuario-menu.visible { display: block; }
+.sisso-usuario-menu button {
+  display: block; width: 100%; text-align: left; padding: 10px 12px; background: none; border: 0;
+  border-radius: 7px; color: var(--sb-texto); font-family: inherit; font-size: 13.5px; cursor: pointer;
+}
+.sisso-usuario-menu button:hover { background: rgba(148, 163, 184, .14); color: #fff; }
+.sisso-usuario-menu button.peligro { color: #fca5a5; }
+.sisso-usuario-menu hr { border: 0; border-top: 1px solid var(--sb-borde); margin: 4px 0; }
 
 .sisso-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -349,6 +361,8 @@ a { color: inherit; }
 }
 
 .sisso-topbar-titulo { font-weight: 700; font-size: 15px; }
+.sisso-topbar-migas { display: flex; align-items: center; gap: 8px; color: var(--t3); font-size: 13px; }
+.sisso-topbar-migas .sep { opacity: .5; }
 
 .sisso-topbar-derecha { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
@@ -515,10 +529,12 @@ a { color: inherit; }
     z-index: 600;
     transform: translateX(-100%);
     transition: transform .2s ease;
-    width: 260px;
-    min-width: 260px;
+    width: 300px;
+    min-width: 300px;
+    max-width: 88vw;
   }
   .sisso-sidebar.sidebar-movil-abierto { transform: translateX(0); }
+  .sisso-topbar-migas { display: none; }
 
   .sisso-topbar-titulo { font-size: 13.5px; }
   .sisso-boton-modo-privado span.texto-boton { display: none; }

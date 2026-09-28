@@ -101,237 +101,283 @@ function escaparValorOnclickJs(valor) {
 
 const SissoLayout = (() => {
 
-  // Definicion completa del menu lateral, en el mismo orden que
-  // el original. "roles" es la lista de roles que pueden VER ese
-  // item — si el array esta vacio, lo ven todos los roles.
+  // ------------------------------------------------------------
+  // REDISENO DEL PANEL LATERAL (pedido de la persona usuaria, Sep 2026).
+  // Problemas del menu anterior: (1) era interminable -- ~45 items en 5
+  // secciones planas; (2) texto e items pequenos; (3) modulos mal
+  // agrupados (p. ej. "Normativas" dentro de CLINICO, "Riesgo
+  // psicosocial" y "Higiene" mezclados con gestion administrativa) y un
+  // item duplicado ("Proximos examenes" apuntaba a la misma pagina que
+  // "Calendario EMOs").
+  //
+  // Criterio de agrupacion (por DOMINIO de trabajo, no por tipo de
+  // pantalla; mismo criterio de las plataformas EHS de referencia
+  // -- Cority, VelocityEHS, Benchmark Gensuite -- que separan salud
+  // ocupacional, seguridad/riesgos, cumplimiento y analitica):
+  //   Inicio ........... lo que se abre todos los dias (fijo, sin grupo)
+  //   Personas y organizacion .. quien trabaja y que puede hacer
+  //   Salud ocupacional  .. todo lo clinico y su vigilancia
+  //   Ergonomia ........ metodos de evaluacion ergonomica
+  //   Seguridad y prevencion .. riesgos, incidentes y control operacional
+  //   Cumplimiento y documentos .. norma, documentos, auditorias
+  //   Analitica ........ reportes e indicadores
+  //   Administracion ... perfil, configuracion, acerca de
+  //
+  // "roles" = roles que pueden VER el item ([] = todos). Se conserva
+  // EXACTAMENTE la visibilidad por rol que tenia cada item (el backend
+  // sigue siendo quien autoriza de verdad). Los `id` deben coincidir con
+  // el que cada pagina pasa a SissoLayout.iniciar().
+  // ------------------------------------------------------------
   const MENU = [
-    { seccion: 'GENERAL' },
+    { grupo: 'inicio', nombre: null, fijo: true, items: [
+      { id: 'dashboard', label: 'Dashboard',        icono: 'grid',     href: '../dashboard/index.html',       roles: [] },
+      { id: 'alertas',   label: 'Alertas',          icono: 'bell',     href: '../alertas/index.html',         roles: [] },
+      { id: 'calendario', label: 'Calendario de EMOs', icono: 'calendar', href: '../calendario-emos/index.html', roles: [] },
+    ] },
 
-    { id: 'dashboard',    label: 'Dashboard',          icono: '⊞',  href: '../dashboard/index.html',      roles: [] },
-    { id: 'empresa',      label: 'Mi Empresa',         icono: '🏢', href: '../mi-empresa/index.html',   roles: ['admin', 'sso', 'medico'] },
-    { id: 'trabajadores', label: 'Trabajadores',       icono: '👥', href: '../trabajadores/index.html',   roles: [] },
-    { id: 'alertas',      label: 'Alertas',            icono: '🔔', href: '../alertas/index.html',      roles: [] },
-    { id: 'calendario',   label: 'Calendario EMOs',    icono: '📅', href: '../calendario-emos/index.html', roles: [] },
+    { grupo: 'personas', nombre: 'Personas y organización', icono: 'users', items: [
+      { id: 'empresa',        label: 'Mi empresa',           href: '../mi-empresa/index.html',        roles: ['admin', 'sso', 'medico'] },
+      { id: 'trabajadores',   label: 'Trabajadores',         href: '../trabajadores/index.html',      roles: [] },
+      { id: 'puestos',        label: 'Puestos de trabajo',   href: '../puestos-trabajo/index.html',   roles: ['admin', 'medico', 'sso', 'th'] },
+      { id: 'contratistas',   label: 'Contratistas',         href: '../contratistas/index.html',      roles: ['admin', 'sso'] },
+      { id: 'competencias',   label: 'Competencias',         href: '../competencias/index.html',      roles: ['admin', 'sso'] },
+      { id: 'capacitaciones', label: 'Capacitaciones',       href: '../capacitaciones/index.html',    roles: [] },
+      { id: 'ausentismo',     label: 'Ausentismo',           href: '../ausentismo/index.html',        roles: [] },
+    ] },
 
-    { seccion: 'CLÍNICO' },
-    { id: 'emos',         label: 'EMOs / Aptitud',     icono: '🩺', href: '../aptitud/index.html',        roles: ['medico'] },
-    { id: 'historia',     label: 'Historia clínica',   icono: '📋', href: '../historia-clinica/index.html', roles: ['medico'] },
-    { id: 'consentimientos', label: 'Consentimientos', icono: '✍️', href: '../consentimientos/index.html', roles: ['medico', 'sso', 'th'] },
-    { id: 'audiometria',  label: 'Audiometría',        icono: '🔊', href: '../audiometria/index.html', roles: ['medico'] },
-    { id: 'espirometria', label: 'Espirometría',       icono: '💨', href: '../espirometria/index.html', roles: ['medico'] },
-    { id: 'visiometria',  label: 'Visiometría',        icono: '👁️', href: '../visiometria/index.html',  roles: ['medico'] },
-    // CORREGIDO tras Auditoria SISSO N.06 (puntos 17 y 25): modulos
-    // medicos nuevos. "enfermedad-profesional" es exclusivo del
-    // medico (SSO tiene su propia vista preventiva agregada, sin
-    // acceso clinico, dentro del mismo modulo). "restricciones" la
-    // ve tambien SSO/TH pero en modo solo-lectura de la medida
-    // laboral (nunca el motivo clinico) — ver restriccionesMedicasController.js.
-    { id: 'enfermedad-profesional', label: 'Enfermedad profesional', icono: '🧬', href: '../enfermedad-profesional/index.html', roles: ['medico', 'sso'] },
-    { id: 'restricciones', label: 'Restricciones médicas', icono: '🚧', href: '../restricciones-medicas/index.html', roles: ['medico', 'sso', 'th'] },
-    // CORREGIDO tras Auditoria SISSO N.06 (puntos 15 y 16 / CRITICO
-    // 2 y CRITICO 4). Matriz medico-ocupacional: solo medico (decide
-    // que vigilancia clinica recibe cada puesto). Vigilancia de la
-    // salud: medico gestiona, sso solo lee (datos ya agregados).
-    { id: 'matriz-medico-puesto', label: 'Matriz médico-puesto', icono: '🗂️', href: '../matriz-medico-puesto/index.html', roles: ['medico'] },
-    { id: 'vigilancia-salud', label: 'Vigilancia de la salud', icono: '📊', href: '../vigilancia-salud/index.html', roles: ['medico', 'sso'] },
-    // CREADO en Auditoria N.19 (G19-07): pantalla de verificacion normativa de los examenes del
-    // protocolo. El medico verifica; admin y SSO la ven en solo lectura.
-    { id: 'normas-examenes', label: 'Normas de exámenes', icono: '⚖️', href: '../normas-examenes/index.html', roles: ['medico', 'admin', 'sso'] },
-    // CREADO a pedido de la persona usuaria (Sep 2026), integracion del
-    // Acuerdo Ministerial MSP 00004-2026 (SISAT): panel unico con TODAS
-    // las normativas sobre las que se sustenta SISSO, visible a todos los
-    // roles (lectura); alta/edicion reservada a superadmin dentro de la
-    // propia pantalla. Ver migration_096_normativas_sisso.sql.
-    { id: 'normativas', label: 'Normativas', icono: '📚', href: '../normativas/index.html', roles: [] },
+    { grupo: 'salud', nombre: 'Salud ocupacional', icono: 'activity', items: [
+      { subtitulo: 'Atención médica' },
+      { id: 'emos',           label: 'EMOs / Aptitud',        href: '../aptitud/index.html',            roles: ['medico'] },
+      { id: 'historia',       label: 'Historia clínica',      href: '../historia-clinica/index.html',   roles: ['medico'] },
+      { id: 'consentimientos', label: 'Consentimientos',      href: '../consentimientos/index.html',    roles: ['medico', 'sso', 'th'] },
+      { id: 'restricciones',  label: 'Restricciones médicas', href: '../restricciones-medicas/index.html', roles: ['medico', 'sso', 'th'] },
+      { id: 'enfermedad-profesional', label: 'Enfermedad profesional', href: '../enfermedad-profesional/index.html', roles: ['medico', 'sso'] },
+      { subtitulo: 'Exámenes complementarios' },
+      { id: 'audiometria',    label: 'Audiometría',           href: '../audiometria/index.html',        roles: ['medico'] },
+      { id: 'espirometria',   label: 'Espirometría',          href: '../espirometria/index.html',       roles: ['medico'] },
+      { id: 'visiometria',    label: 'Visiometría',           href: '../visiometria/index.html',        roles: ['medico'] },
+      { subtitulo: 'Vigilancia' },
+      { id: 'vigilancia-salud', label: 'Vigilancia de la salud', href: '../vigilancia-salud/index.html', roles: ['medico', 'sso'] },
+      { id: 'matriz-medico-puesto', label: 'Matriz médico-puesto', href: '../matriz-medico-puesto/index.html', roles: ['medico'] },
+      { id: 'normas-examenes', label: 'Normas de exámenes',   href: '../normas-examenes/index.html',    roles: ['medico', 'admin', 'sso'] },
+      { id: 'riesgo-psicosocial', label: 'Riesgo psicosocial', href: '../riesgo-psicosocial/index.html', roles: ['admin', 'sso', 'medico'] },
+    ] },
 
-    { seccion: 'ERGONOMÍA' },
-    { id: 'puestos',      label: 'Puestos de trabajo', icono: '🪑', href: '../puestos-trabajo/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
-    { id: 'reba',         label: 'Calculadora REBA',   icono: '📐', href: '../reba/index.html',           roles: ['medico', 'sso'] },
-    { id: 'rula',         label: 'Calculadora RULA',   icono: '📏', href: '../rula/index.html',           roles: ['medico', 'sso'] },
-    { id: 'niosh',        label: 'Ecuación NIOSH',     icono: '⚖️', href: '../niosh/index.html',        roles: ['medico', 'sso'] },
-    { id: 'nordico',      label: 'Cuestionario Nórdico', icono: '🗂️', href: '../nordico/index.html',    roles: ['medico', 'sso'] },
+    { grupo: 'ergonomia', nombre: 'Ergonomía', icono: 'figura', items: [
+      { id: 'reba',    label: 'Calculadora REBA',     href: '../reba/index.html',    roles: ['medico', 'sso'] },
+      { id: 'rula',    label: 'Calculadora RULA',     href: '../rula/index.html',    roles: ['medico', 'sso'] },
+      { id: 'niosh',   label: 'Ecuación NIOSH',       href: '../niosh/index.html',   roles: ['medico', 'sso'] },
+      { id: 'nordico', label: 'Cuestionario Nórdico', href: '../nordico/index.html', roles: ['medico', 'sso'] },
+    ] },
 
-    { seccion: 'GESTIÓN' },
-    { id: 'ausentismo',   label: 'Ausentismo',         icono: '📉', href: '../ausentismo/index.html',  roles: [] },
-    // CORREGIDO tras Auditoria SISSO N.06 (punto 18 / CRITICO 1):
-    // ciclo integral de accidentes/incidentes/casi accidentes.
-    // Gestion (crear/investigar/accionar) restringida a admin/sso en
-    // el backend; el menu queda visible a todos porque cualquier
-    // usuario autenticado puede LEER (mismo criterio que ausentismo).
-    { id: 'accidentes',   label: 'Accidentes/Incidentes', icono: '🚨', href: '../accidentes/index.html', roles: [] },
-    { id: 'capa',         label: 'CAPA',                icono: '🔁', href: '../capa/index.html', roles: [] },
-    { id: 'inspecciones', label: 'Inspecciones',        icono: '🔎', href: '../inspecciones/index.html', roles: [] },
-    // CREADO Lote 1 (plan de cierre de brechas frente a plataformas EHS globales, Sep 2026): triage
-    // de los reportes recibidos por el canal publico QR/enlace (ver ../reporte-peligro/, sin login).
-    // Solo admin/sso: es el mismo criterio de gestion que ya tienen accidentes/inspecciones/CAPA.
-    { id: 'reportes-peligro', label: 'Reportes de peligro', icono: '📢', href: '../reportes-peligro/index.html', roles: ['admin', 'sso'] },
-    // CREADO Lote 2 (plan de cierre de brechas frente a plataformas EHS globales, Sep 2026).
-    { id: 'documentos-control', label: 'Control documental', icono: '📄', href: '../documentos-control/index.html', roles: [] },
-    { id: 'obligaciones-legales', label: 'Obligaciones legales', icono: '⚖️', href: '../obligaciones-legales/index.html', roles: ['admin', 'sso'] },
-    { id: 'auditorias', label: 'Auditorías', icono: '🗂️', href: '../auditorias/index.html', roles: ['admin', 'sso'] },
-    // CREADO Lote 3 (Sep 2026): control de trabajo -- contratistas, competencias y permisos de trabajo (JSA/AST).
-    // Solo admin/sso, igual que el backend (ver contratistasRoutes/competenciasRoutes/permisosTrabajoRoutes).
-    { id: 'contratistas', label: 'Contratistas', icono: '🏗️', href: '../contratistas/index.html', roles: ['admin', 'sso'] },
-    { id: 'competencias', label: 'Competencias', icono: '🎖️', href: '../competencias/index.html', roles: ['admin', 'sso'] },
-    { id: 'permisos-trabajo', label: 'Permisos de trabajo', icono: '📝', href: '../permisos-trabajo/index.html', roles: ['admin', 'sso'] },
-    // CREADO Lote 4 (Sep 2026): quimicos/SDS y emergencias. Solo admin/sso (mismo criterio del backend).
-    { id: 'quimicos', label: 'Químicos y SDS', icono: '🧪', href: '../quimicos/index.html', roles: ['admin', 'sso'] },
-    { id: 'emergencias', label: 'Emergencias', icono: '🚒', href: '../emergencias/index.html', roles: ['admin', 'sso'] },
-    { id: 'riesgo-psicosocial', label: 'Riesgo psicosocial', icono: '🧠', href: '../riesgo-psicosocial/index.html', roles: ['admin', 'sso', 'medico'] },
-    { id: 'higiene-industrial', label: 'Higiene industrial', icono: '🌡️', href: '../higiene-industrial/index.html', roles: [] },
-    { id: 'epp',           label: 'EPP',                 icono: '🦺', href: '../epp/index.html', roles: [] },
-    { id: 'capacitaciones', label: 'Capacitaciones',      icono: '🎓', href: '../capacitaciones/index.html', roles: [] },
-    { id: 'proximos',     label: 'Próximos exámenes',  icono: '⏰', href: '../calendario-emos/index.html', roles: [] },
-    { id: 'matriz',       label: 'Matriz de riesgos',  icono: '🗂️', href: '../matriz-riesgos/index.html', roles: ['admin', 'medico', 'sso', 'th'] },
-    { id: 'reportes',     label: 'Reportes BI',        icono: '📊', href: '../reportes-bi/index.html', roles: [] },
-    { id: 'indicadores',  label: 'Indicadores SSO',    icono: '📈', href: '../indicadores/index.html',  roles: [] },
-    // CREADO en Auditoria N.19 (G19-08): comparativo de KPIs (meta vs. valor real). Lo ven todos los
-    // roles; el backend decide que indicadores puede ver cada uno (no_disponible_para_su_rol).
-    { id: 'kpis',         label: 'KPIs meta vs. real',  icono: '🎯', href: '../kpis/index.html',         roles: [] },
-    { id: 'certificados', label: 'Certificados PDF',   icono: '📄', href: '../certificados-pdf/index.html', roles: [] },
+    { grupo: 'seguridad', nombre: 'Seguridad y prevención', icono: 'escudo', items: [
+      { subtitulo: 'Riesgos e inspecciones' },
+      { id: 'matriz',       label: 'Matriz de riesgos',   href: '../matriz-riesgos/index.html',    roles: ['admin', 'medico', 'sso', 'th'] },
+      { id: 'inspecciones', label: 'Inspecciones',        href: '../inspecciones/index.html',      roles: [] },
+      { id: 'higiene-industrial', label: 'Higiene industrial', href: '../higiene-industrial/index.html', roles: [] },
+      { id: 'quimicos',     label: 'Químicos y SDS',      href: '../quimicos/index.html',          roles: ['admin', 'sso'] },
+      { subtitulo: 'Incidentes y acciones' },
+      { id: 'accidentes',   label: 'Accidentes / Incidentes', href: '../accidentes/index.html',    roles: [] },
+      { id: 'reportes-peligro', label: 'Reportes de peligro', href: '../reportes-peligro/index.html', roles: ['admin', 'sso'] },
+      { id: 'capa',         label: 'Acciones CAPA',       href: '../capa/index.html',              roles: [] },
+      { subtitulo: 'Control operacional' },
+      { id: 'permisos-trabajo', label: 'Permisos de trabajo', href: '../permisos-trabajo/index.html', roles: ['admin', 'sso'] },
+      { id: 'epp',          label: 'EPP',                 href: '../epp/index.html',               roles: [] },
+      { id: 'emergencias',  label: 'Emergencias',         href: '../emergencias/index.html',       roles: ['admin', 'sso'] },
+    ] },
 
-    { seccion: 'SISTEMA' },
-    // CREADO en Auditoria N.15 (pedido de la persona usuaria): pagina
-    // personal de firma digital/registro SENESCYT para quienes
-    // efectivamente firman documentos (medico, sso) -- distinta de
-    // "Configuración", que administra USUARIOS AJENOS y es exclusiva
-    // del admin. TH no la ve porque no firma documentos clinicos.
-    { id: 'mi-perfil', label: 'Mi Perfil', icono: '🖊️', href: '../mi-perfil/index.html', roles: ['medico', 'sso'] },
-    { id: 'configuracion', label: 'Configuración',     icono: '⚙️', href: '../configuracion/index.html', roles: ['admin'] },
-    // CREADO a pedido de la persona usuaria: pestana "Acerca de"
-    // dentro de la plataforma (distinta del panel de superadmin),
-    // visible para TODOS los roles (roles: [] = sin restriccion).
-    // Muestra el dueno de la aplicacion, la version desplegada y un
-    // boton para enviar sugerencias/correcciones por correo.
-    { id: 'acerca-de', label: 'Acerca de', icono: 'ℹ️', href: '../acerca-de/index.html', roles: [] },
+    { grupo: 'cumplimiento', nombre: 'Cumplimiento y documentos', icono: 'documento', items: [
+      { id: 'normativas',         label: 'Normativas',           href: '../normativas/index.html',          roles: [] },
+      { id: 'obligaciones-legales', label: 'Obligaciones legales', href: '../obligaciones-legales/index.html', roles: ['admin', 'sso'] },
+      { id: 'documentos-control', label: 'Control documental',   href: '../documentos-control/index.html',  roles: [] },
+      { id: 'auditorias',         label: 'Auditorías',           href: '../auditorias/index.html',          roles: ['admin', 'sso'] },
+      { id: 'certificados',       label: 'Certificados PDF',     href: '../certificados-pdf/index.html',    roles: [] },
+    ] },
+
+    { grupo: 'analitica', nombre: 'Analítica', icono: 'grafico', items: [
+      { id: 'reportes',    label: 'Reportes BI',        href: '../reportes-bi/index.html', roles: [] },
+      { id: 'indicadores', label: 'Indicadores SSO',    href: '../indicadores/index.html', roles: [] },
+      { id: 'kpis',        label: 'KPIs meta vs. real', href: '../kpis/index.html',        roles: [] },
+    ] },
+
+    { grupo: 'administracion', nombre: 'Administración', icono: 'ajustes', items: [
+      // Mi Perfil: firma digital/registro SENESCYT de quienes firman (medico, sso).
+      { id: 'mi-perfil',     label: 'Mi perfil y firma', href: '../mi-perfil/index.html',     roles: ['medico', 'sso'] },
+      { id: 'configuracion', label: 'Configuración',     href: '../configuracion/index.html', roles: ['admin'] },
+      { id: 'acerca-de',     label: 'Acerca de',         href: '../acerca-de/index.html',     roles: [] },
+    ] },
   ];
+
+  // Iconos de linea (estilo Feather, 24x24, trazo). Inline para no
+  // depender de ningun recurso externo (CSP: img/font-src 'self').
+  const ICONOS = {
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+    bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+    figura: '<circle cx="12" cy="4.5" r="2"/><path d="M12 7v7"/><path d="M12 14l-4 7"/><path d="M12 14l4 7"/><path d="M6 10h12"/>',
+    escudo: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    documento: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+    grafico: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    ajustes: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+    buscar: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+    chevron: '<polyline points="6 9 12 15 18 9"/>',
+    mas: '<circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/>',
+  };
+
+  function icono(nombre, clase) {
+    return `<svg class="sisso-ico${clase ? ' ' + clase : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[nombre] || ''}</svg>`;
+  }
+
+  const ETIQUETAS_ROL = {
+    admin: 'Administrador', sso: 'Seguridad y salud (SSO)', medico: 'Médico ocupacional',
+    th: 'Talento Humano', superadmin: 'Superadministrador',
+  };
 
   function puedeVerItem(item, rol) {
     return !item.roles || item.roles.length === 0 || item.roles.includes(rol);
   }
 
-  // CORREGIDO (mejora de UX solicitada: "el menu es muy largo, que
-  // cada seccion se pueda contraer/expandir"). Se guarda que
-  // secciones estan colapsadas en localStorage (no sessionStorage:
-  // asi la preferencia se mantiene entre sesiones, no solo mientras
-  // dura la pestana) bajo una clave por usuario, para que cada quien
-  // recuerde su propia preferencia en un equipo compartido.
-  function claveColapso(usuario) {
-    return `sisso_secciones_colapsadas_${usuario.id}`;
+  function normalizarTexto(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
 
-  function leerSeccionesColapsadas(usuario) {
-    try {
-      return new Set(JSON.parse(localStorage.getItem(claveColapso(usuario)) || '[]'));
-    } catch {
-      return new Set();
-    }
-  }
-
-  function guardarSeccionesColapsadas(usuario, set) {
-    try {
-      localStorage.setItem(claveColapso(usuario), JSON.stringify([...set]));
-    } catch { /* localStorage no disponible (modo privado, etc.): no es critico */ }
-  }
-
-  // Agrupa el MENU plano en secciones, filtrando por rol y
-  // descartando secciones que terminan sin ningun item visible (por
-  // ejemplo, un rol que no ve nada de "CLÍNICO" no deberia ver un
-  // encabezado "CLÍNICO" vacio colgando en su sidebar).
-  function agruparPorSeccion(usuario) {
-    const secciones = [];
-    let actual = null;
-    for (const item of MENU) {
-      if (item.seccion) {
-        actual = { nombre: item.seccion, items: [] };
-        secciones.push(actual);
-        continue;
+  // Filtra cada grupo por rol; descarta subtitulos sin items debajo y
+  // grupos que quedan vacios (un rol que no ve nada de "Salud
+  // ocupacional" no debe ver ese encabezado colgando).
+  function gruposVisibles(usuario) {
+    const resultado = [];
+    for (const g of MENU) {
+      const items = [];
+      let subtituloPendiente = null;
+      for (const it of g.items) {
+        if (it.subtitulo) { subtituloPendiente = it; continue; }
+        if (!puedeVerItem(it, usuario.rol)) continue;
+        if (subtituloPendiente) { items.push(subtituloPendiente); subtituloPendiente = null; }
+        items.push(it);
       }
-      if (puedeVerItem(item, usuario.rol) && actual) {
-        actual.items.push(item);
-      }
+      if (items.some((it) => !it.subtitulo)) resultado.push({ ...g, items });
     }
-    return secciones.filter((s) => s.items.length > 0);
+    return resultado;
+  }
+
+  function claveExpandidos(usuario) { return `sisso_nav_expandidos_${usuario.id}`; }
+
+  function leerGruposExpandidos(usuario) {
+    try {
+      const guardado = localStorage.getItem(claveExpandidos(usuario));
+      return guardado === null ? null : new Set(JSON.parse(guardado));
+    } catch { return null; }
+  }
+
+  function htmlItem(item, moduloActivo) {
+    const estaActivo = item.id === moduloActivo;
+    const esPendiente = item.href === '#';
+    return `<a href="${item.href}"
+        class="sisso-nav-item${estaActivo ? ' activo' : ''}${esPendiente ? ' pendiente' : ''}"
+        data-buscar="${escaparHtml(normalizarTexto(item.label))}"
+        ${estaActivo ? 'aria-current="page"' : ''}
+        ${esPendiente ? 'data-on-click="return false;" title="Próximamente"' : ''}>
+        ${item.icono ? icono(item.icono) : ''}
+        <span>${escaparHtml(item.label)}</span>
+      </a>`;
   }
 
   function construirSidebar(moduloActivo, usuario) {
-    const secciones = agruparPorSeccion(usuario);
-    const colapsadas = leerSeccionesColapsadas(usuario);
-    // La seccion que contiene el modulo activo siempre se ve
-    // expandida al cargar la pagina, sin importar la preferencia
-    // guardada -- perderse de vista donde uno esta parado seria peor
-    // que el menu largo que esto intenta arreglar.
-    const seccionActiva = secciones.find((s) => s.items.some((it) => it.id === moduloActivo));
+    const grupos = gruposVisibles(usuario);
+    const grupoActivo = grupos.find((g) => g.items.some((it) => it.id === moduloActivo));
+    const guardados = leerGruposExpandidos(usuario);
+    // Por defecto SOLO se abre el grupo donde esta el usuario (menu corto);
+    // el grupo activo siempre queda abierto para no perder la ubicacion.
+    const expandidos = new Set(guardados || []);
+    if (grupoActivo) expandidos.add(grupoActivo.grupo);
 
-    const seccionesHtml = secciones.map((seccion) => {
-      const estaColapsada = colapsadas.has(seccion.nombre) && seccion !== seccionActiva;
-      const itemsHtml = seccion.items.map((item) => {
-        const estaActivo = item.id === moduloActivo;
-        const esPendiente = item.href === '#';
-        return `<a
-          href="${item.href}"
-          class="sisso-nav-item${estaActivo ? ' activo' : ''}${esPendiente ? ' pendiente' : ''}"
-          ${esPendiente ? 'data-on-click="return false;" title="Próximamente"' : ''}
-          style="${esPendiente ? 'opacity:.4;cursor:not-allowed;' : ''}"
-        >
-          <span style="width:18px;text-align:center">${item.icono}</span>
-          <span>${item.label}</span>
-          ${esPendiente ? '<span style="margin-left:auto;font-size:9px;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.4);padding:1px 5px;border-radius:8px">PRONTO</span>' : ''}
-        </a>`;
-      }).join('');
+    const fijos = grupos.filter((g) => g.fijo).map((g) =>
+      `<div class="sisso-nav-fijos">${g.items.map((it) => htmlItem(it, moduloActivo)).join('')}</div>`).join('');
 
+    const gruposHtml = grupos.filter((g) => !g.fijo).map((g) => {
+      const abierto = expandidos.has(g.grupo);
+      const itemsHtml = g.items.map((it) => it.subtitulo
+        ? `<div class="sisso-nav-subtitulo">${escaparHtml(it.subtitulo)}</div>`
+        : htmlItem({ ...it, label: it.label }, moduloActivo).replace('data-buscar="', `data-buscar="${escaparHtml(normalizarTexto(g.nombre))} `)
+      ).join('');
       return `
-        <button type="button" class="sisso-nav-seccion-btn" aria-expanded="${!estaColapsada}" data-on-click="sissoToggleSeccion(this, '${escaparHtml(seccion.nombre)}')">
-          <span class="sisso-nav-seccion">${escaparHtml(seccion.nombre)}</span>
-          <span class="sisso-nav-seccion-flecha">▼</span>
-        </button>
-        <div class="sisso-nav-seccion-items${estaColapsada ? ' colapsada' : ''}">${itemsHtml}</div>`;
+        <div class="sisso-nav-grupo${g === grupoActivo ? ' tiene-activo' : ''}" data-grupo="${g.grupo}">
+          <button type="button" class="sisso-nav-grupo-btn" aria-expanded="${abierto}" data-on-click="sissoToggleGrupo(this)">
+            <span class="sisso-nav-grupo-icono">${icono(g.icono)}</span>
+            <span class="sisso-nav-grupo-nombre">${escaparHtml(g.nombre)}</span>
+            ${icono('chevron', 'sisso-nav-chevron')}
+          </button>
+          <div class="sisso-nav-grupo-items${abierto ? '' : ' colapsada'}">${itemsHtml}</div>
+        </div>`;
     }).join('');
 
     const org = usuario.organizacion || {};
-    const franjaEmpresa = org.logoUrl
-      ? `<div class="sisso-sidebar-empresa">
-           <img src="${escaparHtml(org.logoUrl)}" alt="${escaparHtml(org.nombre)}" class="sisso-sidebar-empresa-logo">
-           <span class="sisso-sidebar-empresa-nombre">${escaparHtml(org.nombre) || 'Empresa'}</span>
-         </div>`
-      : `<div class="sisso-sidebar-empresa">
-           <span class="sisso-sidebar-empresa-nombre">${escaparHtml(org.nombre) || 'Sistema'}</span>
-         </div>`;
+    const nombreOrg = org.nombre || 'Sistema';
+    const marcaEmpresa = org.logoUrl
+      ? `<img src="${escaparHtml(org.logoUrl)}" alt="${escaparHtml(org.nombre)}" class="sisso-sidebar-empresa-logo">`
+      : `<span class="sisso-sidebar-empresa-inicial">${escaparHtml(nombreOrg.trim().charAt(0).toUpperCase())}</span>`;
+
+    const partes = String(usuario.nombreCompleto || '').trim().split(/\s+/).filter(Boolean);
+    const iniciales = ((partes[0] || '?').charAt(0) + (partes.length > 1 ? partes[partes.length - 1].charAt(0) : '')).toUpperCase();
+    const etiquetaRol = ETIQUETAS_ROL[usuario.rol] || String(usuario.rol || '').toUpperCase();
 
     return `
-      <div class="sisso-sidebar">
-        <div class="sisso-sidebar-logo">
-          <img src="../shared/logo.png" alt="SISSO" class="sisso-sidebar-logo-img">
-          <div class="sisso-sidebar-nombre">SISSO</div>
-        </div>
-        ${franjaEmpresa}
-        ${seccionesHtml}
-        <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.06);">
-          <div style="font-size:11px;color:#2dd4bf;font-weight:700;margin-bottom:8px;padding:0 4px;">
-            ${escaparHtml(usuario.nombreCompleto)}
-            <span style="display:block;font-size:10px;margin-top:1px;color:rgba(255,255,255,.4);font-weight:600;">${escaparHtml(usuario.rol?.toUpperCase())}</span>
+      <aside class="sisso-sidebar" aria-label="Navegación principal">
+        <div class="sisso-sidebar-cabecera">
+          <div class="sisso-sidebar-logo">
+            <img src="../shared/logo.png" alt="SISSO" class="sisso-sidebar-logo-img">
+            <span class="sisso-sidebar-lema">Seguridad y Salud Ocupacional</span>
           </div>
-          <button data-on-click="sissoAbrirCambioPassword()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
-            Cambiar mi contraseña
-          </button>
-          <button data-on-click="sissoAbrirMfa()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
-            Verificación en 2 pasos
-          </button>
-          <button data-on-click="sissoAbrirSesiones()" style="width:100%;padding:7px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
-            Sesiones activas
-          </button>
-          <button data-on-click="sissoCerrarSesionConConfirmacion()" style="width:100%;padding:7px;background:rgba(220,38,38,.15);color:#fca5a5;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
-            Cerrar sesión
-          </button>
+          <div class="sisso-sidebar-empresa">
+            ${marcaEmpresa}
+            <div class="sisso-sidebar-empresa-texto">
+              <span class="sisso-sidebar-empresa-etiqueta">Organización</span>
+              <span class="sisso-sidebar-empresa-nombre" title="${escaparHtml(nombreOrg)}">${escaparHtml(nombreOrg)}</span>
+            </div>
+          </div>
+          <div class="sisso-nav-buscar-caja">
+            ${icono('buscar', 'sisso-nav-buscar-ico')}
+            <input type="search" id="sisso-nav-buscar" class="sisso-nav-buscar" placeholder="Buscar módulo…" autocomplete="off" aria-label="Buscar módulo" data-on-input="sissoFiltrarMenu(this.value)">
+          </div>
         </div>
-      </div>`;
+
+        <nav class="sisso-nav">
+          ${fijos}
+          ${gruposHtml}
+          <div class="sisso-nav-vacio" id="sisso-nav-vacio">Ningún módulo coincide con la búsqueda.</div>
+        </nav>
+
+        <div class="sisso-usuario">
+          <div class="sisso-usuario-menu" id="sisso-usuario-menu">
+            <button type="button" data-on-click="sissoCerrarMenuUsuario(); sissoAbrirCambioPassword()">Cambiar mi contraseña</button>
+            <button type="button" data-on-click="sissoCerrarMenuUsuario(); sissoAbrirMfa()">Verificación en 2 pasos</button>
+            <button type="button" data-on-click="sissoCerrarMenuUsuario(); sissoAbrirSesiones()">Sesiones activas</button>
+            <hr>
+            <button type="button" class="peligro" data-on-click="sissoCerrarMenuUsuario(); sissoCerrarSesionConConfirmacion()">Cerrar sesión</button>
+          </div>
+          <div class="sisso-usuario-fila">
+            <span class="sisso-avatar">${escaparHtml(iniciales)}</span>
+            <div class="sisso-usuario-datos">
+              <div class="sisso-usuario-nombre" title="${escaparHtml(usuario.nombreCompleto)}">${escaparHtml(usuario.nombreCompleto)}</div>
+              <div class="sisso-usuario-rol">${escaparHtml(etiquetaRol)}</div>
+            </div>
+            <button type="button" class="sisso-usuario-btn" aria-label="Opciones de cuenta" title="Cuenta y seguridad" data-on-click="sissoAlternarMenuUsuario()">${icono('mas')}</button>
+          </div>
+        </div>
+      </aside>`;
   }
 
-  function construirTopbar(tituloModulo) {
+  function construirTopbar(tituloModulo, moduloActivo) {
+    const grupo = MENU.find((g) => g.items.some((it) => it.id === moduloActivo));
+    const nombreGrupo = grupo ? (grupo.nombre || 'Inicio') : '';
+    const migas = nombreGrupo
+      ? `<span class="sisso-topbar-migas">${escaparHtml(nombreGrupo)}<span class="sep">/</span></span>` : '';
     return `
       <div class="sisso-topbar">
         <button type="button" class="sisso-boton-menu-movil" id="sisso-boton-menu-movil" data-on-click="sissoAlternarSidebarMovil()" aria-label="Abrir menú" title="Menú">☰</button>
-        <span class="sisso-topbar-titulo">${tituloModulo}</span>
+        ${migas}<span class="sisso-topbar-titulo">${tituloModulo}</span>
         <div class="sisso-topbar-derecha" id="sisso-topbar-acciones">
           <button type="button" class="sisso-boton-modo-privado" id="sisso-boton-modo-privado" data-on-click="sissoAlternarModoPrivado()" title="Difumina el contenido en pantalla sin cerrar sesión. No reemplaza los permisos del sistema.">
             👁️ <span class="texto-boton">Modo privado</span>
@@ -370,7 +416,7 @@ const SissoLayout = (() => {
         <div class="sisso-layout">
           ${construirSidebar(moduloActivo, usuario)}
           <div class="sisso-main">
-            ${construirTopbar(tituloModulo)}
+            ${construirTopbar(tituloModulo, moduloActivo)}
             <div class="sisso-contenido">
               ${htmlContenidoPagina}
             </div>
@@ -488,35 +534,61 @@ async function sissoCerrarSesionConConfirmacion() {
 }
 
 /**
- * Contrae/expande una seccion del sidebar y recuerda la preferencia
- * en localStorage (por usuario) para las proximas visitas. Global
- * por el mismo motivo que sissoCerrarSesionConConfirmacion: la llama
- * un onclick generado dinamicamente dentro del sidebar.
+ * Abre/cierra un grupo del panel lateral y recuerda, por usuario, cuales
+ * grupos quedaron abiertos (localStorage). Global porque la llama un
+ * data-on-click generado dinamicamente dentro del sidebar.
  */
-function sissoToggleSeccion(boton, nombreSeccion) {
+function sissoToggleGrupo(boton) {
   const usuario = SissoSesion.obtenerUsuario();
   if (!usuario) return;
-
   const contenedor = boton.nextElementSibling;
-  const clave = `sisso_secciones_colapsadas_${usuario.id}`;
-  let colapsadas;
+  const colapsar = !contenedor.classList.contains('colapsada');
+  contenedor.classList.toggle('colapsada', colapsar);
+  boton.setAttribute('aria-expanded', String(!colapsar));
+
+  const abiertos = [...document.querySelectorAll('.sisso-nav-grupo')]
+    .filter((g) => !g.querySelector('.sisso-nav-grupo-items').classList.contains('colapsada'))
+    .map((g) => g.dataset.grupo);
   try {
-    colapsadas = new Set(JSON.parse(localStorage.getItem(clave) || '[]'));
-  } catch {
-    colapsadas = new Set();
-  }
-
-  const vaAColapsarse = !contenedor.classList.contains('colapsada');
-  contenedor.classList.toggle('colapsada', vaAColapsarse);
-  boton.setAttribute('aria-expanded', String(!vaAColapsarse));
-
-  if (vaAColapsarse) colapsadas.add(nombreSeccion);
-  else colapsadas.delete(nombreSeccion);
-
-  try {
-    localStorage.setItem(clave, JSON.stringify([...colapsadas]));
-  } catch { /* localStorage no disponible: no es critico, solo no se recuerda la preferencia */ }
+    localStorage.setItem(`sisso_nav_expandidos_${usuario.id}`, JSON.stringify(abiertos));
+  } catch { /* localStorage no disponible: solo no se recuerda la preferencia */ }
 }
+
+/**
+ * Buscador del panel lateral: filtra modulos por nombre (o nombre de su
+ * grupo), sin distinguir mayusculas ni tildes. Mientras hay texto se
+ * muestran todos los grupos con coincidencias, abiertos.
+ */
+function sissoFiltrarMenu(valor) {
+  const nav = document.querySelector('.sisso-nav');
+  if (!nav) return;
+  const q = String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  nav.classList.toggle('filtrando', q.length > 0);
+
+  let coincidencias = 0;
+  nav.querySelectorAll('.sisso-nav-item').forEach((a) => {
+    const ok = !q || (a.dataset.buscar || '').includes(q);
+    a.classList.toggle('oculto', !ok);
+    if (ok) coincidencias += 1;
+  });
+  nav.querySelectorAll('.sisso-nav-grupo').forEach((g) => {
+    g.classList.toggle('oculto', !g.querySelector('.sisso-nav-item:not(.oculto)'));
+  });
+  const fijos = nav.querySelector('.sisso-nav-fijos');
+  if (fijos) fijos.classList.toggle('oculto', q.length > 0 && !fijos.querySelector('.sisso-nav-item:not(.oculto)'));
+  document.getElementById('sisso-nav-vacio')?.classList.toggle('visible', q.length > 0 && coincidencias === 0);
+}
+
+/** Menu de cuenta (contrasena, 2 pasos, sesiones, cerrar sesion) del pie del panel. */
+function sissoAlternarMenuUsuario() {
+  document.getElementById('sisso-usuario-menu')?.classList.toggle('visible');
+}
+function sissoCerrarMenuUsuario() {
+  document.getElementById('sisso-usuario-menu')?.classList.remove('visible');
+}
+document.addEventListener('click', (evento) => {
+  if (!evento.target.closest('.sisso-usuario')) sissoCerrarMenuUsuario();
+});
 
 /**
  * Boton "Cambiar mi contraseña" del sidebar: abre el mismo modal
