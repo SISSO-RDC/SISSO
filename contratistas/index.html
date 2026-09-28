@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Contratistas</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .ct-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .ct-item:hover { background: var(--bg); }
+    .ct-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ct-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .ct-sub { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--bd); }
+    .ct-fila { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--bd); font-size: 13px; }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div id="vista-listado">
+    <div class="sisso-tarjeta">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="sisso-tarjeta-titulo">Contratistas</div>
+        <button class="sisso-boton" data-on-click="abrirModalNuevoContratista()">+ Nuevo contratista</button>
+      </div>
+      <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;">
+        Empresas contratistas, sus documentos habilitantes (pólizas, permisos, certificados) y su personal.
+        El semáforo indica el documento más próximo a vencer.
+      </p>
+      <div class="sisso-campo" style="max-width:220px;">
+        <label class="sisso-etiqueta" for="f-estado">Estado</label>
+        <select id="f-estado" class="sisso-select" data-on-change="cargarListado()">
+          <option value="">Todos</option>
+          <option value="activo">Activos</option>
+          <option value="suspendido">Suspendidos</option>
+          <option value="inactivo">Inactivos</option>
+        </select>
+      </div>
+      <div id="lista-contratistas"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" data-on-click="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+    <div class="sisso-tarjeta">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-contratista"></div>
+
+      <div class="ct-sub">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:13.5px;">Documentos</strong>
+          <button class="sisso-boton secundario" data-on-click="abrirModalDocumento()">+ Documento</button>
+        </div>
+        <div id="lista-documentos" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="ct-sub">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:13.5px;">Personal del contratista</strong>
+          <button class="sisso-boton secundario" data-on-click="abrirModalTrabajador()">+ Trabajador</button>
+        </div>
+        <div id="lista-trabajadores-contratista" style="margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuevo contratista -->
+<div class="modal-fondo" id="modal-nuevo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Nuevo contratista</div>
+    <div class="sisso-error" id="error-modal-nuevo"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-razon-social">Razón social *</label><input id="n-razon-social" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-ruc">RUC *</label><input id="n-ruc" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-representante">Representante legal</label><input id="n-representante" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-telefono">Teléfono de contacto</label><input id="n-telefono" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-correo">Correo de contacto</label><input id="n-correo" type="email" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-actividad">Actividad</label><input id="n-actividad" class="sisso-input" placeholder="Ej: mantenimiento eléctrico"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNuevoContratista()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuevo documento -->
+<div class="modal-fondo" id="modal-documento">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Nuevo documento</div>
+    <div class="sisso-error" id="error-modal-documento"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="d-tipo">Tipo *</label>
+      <select id="d-tipo" class="sisso-select">
+        <option value="poliza_responsabilidad_civil">Póliza de responsabilidad civil</option>
+        <option value="poliza_riesgos_trabajo">Póliza de riesgos del trabajo</option>
+        <option value="permiso_municipal">Permiso municipal</option>
+        <option value="certificado_seguridad_industrial">Certificado de seguridad industrial</option>
+        <option value="rup">RUP</option>
+        <option value="ruc">RUC</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="d-numero">Número de documento</label><input id="d-numero" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="d-emision">Fecha de emisión</label><input id="d-emision" type="date" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="d-vencimiento">Fecha de vencimiento</label><input id="d-vencimiento" type="date" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="d-archivo">Archivo (PDF, opcional)</label><input id="d-archivo" type="file" accept="application/pdf" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNuevoDocumento()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuevo trabajador de contratista -->
+<div class="modal-fondo" id="modal-trabajador">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Nuevo trabajador del contratista</div>
+    <div class="sisso-error" id="error-modal-trabajador"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="t-nombre">Nombre completo *</label><input id="t-nombre" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="t-cedula">Cédula *</label><input id="t-cedula" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="t-cargo">Cargo</label><input id="t-cargo" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNuevoTrabajador()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>
