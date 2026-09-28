@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Competencias</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .cp-fila { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--bd); font-size: 13px; }
+    .cp-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .cp-tab { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--bd); cursor: pointer; font-size: 12.5px; background: #fff; }
+    .cp-tab.activa { background: var(--azul, #1d4ed8); color: #fff; border-color: transparent; }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div class="sisso-tarjeta">
+    <div class="sisso-tarjeta-titulo">Competencias</div>
+    <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;">
+      Catálogo de competencias/certificaciones exigibles y su asignación a personal propio o de contratistas.
+    </p>
+    <div class="cp-tabs">
+      <div class="cp-tab activa" id="tab-catalogo" data-on-click="cambiarPestana('catalogo')">Catálogo</div>
+      <div class="cp-tab" id="tab-asignar" data-on-click="cambiarPestana('asignar')">Asignar / Consultar</div>
+    </div>
+
+    <div id="vista-catalogo">
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="sisso-boton" data-on-click="abrirModalNuevaCompetencia()">+ Nueva competencia</button>
+      </div>
+      <div id="lista-catalogo" style="margin-top:10px;"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+
+    <div id="vista-asignar" style="display:none;">
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="sisso-boton" data-on-click="abrirModalAsignar()">+ Asignar competencia</button>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="sisso-campo" style="max-width:160px;margin-bottom:0;">
+          <label class="sisso-etiqueta" for="c-tipo-persona">Tipo</label>
+          <select id="c-tipo-persona" class="sisso-select" data-on-change="onCambioTipoPersonaConsulta()">
+            <option value="propio">Personal propio</option>
+            <option value="contratista">Personal de contratista</option>
+          </select>
+        </div>
+        <div class="sisso-campo" id="grupo-consulta-contratista" style="display:none;max-width:220px;margin-bottom:0;">
+          <label class="sisso-etiqueta" for="c-contratista">Contratista</label>
+          <select id="c-contratista" class="sisso-select" data-on-change="onCambioContratistaConsulta()"><option value="">Selecciona…</option></select>
+        </div>
+        <div class="sisso-campo" style="max-width:220px;margin-bottom:0;">
+          <label class="sisso-etiqueta" for="c-persona">Persona</label>
+          <select id="c-persona" class="sisso-select" data-on-change="cargarAsignadas()"><option value="">Selecciona…</option></select>
+        </div>
+      </div>
+      <div id="lista-asignadas" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nueva competencia en catalogo -->
+<div class="modal-fondo" id="modal-nueva-competencia">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Nueva competencia</div>
+    <div class="sisso-error" id="error-modal-nueva-competencia"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="nc-nombre">Nombre *</label><input id="nc-nombre" class="sisso-input" placeholder="Ej: Trabajo en alturas"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="nc-descripcion">Descripción</label><textarea id="nc-descripcion" class="sisso-textarea"></textarea></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="nc-vigencia">Vigencia (meses, vacío = no vence)</label><input id="nc-vigencia" type="number" min="1" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNuevaCompetencia()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: asignar competencia -->
+<div class="modal-fondo" id="modal-asignar">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Asignar competencia</div>
+    <div class="sisso-error" id="error-modal-asignar"></div>
+    <div class="sisso-campo">
+      <label class="sisso-etiqueta" for="a-tipo-persona">Tipo *</label>
+      <select id="a-tipo-persona" class="sisso-select" data-on-change="onCambioTipoPersonaAsignar()">
+        <option value="propio">Personal propio</option>
+        <option value="contratista">Personal de contratista</option>
+      </select>
+    </div>
+    <div class="sisso-campo" id="grupo-asignar-contratista" style="display:none;">
+      <label class="sisso-etiqueta" for="a-contratista">Contratista *</label>
+      <select id="a-contratista" class="sisso-select" data-on-change="onCambioContratistaAsignar()"><option value="">Selecciona…</option></select>
+    </div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="a-persona">Persona *</label><select id="a-persona" class="sisso-select"><option value="">Selecciona…</option></select></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="a-competencia">Competencia *</label><select id="a-competencia" class="sisso-select"><option value="">Selecciona…</option></select></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="a-fecha">Fecha de obtención *</label><input id="a-fecha" type="date" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="a-archivo">Certificado (opcional)</label><input id="a-archivo" type="file" accept="application/pdf,image/*" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarAsignar()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

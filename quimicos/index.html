@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self' data:; connect-src 'self' https://sissso-backend.onrender.com https://res.cloudinary.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISSO — Químicos y SDS</title>
+  <link rel="stylesheet" href="../shared/estilos.css">
+  <style>
+    .qm-item { border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+    .qm-item:hover { background: var(--bg); }
+    .qm-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .qm-meta { font-size: 11.5px; color: var(--t3); margin-top: 4px; }
+    .modal-fondo { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-fondo.visible { display: flex; }
+    .modal-caja { background: #fff; border-radius: var(--r); padding: 20px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div id="sisso-app">
+  <div id="vista-listado">
+    <div class="sisso-tarjeta">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="sisso-tarjeta-titulo">Químicos y SDS/FDS</div>
+        <button class="sisso-boton" data-on-click="abrirModalNuevo()">+ Nuevo químico</button>
+      </div>
+      <p style="color:var(--t3);font-size:12.5px;margin-top:-2px;">
+        Inventario por área con su hoja de seguridad (SDS/FDS) vigente, número CAS y clasificación GHS.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="sisso-campo" style="max-width:200px;">
+          <label class="sisso-etiqueta" for="f-estado">Estado</label>
+          <select id="f-estado" class="sisso-select" data-on-change="cargarListado()">
+            <option value="">Todos</option>
+            <option value="activo">Activos</option>
+            <option value="agotado">Agotados</option>
+            <option value="dado_de_baja">Dados de baja</option>
+          </select>
+        </div>
+        <div class="sisso-campo" style="max-width:200px;">
+          <label class="sisso-etiqueta" for="f-sds">SDS</label>
+          <select id="f-sds" class="sisso-select" data-on-change="cargarListado()">
+            <option value="">Todos</option>
+            <option value="true">Solo sin SDS</option>
+          </select>
+        </div>
+      </div>
+      <div id="lista-quimicos"><div class="sisso-cargando">Cargando…</div></div>
+    </div>
+  </div>
+
+  <div id="vista-detalle" style="display:none;">
+    <button class="btn-mini" data-on-click="volverAlListado()" style="margin-bottom:12px;">← Volver al listado</button>
+    <div class="sisso-tarjeta">
+      <div class="sisso-error" id="error-detalle"></div>
+      <div class="sisso-exito" id="exito-detalle"></div>
+      <div id="resumen-quimico"></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);" id="acciones-quimico"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuevo quimico -->
+<div class="modal-fondo" id="modal-nuevo">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Nuevo químico</div>
+    <div class="sisso-error" id="error-modal-nuevo"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-comercial">Nombre comercial *</label><input id="n-comercial" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-quimico">Nombre químico</label><input id="n-quimico" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-cas">Número CAS</label><input id="n-cas" class="sisso-input" placeholder="Ej: 67-64-1"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-fabricante">Fabricante</label><input id="n-fabricante" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-area">Área / bodega *</label><input id="n-area" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-cantidad">Cantidad almacenada</label><input id="n-cantidad" type="number" min="0" step="0.01" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-unidad">Unidad</label><input id="n-unidad" class="sisso-input" placeholder="litros, kg, galones…"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-ghs">Clasificación GHS (separada por comas)</label><input id="n-ghs" class="sisso-input" placeholder="inflamable, corrosivo, tóxico"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-frases-h">Frases H (peligro)</label><textarea id="n-frases-h" class="sisso-textarea"></textarea></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-sds-version">Versión SDS</label><input id="n-sds-version" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-sds-fecha">Fecha de emisión SDS</label><input id="n-sds-fecha" type="date" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="n-sds-archivo">Archivo SDS (PDF, opcional)</label><input id="n-sds-archivo" type="file" accept="application/pdf" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarNuevo()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: actualizar SDS -->
+<div class="modal-fondo" id="modal-sds">
+  <div class="modal-caja">
+    <div class="sisso-tarjeta-titulo">Actualizar SDS vigente</div>
+    <div class="sisso-error" id="error-modal-sds"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="s-version">Versión</label><input id="s-version" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="s-fecha">Fecha de emisión</label><input id="s-fecha" type="date" class="sisso-input"></div>
+    <div class="sisso-campo"><label class="sisso-etiqueta" for="s-archivo">Archivo SDS (PDF) *</label><input id="s-archivo" type="file" accept="application/pdf" class="sisso-input"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="sisso-boton" style="flex:1;" data-on-click="confirmarActualizarSds()">Guardar</button>
+      <button class="sisso-boton secundario" style="flex:1;" data-on-click="cerrarModales()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/csp-eventos.js"></script>
+<script src="../shared/api.js"></script>
+<script src="../shared/layout.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>

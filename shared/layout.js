@@ -169,6 +169,14 @@ const SissoLayout = (() => {
     { id: 'documentos-control', label: 'Control documental', icono: '📄', href: '../documentos-control/index.html', roles: [] },
     { id: 'obligaciones-legales', label: 'Obligaciones legales', icono: '⚖️', href: '../obligaciones-legales/index.html', roles: ['admin', 'sso'] },
     { id: 'auditorias', label: 'Auditorías', icono: '🗂️', href: '../auditorias/index.html', roles: ['admin', 'sso'] },
+    // CREADO Lote 3 (Sep 2026): control de trabajo -- contratistas, competencias y permisos de trabajo (JSA/AST).
+    // Solo admin/sso, igual que el backend (ver contratistasRoutes/competenciasRoutes/permisosTrabajoRoutes).
+    { id: 'contratistas', label: 'Contratistas', icono: '🏗️', href: '../contratistas/index.html', roles: ['admin', 'sso'] },
+    { id: 'competencias', label: 'Competencias', icono: '🎖️', href: '../competencias/index.html', roles: ['admin', 'sso'] },
+    { id: 'permisos-trabajo', label: 'Permisos de trabajo', icono: '📝', href: '../permisos-trabajo/index.html', roles: ['admin', 'sso'] },
+    // CREADO Lote 4 (Sep 2026): quimicos/SDS y emergencias. Solo admin/sso (mismo criterio del backend).
+    { id: 'quimicos', label: 'Químicos y SDS', icono: '🧪', href: '../quimicos/index.html', roles: ['admin', 'sso'] },
+    { id: 'emergencias', label: 'Emergencias', icono: '🚒', href: '../emergencias/index.html', roles: ['admin', 'sso'] },
     { id: 'riesgo-psicosocial', label: 'Riesgo psicosocial', icono: '🧠', href: '../riesgo-psicosocial/index.html', roles: ['admin', 'sso', 'medico'] },
     { id: 'higiene-industrial', label: 'Higiene industrial', icono: '🌡️', href: '../higiene-industrial/index.html', roles: [] },
     { id: 'epp',           label: 'EPP',                 icono: '🦺', href: '../epp/index.html', roles: [] },
