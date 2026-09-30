@@ -262,13 +262,10 @@ const SissoLayout = (() => {
     return resultado;
   }
 
-  function claveExpandidos(usuario) { return `sisso_nav_expandidos_${usuario.id}`; }
+  function claveExpandidos(usuario) { return `sisso_nav_expandido_${usuario.id}`; }
 
-  function leerGruposExpandidos(usuario) {
-    try {
-      const guardado = localStorage.getItem(claveExpandidos(usuario));
-      return guardado === null ? null : new Set(JSON.parse(guardado));
-    } catch { return null; }
+  function leerGrupoExpandido(usuario) {
+    try { return localStorage.getItem(claveExpandidos(usuario)); } catch { return null; }
   }
 
   function htmlItem(item, moduloActivo) {
@@ -287,17 +284,18 @@ const SissoLayout = (() => {
   function construirSidebar(moduloActivo, usuario) {
     const grupos = gruposVisibles(usuario);
     const grupoActivo = grupos.find((g) => g.items.some((it) => it.id === moduloActivo));
-    const guardados = leerGruposExpandidos(usuario);
-    // Por defecto SOLO se abre el grupo donde esta el usuario (menu corto);
-    // el grupo activo siempre queda abierto para no perder la ubicacion.
-    const expandidos = new Set(guardados || []);
-    if (grupoActivo) expandidos.add(grupoActivo.grupo);
+    const grupoGuardado = leerGrupoExpandido(usuario);
+    // Acordeón EXCLUSIVO: solo UN grupo abierto a la vez. El grupo activo
+    // (donde está la página actual) siempre manda sobre lo guardado, para
+    // no perder la ubicación; si no hay ninguno activo (ej. Inicio), se
+    // respeta el último grupo que el usuario abrió.
+    const grupoAbierto = grupoActivo ? grupoActivo.grupo : grupoGuardado;
 
     const fijos = grupos.filter((g) => g.fijo).map((g) =>
       `<div class="sisso-nav-fijos">${g.items.map((it) => htmlItem(it, moduloActivo)).join('')}</div>`).join('');
 
     const gruposHtml = grupos.filter((g) => !g.fijo).map((g) => {
-      const abierto = expandidos.has(g.grupo);
+      const abierto = g.grupo === grupoAbierto;
       const itemsHtml = g.items.map((it) => it.subtitulo
         ? `<div class="sisso-nav-subtitulo">${escaparHtml(it.subtitulo)}</div>`
         : htmlItem({ ...it, label: it.label }, moduloActivo).replace('data-buscar="', `data-buscar="${escaparHtml(normalizarTexto(g.nombre))} `)
@@ -545,15 +543,23 @@ function sissoToggleGrupo(boton) {
   const usuario = SissoSesion.obtenerUsuario();
   if (!usuario) return;
   const contenedor = boton.nextElementSibling;
-  const colapsar = !contenedor.classList.contains('colapsada');
-  contenedor.classList.toggle('colapsada', colapsar);
-  boton.setAttribute('aria-expanded', String(!colapsar));
+  const yaAbierto = !contenedor.classList.contains('colapsada');
 
-  const abiertos = [...document.querySelectorAll('.sisso-nav-grupo')]
-    .filter((g) => !g.querySelector('.sisso-nav-grupo-items').classList.contains('colapsada'))
-    .map((g) => g.dataset.grupo);
+  // Acordeón EXCLUSIVO: al abrir un grupo se cierran todos los demás,
+  // para que el panel no vuelva a crecer sin límite con varios grupos
+  // abiertos a la vez (ese era justamente el problema original).
+  document.querySelectorAll('.sisso-nav-grupo').forEach((g) => {
+    const btn = g.querySelector('.sisso-nav-grupo-btn');
+    const items = g.querySelector('.sisso-nav-grupo-items');
+    items.classList.add('colapsada');
+    btn.setAttribute('aria-expanded', 'false');
+  });
+  contenedor.classList.toggle('colapsada', yaAbierto);
+  boton.setAttribute('aria-expanded', String(!yaAbierto));
+
+  const grupoAbierto = yaAbierto ? '' : boton.closest('.sisso-nav-grupo').dataset.grupo;
   try {
-    localStorage.setItem(`sisso_nav_expandidos_${usuario.id}`, JSON.stringify(abiertos));
+    localStorage.setItem(`sisso_nav_expandido_${usuario.id}`, grupoAbierto);
   } catch { /* localStorage no disponible: solo no se recuerda la preferencia */ }
 }
 
