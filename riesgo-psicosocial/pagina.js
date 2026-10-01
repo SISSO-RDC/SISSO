@@ -7,6 +7,7 @@
 // este archivo; index.html lo carga con <script src="pagina.js">.
 // ============================================================
 let esGestor = false;
+let puedeVerDetalleIndividual = false;
 let trabajadores = [];
 let usuariosOrganizacion = [];
 let evaluacionActualId = null;
@@ -17,6 +18,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const usuario = SissoSesion.obtenerUsuario();
   esGestor = ['admin', 'sso'].includes(usuario.rol);
+  // G14-01 (Auditoria N.14): el detalle individual de una evaluacion
+  // psicosocial es dato sensible -- admin puede CREAR una evaluacion,
+  // pero no puede listar ni abrir el detalle de ninguna; solo ve el
+  // resumen agregado por area/nivel (igual que el backend lo exige).
+  puedeVerDetalleIndividual = ['sso', 'medico'].includes(usuario.rol);
 
   if (esGestor) {
     document.getElementById('caja-crear').style.display = 'block';
@@ -24,7 +30,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarUsuarios();
   }
 
-  await cargarListado();
+  if (puedeVerDetalleIndividual) {
+    await cargarListado();
+  } else {
+    document.getElementById('caja-filtros').style.display = 'none';
+    document.getElementById('aviso-solo-resumen').style.display = 'block';
+    await cargarResumenAgregado();
+  }
 });
 
 async function cargarTrabajadores() {
@@ -115,12 +127,34 @@ async function crearEvaluacion() {
     document.getElementById('c-derivado').checked = false;
     factoresTemporales = [];
     renderizarFactoresTemporales();
-    await cargarListado();
+    if (puedeVerDetalleIndividual) await cargarListado(); else await cargarResumenAgregado();
   } catch (err) {
     mostrarError('error-crear', err.message || 'Error al guardar la evaluación.');
   } finally {
     boton.disabled = false;
     boton.textContent = 'Guardar evaluación';
+  }
+}
+
+// ======= Resumen agregado (vista exclusiva de admin — G14-01) =======
+async function cargarResumenAgregado() {
+  const cont = document.getElementById('lista-evaluaciones');
+  cont.innerHTML = '<div class="sisso-cargando">Cargando…</div>';
+  try {
+    const datos = await sissoFetch('/riesgo-psicosocial/evaluaciones/resumen-agregado');
+    const filas = datos.resumen || [];
+    if (filas.length === 0) {
+      cont.innerHTML = '<div class="sisso-vacio">Aún no hay evaluaciones registradas.</div>';
+      return;
+    }
+    cont.innerHTML = filas.map(f => f.redactado
+      ? `<div class="eval-item"><strong>${escHtml(f.area)}</strong><div class="eval-meta">${escHtml(f.nota)}</div></div>`
+      : `<div class="eval-item">
+          <div class="eval-cabecera"><strong>${escHtml(f.area)}</strong> ${chipDeNivel(f.nivel_riesgo)}</div>
+          <div class="eval-meta">${f.cantidad} evaluación(es)</div>
+        </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = `<div class="sisso-vacio">Error al cargar: ${escHtml(err.message)}</div>`;
   }
 }
 
