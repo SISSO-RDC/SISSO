@@ -103,7 +103,11 @@
 
     <div class="sisso-tarjeta">
       <div class="sisso-tarjeta-titulo">Evaluaciones de riesgo psicosocial</div>
-      <div class="filtros-caja">
+      <div class="sisso-vacio" id="aviso-solo-resumen" style="display:none;text-align:left;">
+        Como administrador ves el resumen agregado por área y nivel de riesgo. El detalle individual de cada
+        evaluación es confidencial y solo lo pueden revisar SSO y el médico ocupacional.
+      </div>
+      <div class="filtros-caja" id="caja-filtros">
         <div class="sisso-campo">
           <label class="sisso-etiqueta" for="f-nivel">Nivel de riesgo</label>
           <select id="f-nivel" class="sisso-select" data-on-change="cargarListado()">
