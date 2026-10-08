@@ -202,7 +202,14 @@ const SissoLayout = (() => {
 
     { grupo: 'administracion', nombre: 'Administración', icono: 'ajustes', items: [
       // Mi Perfil: firma digital/registro SENESCYT de quienes firman (medico, sso).
-      { id: 'mi-perfil',     label: 'Mi perfil y firma', href: '../mi-perfil/index.html',     roles: ['medico', 'sso'] },
+      // Oct 2026: ampliado de ['medico','sso'] a todos los roles que pueden
+      // firmar documentos. Con la firma electronica avanzada (certificado
+      // .p12), cualquier usuario que dicte una capacitacion (admin, th, sso,
+      // medico -- ver capacitacionesController.crear) firma su certificado
+      // con su propia credencial, asi que todos necesitan un lugar donde
+      // cargarla. Los endpoints de backend ya eran 'autenticar' sin filtro
+      // de rol; solo faltaba que la pantalla fuera alcanzable.
+      { id: 'mi-perfil',     label: 'Mi perfil y firma', href: '../mi-perfil/index.html',     roles: ['admin', 'medico', 'sso', 'th'] },
       { id: 'configuracion', label: 'Configuración',     href: '../configuracion/index.html', roles: ['admin'] },
       { id: 'acerca-de',     label: 'Acerca de',         href: '../acerca-de/index.html',     roles: [] },
     ] },
