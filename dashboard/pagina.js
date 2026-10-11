@@ -205,10 +205,22 @@ function renderizarGraficoAptitud(datos) {
 }
 
 // ------- Gráfico: REBA por área (barras horizontales) -------
-function renderizarGraficoReba(datos) {
-  if (!datos || datos.length === 0) {
+function renderizarGraficoReba(datosCrudos) {
+  // El backend redacta (k-anonimato) las areas con menos de 5 trabajadores
+  // evaluados: esas filas llegan SIN maximo/promedio. Antes se graficaban
+  // como NaN y el grafico salia vacio con las etiquetas de area visibles.
+  const todas = Array.isArray(datosCrudos) ? datosCrudos : [];
+  const datos = todas.filter(d => !d.redactado && Number.isFinite(parseFloat(d.maximo)));
+  const ocultas = todas.filter(d => d.redactado);
+  if (datos.length === 0) {
     document.getElementById('c-reba-d').style.display = 'none';
-    document.getElementById('sin-datos-reba').style.display = 'block';
+    const caja = document.getElementById('sin-datos-reba');
+    caja.style.display = 'block';
+    if (ocultas.length > 0) {
+      caja.innerHTML = '<div class="sin-datos-icono">🔒</div>' +
+        'Hay evaluaciones REBA en ' + ocultas.length + ' área(s), pero ninguna tiene aún el mínimo de 5 trabajadores evaluados ' +
+        'necesario para mostrarse sin identificar a una persona. Evalúa a más trabajadores de cada área.';
+    }
     return;
   }
 

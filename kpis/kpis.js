@@ -264,3 +264,7 @@ function mostrarExito(idEl, msg) {
   el.classList.add('visible');
 }
 function ocultarExito(idEl) { document.getElementById(idEl).classList.remove('visible'); }
+
+// Alias local, como en el resto de modulos. Su ausencia hacia que el primer
+// render (y el catch) lanzaran ReferenceError y la pantalla quedara en "Comparando..."/cargando.
+const escHtml = escaparHtml;

@@ -112,7 +112,7 @@ async function continuarSesion(sesionId) {
 
 function formatearFecha(fecha) {
   if (!fecha) return '';
-  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' });
+  return new Date(String(fecha).slice(0, 10) + 'T00:00:00').toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' });
 }
 
 // ------- PASO 1: iniciar sesion -------

@@ -50,7 +50,7 @@ function cargarPagina(archivo, { rol, respuestas = {} }) {
     encodeURIComponent, Number, Math, String, Array, JSON, Promise, Date,
   };
   vm.createContext(ctx);
-  vm.runInContext(extraerEscape() + '\nconst escHtml = escaparHtml;', ctx);
+  vm.runInContext(extraerEscape(), ctx); // escHtml debe definirlo la propia pagina, como en produccion
   vm.runInContext(leer(archivo), ctx);
   return { ctx, elementos, llamadas };
 }
